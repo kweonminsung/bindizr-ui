@@ -1,21 +1,25 @@
 import { Zone, Record } from './types';
 
-const API_BASE_URL = 'http://localhost:8000'; // Replace with your API base URL
+const API_BASE_URL = 'http://localhost:8000'; // Using the external API server
 
 export async function getZones(): Promise<Zone[]> {
   const response = await fetch(`${API_BASE_URL}/zones`);
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to fetch zones:', errorText);
     throw new Error('Failed to fetch zones');
   }
-  return response.json();
+  return (await response.json()).zones as Zone[];
 }
 
 export async function getRecords(zoneId: number): Promise<Record[]> {
   const response = await fetch(`${API_BASE_URL}/records?zone_id=${zoneId}`);
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to fetch records:', errorText);
     throw new Error('Failed to fetch records');
   }
-  return response.json();
+  return (await response.json()).records as Record[];
 }
 
 export async function createZone(zone: Omit<Zone, 'id'>): Promise<Zone> {
@@ -27,6 +31,8 @@ export async function createZone(zone: Omit<Zone, 'id'>): Promise<Zone> {
     body: JSON.stringify(zone),
   });
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to create zone:', errorText);
     throw new Error('Failed to create zone');
   }
   return response.json();
@@ -43,6 +49,8 @@ export async function createRecord(
     body: JSON.stringify(record),
   });
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to create record:', errorText);
     throw new Error('Failed to create record');
   }
   return response.json();
@@ -57,6 +65,8 @@ export async function updateZone(zone: Zone): Promise<Zone> {
     body: JSON.stringify(zone),
   });
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to update zone:', errorText);
     throw new Error('Failed to update zone');
   }
   return response.json();
@@ -67,6 +77,8 @@ export async function deleteZone(id: number): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to delete zone:', errorText);
     throw new Error('Failed to delete zone');
   }
 }
@@ -80,6 +92,8 @@ export async function updateRecord(record: Record): Promise<Record> {
     body: JSON.stringify(record),
   });
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to update record:', errorText);
     throw new Error('Failed to update record');
   }
   return response.json();
@@ -90,6 +104,8 @@ export async function deleteRecord(id: number): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to delete record:', errorText);
     throw new Error('Failed to delete record');
   }
 }
