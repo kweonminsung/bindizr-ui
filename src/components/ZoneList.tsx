@@ -38,41 +38,59 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
     }
   };
 
-  if (loading) return <p>Loading zones...</p>;
-  if (error) return <p>{error}</p>;
+  if (loading) {
+    return <p className="text-center text-text-secondary">Loading zones...</p>;
+  }
+  if (error) {
+    return <p className="text-center text-red-500">{error}</p>;
+  }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Zones</h2>
-      <ul className="space-y-2">
-        {zones.map(zone => (
-          <li
-            key={zone.id}
-            className="p-2 border rounded flex justify-between items-center"
-          >
-            <span
-              onClick={() => router.push(`/records?zoneId=${zone.id}`)}
-              className="cursor-pointer"
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left text-sm font-light">
+        <thead className="border-b border-border-color font-medium">
+          <tr>
+            <th scope="col" className="px-6 py-4 text-text-secondary">
+              Zone Name
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-4 text-right text-text-secondary"
             >
-              {zone.name}
-            </span>
-            <div>
-              <button
-                onClick={() => onEditZone(zone)}
-                className="mr-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {zones.map(zone => (
+            <tr
+              key={zone.id}
+              className="border-b border-border-color transition-colors hover:bg-background-light"
+            >
+              <td
+                onClick={() => router.push(`/records?zoneId=${zone.id}`)}
+                className="whitespace-nowrap px-6 py-4 font-medium cursor-pointer hover:text-primary"
               >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(zone.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+                {zone.name}
+              </td>
+              <td className="whitespace-nowrap px-6 py-4 text-right">
+                <button
+                  onClick={() => onEditZone(zone)}
+                  className="mr-4 font-medium text-secondary hover:underline"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(zone.id)}
+                  className="font-medium text-red-500 hover:underline"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

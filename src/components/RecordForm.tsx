@@ -72,13 +72,17 @@ export default function RecordForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-2xl font-bold">
-        {record ? 'Edit Record' : 'Create Record'}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <h2 className="text-2xl font-bold text-white mb-6">
+        {record ? 'Edit Record' : 'Create New Record'}
       </h2>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col">
-          <label htmlFor="name" className="mb-1 text-sm font-medium">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Name
           </label>
           <input
@@ -87,11 +91,14 @@ export default function RecordForm({
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="p-2 border rounded"
+            required
           />
         </div>
-        <div className="flex flex-col">
-          <label htmlFor="record_type" className="mb-1 text-sm font-medium">
+        <div>
+          <label
+            htmlFor="record_type"
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Type
           </label>
           <select
@@ -99,7 +106,6 @@ export default function RecordForm({
             name="record_type"
             value={formData.record_type}
             onChange={handleChange}
-            className="p-2 border rounded"
           >
             <option value="A">A</option>
             <option value="AAAA">AAAA</option>
@@ -112,8 +118,11 @@ export default function RecordForm({
             <option value="PTR">PTR</option>
           </select>
         </div>
-        <div className="flex flex-col">
-          <label htmlFor="value" className="mb-1 text-sm font-medium">
+        <div className="md:col-span-2">
+          <label
+            htmlFor="value"
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Value
           </label>
           <input
@@ -122,11 +131,14 @@ export default function RecordForm({
             name="value"
             value={formData.value}
             onChange={handleChange}
-            className="p-2 border rounded"
+            required
           />
         </div>
-        <div className="flex flex-col">
-          <label htmlFor="ttl" className="mb-1 text-sm font-medium">
+        <div>
+          <label
+            htmlFor="ttl"
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             TTL
           </label>
           <input
@@ -135,26 +147,13 @@ export default function RecordForm({
             name="ttl"
             value={formData.ttl}
             onChange={handleChange}
-            className="p-2 border rounded"
           />
         </div>
-        {!zoneId && !record && (
-          <div className="flex flex-col">
-            <label htmlFor="zone_id" className="mb-1 text-sm font-medium">
-              Zone ID
-            </label>
-            <input
-              type="number"
-              id="zone_id"
-              name="zone_id"
-              value={(formData as Record).zone_id}
-              onChange={handleChange}
-              className="p-2 border rounded"
-            />
-          </div>
-        )}
-        <div className="flex flex-col">
-          <label htmlFor="priority" className="mb-1 text-sm font-medium">
+        <div>
+          <label
+            htmlFor="priority"
+            className="block text-sm font-medium text-text-secondary mb-1"
+          >
             Priority
           </label>
           <input
@@ -163,25 +162,40 @@ export default function RecordForm({
             name="priority"
             value={formData.priority}
             onChange={handleChange}
-            className="p-2 border rounded"
           />
         </div>
+        {!zoneId && !record && (
+          <div>
+            <label
+              htmlFor="zone_id"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Zone ID
+            </label>
+            <input
+              type="number"
+              id="zone_id"
+              name="zone_id"
+              value={(formData as Record).zone_id}
+              onChange={handleChange}
+              required
+            />
+          </div>
+        )}
       </div>
-      <button
-        type="submit"
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        {record ? 'Update' : 'Create'}
-      </button>
-      {record && (
+
+      <div className="flex justify-end space-x-4 pt-4">
         <button
           type="button"
-          onClick={handleCancel}
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+          onClick={onSuccess}
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
         >
           Cancel
         </button>
-      )}
+        <button type="submit" className="btn-primary">
+          {record ? 'Update Record' : 'Create Record'}
+        </button>
+      </div>
     </form>
   );
 }

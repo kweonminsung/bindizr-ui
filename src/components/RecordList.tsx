@@ -51,41 +51,73 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
     setIsDetailModalOpen(false);
   };
 
-  if (loading) return <p>Loading records...</p>;
-  if (error) return <p>{error}</p>;
+  if (loading) {
+    return (
+      <p className="text-center text-text-secondary">Loading records...</p>
+    );
+  }
+  if (error) {
+    return <p className="text-center text-red-500">{error}</p>;
+  }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Records</h2>
-      <ul className="space-y-2">
-        {records.map(record => (
-          <li
-            key={record.id}
-            className="p-2 border rounded flex justify-between items-center"
-          >
-            <span
-              onClick={() => handleShowDetails(record)}
-              className="cursor-pointer"
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left text-sm font-light">
+        <thead className="border-b border-border-color font-medium">
+          <tr>
+            <th scope="col" className="px-6 py-4 text-text-secondary">
+              Name
+            </th>
+            <th scope="col" className="px-6 py-4 text-text-secondary">
+              Type
+            </th>
+            <th scope="col" className="px-6 py-4 text-text-secondary">
+              Value
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-4 text-right text-text-secondary"
             >
-              <strong>{record.name}</strong> {record.record_type} {record.value}
-            </span>
-            <div>
-              <button
-                onClick={() => onEditRecord(record)}
-                className="mr-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map(record => (
+            <tr
+              key={record.id}
+              className="border-b border-border-color transition-colors hover:bg-background-light"
+            >
+              <td
+                onClick={() => handleShowDetails(record)}
+                className="whitespace-nowrap px-6 py-4 font-medium cursor-pointer hover:text-primary"
               >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(record.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+                {record.name}
+              </td>
+              <td className="whitespace-nowrap px-6 py-4">
+                {record.record_type}
+              </td>
+              <td className="whitespace-nowrap px-6 py-4 truncate max-w-xs">
+                {record.value}
+              </td>
+              <td className="whitespace-nowrap px-6 py-4 text-right">
+                <button
+                  onClick={() => onEditRecord(record)}
+                  className="mr-4 font-medium text-secondary hover:underline"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(record.id)}
+                  className="font-medium text-red-500 hover:underline"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       {selectedRecord && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
           <RecordDetails record={selectedRecord} />

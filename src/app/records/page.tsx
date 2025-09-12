@@ -31,18 +31,17 @@ function RecordsContent() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">Records</h1>
-        <button
-          onClick={handleOpenModal}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+        <h1 className="text-3xl font-bold text-white">Manage Records</h1>
+        <button onClick={handleOpenModal} className="btn-primary">
           Create Record
         </button>
       </div>
-      <RecordList
-        onEditRecord={handleEditRecord}
-        zoneId={zoneId ? parseInt(zoneId) : undefined}
-      />
+      <div className="bg-background-dark p-6 rounded-lg shadow-xl">
+        <RecordList
+          onEditRecord={handleEditRecord}
+          zoneId={zoneId ? parseInt(zoneId) : undefined}
+        />
+      </div>
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm
           record={editingRecord}
@@ -56,7 +55,7 @@ function RecordsContent() {
 
 export default function RecordsPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="text-center p-10">Loading...</div>}>
       <RecordsContent />
     </Suspense>
   );

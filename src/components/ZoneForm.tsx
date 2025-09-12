@@ -64,157 +64,196 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-2xl font-bold">
-        {zone ? 'Edit Zone' : 'Create Zone'}
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <h2 className="text-2xl font-bold text-white mb-6">
+        {zone ? 'Edit Zone' : 'Create New Zone'}
       </h2>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col">
-          <label htmlFor="name" className="mb-1 text-sm font-medium">
-            Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="primary_ns" className="mb-1 text-sm font-medium">
-            Primary NS
-          </label>
-          <input
-            type="text"
-            id="primary_ns"
-            name="primary_ns"
-            value={formData.primary_ns}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="primary_ns_ip" className="mb-1 text-sm font-medium">
-            Primary NS IP
-          </label>
-          <input
-            type="text"
-            id="primary_ns_ip"
-            name="primary_ns_ip"
-            value={formData.primary_ns_ip}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="admin_email" className="mb-1 text-sm font-medium">
-            Admin Email
-          </label>
-          <input
-            type="email"
-            id="admin_email"
-            name="admin_email"
-            value={formData.admin_email}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="ttl" className="mb-1 text-sm font-medium">
-            TTL
-          </label>
-          <input
-            type="number"
-            id="ttl"
-            name="ttl"
-            value={formData.ttl}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="serial" className="mb-1 text-sm font-medium">
-            Serial
-          </label>
-          <input
-            type="number"
-            id="serial"
-            name="serial"
-            value={formData.serial}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="refresh" className="mb-1 text-sm font-medium">
-            Refresh
-          </label>
-          <input
-            type="number"
-            id="refresh"
-            name="refresh"
-            value={formData.refresh}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="retry" className="mb-1 text-sm font-medium">
-            Retry
-          </label>
-          <input
-            type="number"
-            id="retry"
-            name="retry"
-            value={formData.retry}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="expire" className="mb-1 text-sm font-medium">
-            Expire
-          </label>
-          <input
-            type="number"
-            id="expire"
-            name="expire"
-            value={formData.expire}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label htmlFor="minimum_ttl" className="mb-1 text-sm font-medium">
-            Minimum TTL
-          </label>
-          <input
-            type="number"
-            id="minimum_ttl"
-            name="minimum_ttl"
-            value={formData.minimum_ttl}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
+
+      {/* General Information */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-primary border-b border-border-color pb-2">
+          General
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="admin_email"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Admin Email
+            </label>
+            <input
+              type="email"
+              id="admin_email"
+              name="admin_email"
+              value={formData.admin_email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="primary_ns"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Primary NS
+            </label>
+            <input
+              type="text"
+              id="primary_ns"
+              name="primary_ns"
+              value={formData.primary_ns}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="primary_ns_ip"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Primary NS IP
+            </label>
+            <input
+              type="text"
+              id="primary_ns_ip"
+              name="primary_ns_ip"
+              value={formData.primary_ns_ip}
+              onChange={handleChange}
+              required
+            />
+          </div>
         </div>
       </div>
-      <button
-        type="submit"
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        {zone ? 'Update' : 'Create'}
-      </button>
-      {zone && (
+
+      {/* Timing Configuration */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-primary border-b border-border-color pb-2">
+          Timing
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>
+            <label
+              htmlFor="ttl"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              TTL
+            </label>
+            <input
+              type="number"
+              id="ttl"
+              name="ttl"
+              value={formData.ttl}
+              onChange={handleChange}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="refresh"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Refresh
+            </label>
+            <input
+              type="number"
+              id="refresh"
+              name="refresh"
+              value={formData.refresh}
+              onChange={handleChange}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="retry"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Retry
+            </label>
+            <input
+              type="number"
+              id="retry"
+              name="retry"
+              value={formData.retry}
+              onChange={handleChange}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="expire"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Expire
+            </label>
+            <input
+              type="number"
+              id="expire"
+              name="expire"
+              value={formData.expire}
+              onChange={handleChange}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="minimum_ttl"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Minimum TTL
+            </label>
+            <input
+              type="number"
+              id="minimum_ttl"
+              name="minimum_ttl"
+              value={formData.minimum_ttl}
+              onChange={handleChange}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="serial"
+              className="block text-sm font-medium text-text-secondary mb-1"
+            >
+              Serial
+            </label>
+            <input
+              type="number"
+              id="serial"
+              name="serial"
+              value={formData.serial}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-4 pt-4">
         <button
           type="button"
-          onClick={handleCancel}
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+          onClick={onSuccess}
+          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
         >
           Cancel
         </button>
-      )}
+        <button type="submit" className="btn-primary">
+          {zone ? 'Update Zone' : 'Create Zone'}
+        </button>
+      </div>
     </form>
   );
 }

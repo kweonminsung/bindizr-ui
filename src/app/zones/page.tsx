@@ -28,15 +28,14 @@ export default function ZonesPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold">Zones</h1>
-        <button
-          onClick={handleOpenModal}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+        <h1 className="text-3xl font-bold text-white">Manage Zones</h1>
+        <button onClick={handleOpenModal} className="btn-primary">
           Create Zone
         </button>
       </div>
-      <ZoneList onEditZone={handleEditZone} />
+      <div className="bg-background-dark p-6 rounded-lg shadow-xl">
+        <ZoneList onEditZone={handleEditZone} />
+      </div>
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <ZoneForm zone={editingZone} onSuccess={handleCloseModal} />
       </Modal>
