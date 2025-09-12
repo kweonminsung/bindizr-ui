@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getZones, deleteZone } from '@/lib/api';
 import { Zone } from '@/lib/types';
 
 interface ZoneListProps {
-  onSelectZone: (id: number) => void;
   onEditZone: (zone: Zone) => void;
 }
 
-export default function ZoneList({ onSelectZone, onEditZone }: ZoneListProps) {
+export default function ZoneList({ onEditZone }: ZoneListProps) {
+  const router = useRouter();
   const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export default function ZoneList({ onSelectZone, onEditZone }: ZoneListProps) {
             className="p-2 border rounded flex justify-between items-center"
           >
             <span
-              onClick={() => onSelectZone(zone.id)}
+              onClick={() => router.push(`/records?zoneId=${zone.id}`)}
               className="cursor-pointer"
             >
               {zone.name}

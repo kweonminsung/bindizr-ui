@@ -3,19 +3,22 @@
 import { useEffect, useState } from 'react';
 import { getRecords, deleteRecord } from '@/lib/api';
 import { Record } from '@/lib/types';
+import Modal from './Modal';
+import RecordDetails from './RecordDetails';
 
 interface RecordListProps {
-  zoneId: number;
+  zoneId?: number;
   onEditRecord: (record: Record) => void;
 }
 
 export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
   const [records, setRecords] = useState<Record[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!zoneId) return;
     async function fetchRecords() {
       try {
         const data = await getRecords(zoneId);
@@ -38,6 +41,16 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
     }
   };
 
+  const handleShowDetails = (record: Record) => {
+    setSelectedRecord(record);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedRecord(null);
+    setIsDetailModalOpen(false);
+  };
+
   if (loading) return <p>Loading records...</p>;
   if (error) return <p>{error}</p>;
 
@@ -50,7 +63,10 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
             key={record.id}
             className="p-2 border rounded flex justify-between items-center"
           >
-            <span>
+            <span
+              onClick={() => handleShowDetails(record)}
+              className="cursor-pointer"
+            >
               <strong>{record.name}</strong> {record.record_type} {record.value}
             </span>
             <div>
@@ -70,6 +86,11 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
           </li>
         ))}
       </ul>
+      {selectedRecord && (
+        <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
+          <RecordDetails record={selectedRecord} />
+        </Modal>
+      )}
     </div>
   );
 }

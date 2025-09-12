@@ -6,9 +6,10 @@ import { Zone } from '@/lib/types';
 
 interface ZoneFormProps {
   zone: Zone | null;
+  onSuccess: () => void;
 }
 
-export default function ZoneForm({ zone }: ZoneFormProps) {
+export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
   const [formData, setFormData] = useState<Omit<Zone, 'id'>>({
     name: '',
     primary_ns: '',
@@ -38,12 +39,10 @@ export default function ZoneForm({ zone }: ZoneFormProps) {
     try {
       if (zone) {
         await updateZone({ ...formData, id: zone.id });
-        alert('Zone updated successfully');
       } else {
         await createZone(formData);
-        alert('Zone created successfully');
       }
-      // Optionally, refresh the zone list
+      onSuccess();
     } catch (error) {
       alert('Failed to save zone');
     }

@@ -12,8 +12,11 @@ export async function getZones(): Promise<Zone[]> {
   return (await response.json()).zones as Zone[];
 }
 
-export async function getRecords(zoneId: number): Promise<Record[]> {
-  const response = await fetch(`${API_BASE_URL}/records?zone_id=${zoneId}`);
+export async function getRecords(zoneId?: number): Promise<Record[]> {
+  const url = zoneId
+    ? `${API_BASE_URL}/records?zone_id=${zoneId}`
+    : `${API_BASE_URL}/records`;
+  const response = await fetch(url);
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Failed to fetch records:', errorText);

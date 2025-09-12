@@ -5,17 +5,23 @@ import { createRecord, updateRecord } from '@/lib/api';
 import { Record } from '@/lib/types';
 
 interface RecordFormProps {
-  zoneId: number;
+  zoneId?: number;
   record: Record | null;
+  onSuccess: () => void;
 }
 
-export default function RecordForm({ zoneId, record }: RecordFormProps) {
-  const [formData, setFormData] = useState<Omit<Record, 'id' | 'zone_id'>>({
+export default function RecordForm({
+  zoneId,
+  record,
+  onSuccess,
+}: RecordFormProps) {
+  const [formData, setFormData] = useState<Omit<Record, 'id'>>({
     name: '',
     record_type: 'A',
     value: '',
     ttl: 3600,
     priority: 10,
+    zone_id: 0,
   });
 
   useEffect(() => {
@@ -34,14 +40,21 @@ export default function RecordForm({ zoneId, record }: RecordFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (record) {
-        await updateRecord({ ...formData, id: record.id, zone_id: zoneId });
-        alert('Record updated successfully');
-      } else {
-        await createRecord({ ...formData, zone_id: zoneId });
-        alert('Record created successfully');
+      const zone_id_to_use = zoneId ?? (formData as Record).zone_id;
+      if (!zone_id_to_use) {
+        alert('Zone ID is required');
+        return;
       }
-      // Optionally, refresh the record list
+      if (record) {
+        await updateRecord({
+          ...formData,
+          id: record.id,
+          zone_id: zone_id_to_use,
+        });
+      } else {
+        await createRecord({ ...formData, zone_id: zone_id_to_use });
+      }
+      onSuccess();
     } catch (error) {
       alert('Failed to save record');
     }
@@ -54,6 +67,7 @@ export default function RecordForm({ zoneId, record }: RecordFormProps) {
       value: '',
       ttl: 3600,
       priority: 10,
+      zone_id: 0,
     });
   };
 
@@ -124,6 +138,21 @@ export default function RecordForm({ zoneId, record }: RecordFormProps) {
             className="p-2 border rounded"
           />
         </div>
+        {!zoneId && !record && (
+          <div className="flex flex-col">
+            <label htmlFor="zone_id" className="mb-1 text-sm font-medium">
+              Zone ID
+            </label>
+            <input
+              type="number"
+              id="zone_id"
+              name="zone_id"
+              value={(formData as Record).zone_id}
+              onChange={handleChange}
+              className="p-2 border rounded"
+            />
+          </div>
+        )}
         <div className="flex flex-col">
           <label htmlFor="priority" className="mb-1 text-sm font-medium">
             Priority
