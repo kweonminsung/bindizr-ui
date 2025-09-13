@@ -43,33 +43,30 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
-      <div className="bg-background-dark p-6 rounded-lg shadow-xl space-y-6">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleReload}
-            disabled={loading}
-            className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Reloading...' : 'Reload DNS'}
-          </button>
-          <button
-            onClick={handleStatus}
-            disabled={loading}
-            className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Getting Status...' : 'Get DNS Status'}
-          </button>
-        </div>
-        {status && (
-          <div className="pt-6">
-            <h2 className="text-2xl font-bold text-white mb-4">DNS Status</h2>
-            <pre className="p-4 bg-background-light rounded-md text-text-secondary whitespace-pre-wrap">
-              {status}
-            </pre>
-          </div>
-        )}
+      <div className="flex items-center space-x-4">
+        <button
+          onClick={handleReload}
+          disabled={loading}
+          className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Reloading...' : 'Reload DNS'}
+        </button>
+        <button
+          onClick={handleStatus}
+          disabled={loading}
+          className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Getting Status...' : 'Get DNS Status'}
+        </button>
       </div>
+      {status && (
+        <div className="pt-6">
+          <h2 className="text-2xl font-bold text-white mb-4">DNS Status</h2>
+          <pre className="p-4 bg-background-light rounded-md text-text-secondary whitespace-pre-wrap">
+            {status}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }

@@ -30,16 +30,11 @@ function RecordsContent() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Manage Records</h1>
-      </div>
-      <div className="bg-background-dark p-6 rounded-lg shadow-xl">
-        <RecordList
-          onEditRecord={handleEditRecord}
-          onCreateRecord={handleOpenModal}
-          zoneId={zoneId ? parseInt(zoneId) : undefined}
-        />
-      </div>
+      <RecordList
+        onEditRecord={handleEditRecord}
+        onCreateRecord={handleOpenModal}
+        zoneId={zoneId ? parseInt(zoneId) : undefined}
+      />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm
           record={editingRecord}

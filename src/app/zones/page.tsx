@@ -27,12 +27,7 @@ export default function ZonesPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Manage Zones</h1>
-      </div>
-      <div className="bg-background-dark p-6 rounded-lg shadow-xl">
-        <ZoneList onEditZone={handleEditZone} onCreateZone={handleOpenModal} />
-      </div>
+      <ZoneList onEditZone={handleEditZone} onCreateZone={handleOpenModal} />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <ZoneForm zone={editingZone} onSuccess={handleCloseModal} />
       </Modal>

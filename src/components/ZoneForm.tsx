@@ -252,18 +252,11 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end space-x-4 pt-4">
-        <button
-          type="button"
-          onClick={onSuccess}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-        >
+      <div className="flex justify-end space-x-2 pt-4">
+        <button type="button" onClick={onSuccess} className="btn-secondary">
           Cancel
         </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-hover"
-        >
+        <button type="submit" className="btn-primary">
           {zone ? 'Update Zone' : 'Create Zone'}
         </button>
       </div>

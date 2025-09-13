@@ -109,7 +109,7 @@ export default function RecordList({
             <tr key={record.id} className="transition-colors hover:bg-gray-50">
               <td
                 onClick={() => handleShowDetails(record)}
-                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-primary"
+                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
               >
                 {record.name}
               </td>
@@ -163,7 +163,7 @@ export default function RecordList({
                   onClick={() => paginate(i + 1)}
                   className={`px-3 py-1 mx-1 rounded-md text-sm font-medium ${
                     currentPage === i + 1
-                      ? 'bg-primary text-white'
+                      ? 'bg-(--primary) text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
