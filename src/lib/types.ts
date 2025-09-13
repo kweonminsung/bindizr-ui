@@ -30,3 +30,17 @@ export interface Record {
   ttl?: number;
   priority?: number;
 }
+
+export interface ZoneHistory {
+  id: number;
+  log: string;
+  created_at: string;
+  zone_id: number;
+}
+
+export interface RecordHistory {
+  id: number;
+  log: string;
+  created_at: string;
+  record_id: number;
+}

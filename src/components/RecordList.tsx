@@ -5,6 +5,7 @@ import { getRecords, deleteRecord } from '@/lib/api';
 import { Record } from '@/lib/types';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
+import HistoryList from './HistoryList';
 
 interface RecordListProps {
   zoneId?: number;
@@ -20,6 +21,7 @@ export default function RecordList({
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,6 +62,16 @@ export default function RecordList({
   const handleCloseDetails = () => {
     setSelectedRecord(null);
     setIsDetailModalOpen(false);
+  };
+
+  const handleShowHistories = (record: Record) => {
+    setSelectedRecord(record);
+    setIsHistoryModalOpen(true);
+  };
+
+  const handleCloseHistories = () => {
+    setSelectedRecord(null);
+    setIsHistoryModalOpen(false);
   };
 
   if (loading) {
@@ -157,6 +169,12 @@ export default function RecordList({
               </td>
               <td className="whitespace-nowrap px-6 py-4 text-right">
                 <button
+                  onClick={() => handleShowHistories(record)}
+                  className="mr-4 font-medium text-purple-600 hover:underline"
+                >
+                  Histories
+                </button>
+                <button
                   onClick={() => onEditRecord(record)}
                   className="mr-4 font-medium text-blue-600 hover:underline"
                 >
@@ -176,6 +194,11 @@ export default function RecordList({
       {selectedRecord && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
           <RecordDetails record={selectedRecord} />
+        </Modal>
+      )}
+      {selectedRecord && (
+        <Modal isOpen={isHistoryModalOpen} onClose={handleCloseHistories}>
+          <HistoryList resourceId={selectedRecord.id} resourceType="record" />
         </Modal>
       )}
       <div className="flex justify-between items-center p-4">

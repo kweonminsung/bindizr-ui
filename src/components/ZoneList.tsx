@@ -6,6 +6,7 @@ import { getZones, deleteZone } from '@/lib/api';
 import { Zone } from '@/lib/types';
 import Modal from './Modal';
 import ZoneDetails from './ZoneDetails';
+import HistoryList from './HistoryList';
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
@@ -17,6 +18,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,6 +58,16 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const handleCloseDetails = () => {
     setSelectedZone(null);
     setIsDetailModalOpen(false);
+  };
+
+  const handleShowHistories = (zone: Zone) => {
+    setSelectedZone(zone);
+    setIsHistoryModalOpen(true);
+  };
+
+  const handleCloseHistories = () => {
+    setSelectedZone(null);
+    setIsHistoryModalOpen(false);
   };
 
   if (loading) {
@@ -138,6 +150,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                   Details
                 </button>
                 <button
+                  onClick={() => handleShowHistories(zone)}
+                  className="mr-4 font-medium text-purple-600 hover:underline"
+                >
+                  Histories
+                </button>
+                <button
                   onClick={() => onEditZone(zone)}
                   className="mr-4 font-medium text-blue-600 hover:underline"
                 >
@@ -157,6 +175,11 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
       {selectedZone && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
           <ZoneDetails zone={selectedZone} />
+        </Modal>
+      )}
+      {selectedZone && (
+        <Modal isOpen={isHistoryModalOpen} onClose={handleCloseHistories}>
+          <HistoryList resourceId={selectedZone.id} resourceType="zone" />
         </Modal>
       )}
       <div className="flex justify-between items-center p-4">

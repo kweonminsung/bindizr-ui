@@ -1,4 +1,4 @@
-import { Zone, Record } from './types';
+import { Zone, Record, ZoneHistory, RecordHistory } from './types';
 
 const API_BASE_URL = 'http://localhost:8000'; // Using the external API server
 
@@ -146,4 +146,26 @@ export async function postDnsConfig(): Promise<string> {
     throw new Error('Failed to post DNS config');
   }
   return (await response.json()).msg as string;
+}
+
+export async function getZoneHistories(zoneId: number): Promise<ZoneHistory[]> {
+  const response = await fetch(`${API_BASE_URL}/zones/${zoneId}/histories`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to fetch zone histories:', errorText);
+    throw new Error('Failed to fetch zone histories');
+  }
+  return (await response.json()).zone_histories as ZoneHistory[];
+}
+
+export async function getRecordHistories(
+  recordId: number
+): Promise<RecordHistory[]> {
+  const response = await fetch(`${API_BASE_URL}/records/${recordId}/histories`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to fetch record histories:', errorText);
+    throw new Error('Failed to fetch record histories');
+  }
+  return (await response.json()).record_histories as RecordHistory[];
 }
