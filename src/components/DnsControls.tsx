@@ -30,7 +30,7 @@ export default function DnsControls() {
   };
 
   return (
-    <div className="pt-6 mb-6">
+    <div className="mb-6">
       <h2 className="text-2xl font-bold text-(--primary) mb-4">DNS Controls</h2>
       <div className="rounded-md">
         <div className="flex items-center space-x-4">
