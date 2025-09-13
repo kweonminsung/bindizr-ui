@@ -24,6 +24,8 @@ export default function RecordList({
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('');
 
   useEffect(() => {
     async function fetchRecords() {
@@ -67,14 +69,48 @@ export default function RecordList({
     return <p className="text-center text-red-500">{error}</p>;
   }
 
+  const recordTypes = [...new Set(records.map(record => record.record_type))];
+
+  const filteredRecords = records
+    .filter(record =>
+      record.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .filter(record =>
+      selectedType ? record.record_type === selectedType : true
+    );
+
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = records.slice(indexOfFirstRecord, indexOfLastRecord);
+  const currentRecords = filteredRecords.slice(
+    indexOfFirstRecord,
+    indexOfLastRecord
+  );
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <div className="p-4 flex space-x-4">
+        <input
+          type="text"
+          placeholder="Search records..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+        <select
+          value={selectedType}
+          onChange={e => setSelectedType(e.target.value)}
+          className="p-2 border border-gray-300 rounded-md"
+        >
+          <option value="">All Types</option>
+          {recordTypes.map(type => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+      </div>
       <table className="min-w-full text-left text-sm">
         <thead className="border-b border-gray-200 bg-gray-50">
           <tr>
@@ -148,15 +184,16 @@ export default function RecordList({
             Showing{' '}
             <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
             <span className="font-medium">
-              {Math.min(indexOfLastRecord, records.length)}
+              {Math.min(indexOfLastRecord, filteredRecords.length)}
             </span>{' '}
-            of <span className="font-medium">{records.length}</span> results
+            of <span className="font-medium">{filteredRecords.length}</span>{' '}
+            results
           </p>
         </div>
         <div className="flex items-center">
           <div className="flex">
             {Array.from(
-              { length: Math.ceil(records.length / recordsPerPage) },
+              { length: Math.ceil(filteredRecords.length / recordsPerPage) },
               (_, i) => (
                 <button
                   key={i + 1}

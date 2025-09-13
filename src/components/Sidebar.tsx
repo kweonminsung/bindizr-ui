@@ -14,9 +14,11 @@ export default function Sidebar() {
   return (
     <aside className="w-60 bg-(--primary) py-4 flex flex-col text-white shadow-lg">
       <header className="mb-8">
-        <h1 className="text-center text-2xl">
-          <span className="font-bold">DNS</span> Dashboard
-        </h1>
+        <Link href="/zones">
+          <h1 className="text-center text-2xl cursor-pointer">
+            <span className="font-bold">DNS</span> Dashboard
+          </h1>
+        </Link>
       </header>
       <nav className="flex-grow">
         <ul>
