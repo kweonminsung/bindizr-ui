@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createRecord, updateRecord } from '@/lib/api';
-import { Record } from '@/lib/types';
+import { createRecord, updateRecord, getZones } from '@/lib/api';
+import { Record, Zone } from '@/lib/types';
 
 interface RecordFormProps {
   zoneId?: number;
   record: Record | null;
   onSuccess: () => void;
+  zones: Zone[];
 }
 
 export default function RecordForm({
   zoneId,
   record,
   onSuccess,
+  zones,
 }: RecordFormProps) {
   const [formData, setFormData] = useState<Omit<Record, 'id'>>({
     name: '',
@@ -34,7 +36,10 @@ export default function RecordForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'zone_id' ? parseInt(value) : value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -170,22 +175,28 @@ export default function RecordForm({
           />
         </div>
         {!zoneId && !record && (
-          <div>
+          <div className="md:col-span-2">
             <label
               htmlFor="zone_id"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              Zone ID
+              Zone
             </label>
-            <input
-              type="number"
+            <select
               id="zone_id"
               name="zone_id"
-              value={(formData as Record).zone_id}
+              value={formData.zone_id}
               onChange={handleChange}
               required
               className="w-full"
-            />
+            >
+              <option value="">Select a zone</option>
+              {zones.map(zone => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
       </div>
