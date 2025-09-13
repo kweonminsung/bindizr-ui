@@ -9,15 +9,18 @@ import ZoneDetails from './ZoneDetails';
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
+  onCreateZone: () => void;
 }
 
-export default function ZoneList({ onEditZone }: ZoneListProps) {
+export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const router = useRouter();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [zonesPerPage] = useState(10);
 
   useEffect(() => {
     async function fetchZones() {
@@ -59,6 +62,12 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
     return <p className="text-center text-red-500">{error}</p>;
   }
 
+  const indexOfLastZone = currentPage * zonesPerPage;
+  const indexOfFirstZone = indexOfLastZone - zonesPerPage;
+  const currentZones = zones.slice(indexOfFirstZone, indexOfLastZone);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <table className="min-w-full text-left text-sm">
@@ -91,7 +100,7 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {zones.map(zone => (
+          {currentZones.map(zone => (
             <tr key={zone.id} className="transition-colors hover:bg-gray-50">
               <td
                 onClick={() => router.push(`/records?zoneId=${zone.id}`)}
@@ -134,6 +143,41 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
           <ZoneDetails zone={selectedZone} />
         </Modal>
       )}
+      <div className="flex justify-between items-center p-4">
+        <div>
+          <p className="text-sm text-gray-700">
+            Showing <span className="font-medium">{indexOfFirstZone + 1}</span>{' '}
+            to{' '}
+            <span className="font-medium">
+              {Math.min(indexOfLastZone, zones.length)}
+            </span>{' '}
+            of <span className="font-medium">{zones.length}</span> results
+          </p>
+        </div>
+        <div className="flex items-center">
+          <div className="flex">
+            {Array.from(
+              { length: Math.ceil(zones.length / zonesPerPage) },
+              (_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => paginate(i + 1)}
+                  className={`px-3 py-1 mx-1 rounded-md text-sm font-medium ${
+                    currentPage === i + 1
+                      ? 'bg-primary text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              )
+            )}
+          </div>
+          <button onClick={onCreateZone} className="btn-primary ml-4">
+            Create Zone
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

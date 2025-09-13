@@ -9,14 +9,21 @@ import RecordDetails from './RecordDetails';
 interface RecordListProps {
   zoneId?: number;
   onEditRecord: (record: Record) => void;
+  onCreateRecord: () => void;
 }
 
-export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
+export default function RecordList({
+  zoneId,
+  onEditRecord,
+  onCreateRecord,
+}: RecordListProps) {
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage] = useState(10);
 
   useEffect(() => {
     async function fetchRecords() {
@@ -58,6 +65,12 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
     return <p className="text-center text-red-500">{error}</p>;
   }
 
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = records.slice(indexOfFirstRecord, indexOfLastRecord);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <table className="min-w-full text-left text-sm">
@@ -90,7 +103,7 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {records.map(record => (
+          {currentRecords.map(record => (
             <tr key={record.id} className="transition-colors hover:bg-gray-50">
               <td
                 onClick={() => handleShowDetails(record)}
@@ -127,6 +140,41 @@ export default function RecordList({ zoneId, onEditRecord }: RecordListProps) {
           <RecordDetails record={selectedRecord} />
         </Modal>
       )}
+      <div className="flex justify-between items-center p-4">
+        <div>
+          <p className="text-sm text-gray-700">
+            Showing{' '}
+            <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
+            <span className="font-medium">
+              {Math.min(indexOfLastRecord, records.length)}
+            </span>{' '}
+            of <span className="font-medium">{records.length}</span> results
+          </p>
+        </div>
+        <div className="flex items-center">
+          <div className="flex">
+            {Array.from(
+              { length: Math.ceil(records.length / recordsPerPage) },
+              (_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => paginate(i + 1)}
+                  className={`px-3 py-1 mx-1 rounded-md text-sm font-medium ${
+                    currentPage === i + 1
+                      ? 'bg-primary text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              )
+            )}
+          </div>
+          <button onClick={onCreateRecord} className="btn-primary ml-4">
+            Create Record
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
