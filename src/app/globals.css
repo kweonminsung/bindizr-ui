@@ -41,10 +41,22 @@ button {
   font-weight: 600;
   transition: background-color 0.2s;
 }
-
 .btn-primary:hover {
   background-color: var(--primary);
   color: white;
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  border: 2px solid #ef4444;
+  color: white;
+  padding: 0.25rem 1rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+.btn-danger:hover {
+  background-color: #b91c1c;
 }
 
 .btn-secondary {
@@ -55,7 +67,6 @@ button {
   border-radius: 0.25rem;
   transition: background-color 0.2s;
 }
-
 .btn-secondary:hover {
   background-color: #e5e7eb;
 }

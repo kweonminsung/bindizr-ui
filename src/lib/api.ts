@@ -111,4 +111,39 @@ export async function deleteRecord(id: number): Promise<void> {
     console.error('Failed to delete record:', errorText);
     throw new Error('Failed to delete record');
   }
+  return response.json();
+}
+
+export async function reloadDns(): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/dns/reload`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to reload DNS:', errorText);
+    throw new Error('Failed to reload DNS');
+  }
+  return (await response.json()).msg as string;
+}
+
+export async function getDnsStatus(): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/dns/status`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to get DNS status:', errorText);
+    throw new Error('Failed to get DNS status');
+  }
+  return (await response.json()).status as string;
+}
+
+export async function postDnsConfig(): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/dns/config`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to post DNS config:', errorText);
+    throw new Error('Failed to post DNS config');
+  }
+  return (await response.json()).msg as string;
 }
