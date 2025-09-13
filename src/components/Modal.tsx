@@ -16,7 +16,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
       className="fixed inset-0 bg-black flex items-center justify-center z-50 bg-transparent"
       onClick={onClose}
     >
-      <div className="fixed inset-0 bg-black opacity-50"></div>
+      <div className="fixed inset-0 bg-black opacity-50 cursor-pointer"></div>
       <div
         className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg relative border border-gray-200"
         onClick={e => e.stopPropagation()}

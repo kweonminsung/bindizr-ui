@@ -28,3 +28,7 @@ textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(0, 180, 168, 0.5);
 }
+
+button {
+  cursor: pointer;
+}
