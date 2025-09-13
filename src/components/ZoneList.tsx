@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getZones, deleteZone } from '@/lib/api';
 import { Zone } from '@/lib/types';
+import Modal from './Modal';
+import ZoneDetails from './ZoneDetails';
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
@@ -12,6 +14,8 @@ interface ZoneListProps {
 export default function ZoneList({ onEditZone }: ZoneListProps) {
   const router = useRouter();
   const [zones, setZones] = useState<Zone[]>([]);
+  const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +42,16 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
     }
   };
 
+  const handleShowDetails = (zone: Zone) => {
+    setSelectedZone(zone);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedZone(null);
+    setIsDetailModalOpen(false);
+  };
+
   if (loading) {
     return <p className="text-center text-gray-500">Loading zones...</p>;
   }
@@ -58,6 +72,18 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
             </th>
             <th
               scope="col"
+              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Primary NS
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Admin Email
+            </th>
+            <th
+              scope="col"
               className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Actions
@@ -73,7 +99,19 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
               >
                 {zone.name}
               </td>
+              <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                {zone.primary_ns}
+              </td>
+              <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                {zone.admin_email}
+              </td>
               <td className="whitespace-nowrap px-6 py-4 text-right">
+                <button
+                  onClick={() => handleShowDetails(zone)}
+                  className="mr-4 font-medium text-green-600 hover:underline"
+                >
+                  Details
+                </button>
                 <button
                   onClick={() => onEditZone(zone)}
                   className="mr-4 font-medium text-blue-600 hover:underline"
@@ -91,6 +129,11 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
           ))}
         </tbody>
       </table>
+      {selectedZone && (
+        <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
+          <ZoneDetails zone={selectedZone} />
+        </Modal>
+      )}
     </div>
   );
 }
