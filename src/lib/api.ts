@@ -169,3 +169,13 @@ export async function getRecordHistories(
   }
   return (await response.json()).record_histories as RecordHistory[];
 }
+
+export async function getRenderedZone(zoneId: number): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/zones/${zoneId}/rendered`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to fetch rendered zone:', errorText);
+    throw new Error('Failed to fetch rendered zone');
+  }
+  return await response.text();
+}
