@@ -1,14 +1,54 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+
+interface CronLog {
+  id: number;
+  timestamp: string;
+  message: string;
+}
+
+const MIN_INTERVAL_SEC = 600;
 
 export default function DnsSyncSettings() {
   const [cronEnabled, setCronEnabled] = useState(false);
-  const [cronInterval, setCronInterval] = useState(300); // Default to 5 minutes
+  const [cronInterval, setCronInterval] = useState(300);
+  const [logs, setLogs] = useState<CronLog[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleSaveSettings = useCallback(async () => {
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchSettings = useCallback(async (pageNum = 1) => {
+    try {
+      const response = await fetch(`/api/cron?page=${pageNum}&limit=20`);
+      if (response.ok) {
+        const data = await response.json();
+        if (pageNum === 1) {
+          setCronEnabled(data.settings.enabled === 1);
+          setCronInterval(data.settings.interval);
+          setLogs(data.logs);
+        } else {
+          setLogs(prevLogs => [...prevLogs, ...data.logs]);
+        }
+        setHasMore(data.logs.length > 0 && data.totalLogs > pageNum * 20);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cron settings', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings(1);
+  }, [fetchSettings]);
+
+  const handleToggleCron = useCallback(async () => {
+    if (cronInterval < MIN_INTERVAL_SEC) {
+      alert(`Interval must be at least ${MIN_INTERVAL_SEC} seconds`);
+      return;
+    }
     setLoading(true);
+    const newCronEnabled = !cronEnabled;
     try {
       const response = await fetch('/api/cron', {
         method: 'POST',
@@ -16,57 +56,88 @@ export default function DnsSyncSettings() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          enabled: cronEnabled,
+          enabled: newCronEnabled,
           interval: cronInterval,
         }),
       });
       if (response.ok) {
-        alert('Settings saved successfully');
+        setCronEnabled(newCronEnabled);
+        fetchSettings(); // Refresh logs
       } else {
-        alert('Failed to save settings');
+        alert('Failed to update settings');
       }
     } catch (error) {
-      alert('An error occurred while saving settings');
+      alert('An error occurred while updating settings');
     }
     setLoading(false);
-  }, [cronEnabled, cronInterval]);
+  }, [cronEnabled, cronInterval, fetchSettings]);
 
   return (
     <div className="pt-6">
       <h2 className="text-2xl font-bold text-(--primary) mb-4">
         DNS Sync Cron
       </h2>
-      <div className="bg-background-light rounded-md">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setCronEnabled(!cronEnabled)}
-              className={`btn ${cronEnabled ? 'btn-danger' : 'btn-primary'}`}
+      <div className="mb-4">
+        <div className="flex items-center space-x-4">
+          <div>
+            <label
+              htmlFor="cron-interval"
+              className="text-(--primary) mr-2 font-medium"
             >
-              {cronEnabled ? 'Disable Cron' : 'Enable Cron'}
-            </button>
-            <div>
-              <label htmlFor="cron-interval" className="text-(--primary) mr-2">
-                Interval (seconds):
-              </label>
-              <input
-                id="cron-interval"
-                type="number"
-                value={cronInterval}
-                onChange={e => setCronInterval(Number(e.target.value))}
-                className="p-2 rounded bg-background-dark text-white"
-              />
+              Interval(s):
+            </label>
+            <input
+              id="cron-interval"
+              type="number"
+              min={MIN_INTERVAL_SEC}
+              value={cronInterval}
+              onChange={e => setCronInterval(Number(e.target.value))}
+              disabled={cronEnabled}
+              className="w-48 rounded disabled:bg-gray-700"
+            />
+          </div>
+
+          <button
+            onClick={handleToggleCron}
+            disabled={loading}
+            className={`btn ${
+              cronEnabled ? 'btn-danger' : 'btn-primary'
+            } disabled:bg-gray-500 disabled:cursor-not-allowed`}
+          >
+            {loading
+              ? 'Saving...'
+              : cronEnabled
+              ? 'Disable Cron Job'
+              : 'Enable Cron Job'}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-md p-4">
+        <div
+          className="h-64 overflow-y-auto"
+          onScroll={e => {
+            const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+            if (
+              scrollHeight - scrollTop === clientHeight &&
+              hasMore &&
+              !loading
+            ) {
+              const nextPage = page + 1;
+              setPage(nextPage);
+              fetchSettings(nextPage);
+            }
+          }}
+        >
+          {logs.map(log => (
+            <div key={log.id} className="text-sm text-gray-400 mb-2">
+              <span className="font-mono mr-2">
+                [{new Date(log.timestamp).toLocaleString()}]
+              </span>
+              <span>{log.message}</span>
             </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleSaveSettings}
-              disabled={loading}
-              className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
+          ))}
+          {loading && <div className="text-center">Loading...</div>}
         </div>
       </div>
     </div>
