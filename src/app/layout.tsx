@@ -17,20 +17,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-background-dark text-foreground`}>
+      <body className={inter.className}>
         <div className="flex h-screen">
-          <aside className="w-64 bg-sidebar-bg p-6 flex flex-col text-white shadow-lg">
-            <header className="mb-10 flex items-center space-x-3">
+          <aside className="w-60 bg-gray-800 p-4 flex flex-col text-white shadow-lg">
+            <header className="mb-8 flex items-center space-x-2">
               {/* Placeholder for a logo */}
-              <div className="w-8 h-8 bg-primary rounded-full"></div>
-              <h1 className="text-xl font-bold">DNS Manager</h1>
+              <div className="w-7 h-7 bg-primary rounded-full"></div>
+              <h1 className="text-lg font-bold">DNS Manager</h1>
             </header>
             <nav className="flex-grow">
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 <li>
                   <Link
                     href="/zones"
-                    className="block p-3 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 ease-in-out"
+                    className="block p-2 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 ease-in-out"
                   >
                     Zones
                   </Link>
@@ -38,7 +38,7 @@ export default function RootLayout({
                 <li>
                   <Link
                     href="/records"
-                    className="block p-3 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 ease-in-out"
+                    className="block p-2 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 ease-in-out"
                   >
                     Records
                   </Link>
@@ -46,18 +46,18 @@ export default function RootLayout({
                 <li>
                   <Link
                     href="/settings"
-                    className="block p-3 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 ease-in-out"
+                    className="block p-2 rounded-lg hover:bg-primary hover:text-white transition-all duration-200 ease-in-out"
                   >
                     Settings
                   </Link>
                 </li>
               </ul>
             </nav>
-            <footer className="text-center text-xs text-text-secondary">
+            <footer className="text-center text-xs text-gray-400">
               <p>v1.0.0</p>
             </footer>
           </aside>
-          <main className="flex-1 p-10 overflow-y-auto bg-background-light">
+          <main className="flex-1 p-6 overflow-y-auto bg-white text-gray-800">
             {children}
           </main>
         </div>

@@ -39,50 +39,50 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
   };
 
   if (loading) {
-    return <p className="text-center text-text-secondary">Loading zones...</p>;
+    return <p className="text-center text-gray-500">Loading zones...</p>;
   }
   if (error) {
     return <p className="text-center text-red-500">{error}</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm font-light">
-        <thead className="border-b border-border-color font-medium">
+    <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <table className="min-w-full text-left text-sm">
+        <thead className="border-b border-gray-200 bg-gray-50">
           <tr>
-            <th scope="col" className="px-6 py-4 text-text-secondary">
+            <th
+              scope="col"
+              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
               Zone Name
             </th>
             <th
               scope="col"
-              className="px-6 py-4 text-right text-text-secondary"
+              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
             >
               Actions
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-200">
           {zones.map(zone => (
-            <tr
-              key={zone.id}
-              className="border-b border-border-color transition-colors hover:bg-background-light"
-            >
+            <tr key={zone.id} className="transition-colors hover:bg-gray-50">
               <td
                 onClick={() => router.push(`/records?zoneId=${zone.id}`)}
-                className="whitespace-nowrap px-6 py-4 font-medium cursor-pointer hover:text-primary"
+                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-primary"
               >
                 {zone.name}
               </td>
               <td className="whitespace-nowrap px-6 py-4 text-right">
                 <button
                   onClick={() => onEditZone(zone)}
-                  className="mr-4 font-medium text-secondary hover:underline"
+                  className="mr-4 font-medium text-blue-600 hover:underline"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(zone.id)}
-                  className="font-medium text-red-500 hover:underline"
+                  className="font-medium text-red-600 hover:underline"
                 >
                   Delete
                 </button>

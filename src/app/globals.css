@@ -1,22 +1,11 @@
 @import 'tailwindcss';
 
 :root {
-  --background-dark: #101112;
-  --background-light: #1a1c1e;
-  --sidebar-bg: #151718;
-  --foreground: #e2e2e2;
   --primary: #00b4a8;
   --primary-hover: #009a8f;
-  --secondary: #3b82f6; /* Blue */
-  --accent: #f59e0b; /* Amber */
-  --border-color: #333;
-  --input-bg: #222528;
-  --text-secondary: #8e9da9;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background-dark);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
 }
@@ -24,12 +13,12 @@ body {
 input,
 select,
 textarea {
-  background-color: var(--input-bg);
-  border-color: var(--border-color);
+  background-color: #fff;
+  border-color: #d1d5db;
   border-width: 1px;
   border-radius: 0.25rem;
   padding: 0.5rem 0.75rem;
-  color: var(--foreground);
+  color: #111827;
 }
 
 input:focus,

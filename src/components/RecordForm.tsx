@@ -73,7 +73,7 @@ export default function RecordForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-2xl font-bold text-white mb-6">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">
         {record ? 'Edit Record' : 'Create New Record'}
       </h2>
 
@@ -81,7 +81,7 @@ export default function RecordForm({
         <div>
           <label
             htmlFor="name"
-            className="block text-sm font-medium text-text-secondary mb-1"
+            className="block text-sm font-medium text-gray-600 mb-1"
           >
             Name
           </label>
@@ -92,12 +92,13 @@ export default function RecordForm({
             value={formData.name}
             onChange={handleChange}
             required
+            className="w-full"
           />
         </div>
         <div>
           <label
             htmlFor="record_type"
-            className="block text-sm font-medium text-text-secondary mb-1"
+            className="block text-sm font-medium text-gray-600 mb-1"
           >
             Type
           </label>
@@ -106,6 +107,7 @@ export default function RecordForm({
             name="record_type"
             value={formData.record_type}
             onChange={handleChange}
+            className="w-full"
           >
             <option value="A">A</option>
             <option value="AAAA">AAAA</option>
@@ -121,7 +123,7 @@ export default function RecordForm({
         <div className="md:col-span-2">
           <label
             htmlFor="value"
-            className="block text-sm font-medium text-text-secondary mb-1"
+            className="block text-sm font-medium text-gray-600 mb-1"
           >
             Value
           </label>
@@ -132,12 +134,13 @@ export default function RecordForm({
             value={formData.value}
             onChange={handleChange}
             required
+            className="w-full"
           />
         </div>
         <div>
           <label
             htmlFor="ttl"
-            className="block text-sm font-medium text-text-secondary mb-1"
+            className="block text-sm font-medium text-gray-600 mb-1"
           >
             TTL
           </label>
@@ -147,12 +150,13 @@ export default function RecordForm({
             name="ttl"
             value={formData.ttl}
             onChange={handleChange}
+            className="w-full"
           />
         </div>
         <div>
           <label
             htmlFor="priority"
-            className="block text-sm font-medium text-text-secondary mb-1"
+            className="block text-sm font-medium text-gray-600 mb-1"
           >
             Priority
           </label>
@@ -162,13 +166,14 @@ export default function RecordForm({
             name="priority"
             value={formData.priority}
             onChange={handleChange}
+            className="w-full"
           />
         </div>
         {!zoneId && !record && (
           <div>
             <label
               htmlFor="zone_id"
-              className="block text-sm font-medium text-text-secondary mb-1"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               Zone ID
             </label>
@@ -179,6 +184,7 @@ export default function RecordForm({
               value={(formData as Record).zone_id}
               onChange={handleChange}
               required
+              className="w-full"
             />
           </div>
         )}
@@ -188,11 +194,14 @@ export default function RecordForm({
         <button
           type="button"
           onClick={onSuccess}
-          className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
         >
           Cancel
         </button>
-        <button type="submit" className="btn-primary">
+        <button
+          type="submit"
+          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-hover"
+        >
           {record ? 'Update Record' : 'Create Record'}
         </button>
       </div>
