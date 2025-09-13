@@ -37,11 +37,13 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   }, []);
 
   const handleDelete = async (id: number) => {
-    try {
-      await deleteZone(id);
-      setZones(zones.filter(zone => zone.id !== id));
-    } catch (error) {
-      alert('Failed to delete zone');
+    if (window.confirm('Are you sure you want to delete this zone?')) {
+      try {
+        await deleteZone(id);
+        setZones(zones.filter(zone => zone.id !== id));
+      } catch (error) {
+        alert('Failed to delete zone');
+      }
     }
   };
 

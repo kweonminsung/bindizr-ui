@@ -40,11 +40,13 @@ export default function RecordList({
   }, [zoneId]);
 
   const handleDelete = async (id: number) => {
-    try {
-      await deleteRecord(id);
-      setRecords(records.filter(record => record.id !== id));
-    } catch (error) {
-      alert('Failed to delete record');
+    if (window.confirm('Are you sure you want to delete this record?')) {
+      try {
+        await deleteRecord(id);
+        setRecords(records.filter(record => record.id !== id));
+      } catch (error) {
+        alert('Failed to delete record');
+      }
     }
   };
 
