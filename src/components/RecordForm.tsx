@@ -120,7 +120,7 @@ export default function RecordForm({
             <option value="MX">MX</option>
             <option value="TXT">TXT</option>
             <option value="NS">NS</option>
-            <option value="SOA">SOA</option>
+            {/* <option value="SOA">SOA</option> */}
             <option value="SRV">SRV</option>
             <option value="PTR">PTR</option>
           </select>
