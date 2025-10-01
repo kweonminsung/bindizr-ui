@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { postDnsConfig, reloadDns } from '@/lib/api';
-import db from '@/lib/db';
+import db, { getSetting, setSetting } from '@/lib/db';
 
 let cronJob: NodeJS.Timeout | null = null;
 
@@ -27,7 +27,10 @@ export async function GET(request: Request) {
   const limit = parseInt(searchParams.get('limit') || '20', 10);
   const offset = (page - 1) * limit;
 
-  const settings = db.prepare('SELECT * FROM cron_settings').get();
+  const enabled = getSetting('cron_enabled') === '1';
+  const interval = parseInt(getSetting('cron_interval') || '300', 10);
+  const settings = { enabled, interval };
+
   const logs = db
     .prepare('SELECT * FROM cron_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?')
     .all(limit, offset);
@@ -41,10 +44,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { enabled, interval } = await request.json();
 
-  db.prepare('UPDATE cron_settings SET enabled = ?, interval = ?').run(
-    enabled ? 1 : 0,
-    interval
-  );
+  setSetting('cron_enabled', enabled ? '1' : '0');
+  setSetting('cron_interval', interval.toString());
 
   if (cronJob) {
     clearInterval(cronJob);
@@ -60,11 +61,10 @@ export async function POST(request: Request) {
 }
 
 // Initialize cron job on startup
-const settings = db.prepare('SELECT * FROM cron_settings').get() as {
-  enabled: boolean;
-  interval: number;
-};
-if (settings && settings.enabled) {
-  cronJob = setInterval(runCron, settings.interval * 1000);
+const cronEnabled = getSetting('cron_enabled') === '1';
+const cronInterval = parseInt(getSetting('cron_interval') || '300', 10);
+
+if (cronEnabled) {
+  cronJob = setInterval(runCron, cronInterval * 1000);
   runCron();
 }

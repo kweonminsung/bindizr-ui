@@ -6,12 +6,12 @@ const db = new Database(dbPath);
 
 // Create tables if they don't exist
 db.exec(`
-  CREATE TABLE IF NOT EXISTS cron_settings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    enabled BOOLEAN NOT NULL,
-    interval INTEGER NOT NULL
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
   );
 `);
+
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS cron_logs (
@@ -22,11 +22,36 @@ db.exec(`
 `);
 
 // Initialize settings if not present
-const settings = db.prepare('SELECT * FROM cron_settings').get();
-if (!settings) {
-  db.prepare('INSERT INTO cron_settings (enabled, interval) VALUES (?, ?)').run(
-    0,
-    300
+const cronEnabled = db.prepare("SELECT value FROM settings WHERE key = 'cron_enabled'").get();
+if (!cronEnabled) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run('cron_enabled', '0');
+}
+
+const cronInterval = db.prepare("SELECT value FROM settings WHERE key = 'cron_interval'").get();
+if (!cronInterval) {
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run('cron_interval', '300');
+}
+
+// Check if setup is complete
+export function isSetupComplete() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined;
+  return row?.value === 'true';
+}
+
+export function isAccountEnabled() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'username'").get() as { value: string } | undefined;
+  return !!row;
+}
+
+export function getSetting(key: string): string | null {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+    return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string) {
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+    key,
+    value
   );
 }
 
