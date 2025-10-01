@@ -3,7 +3,8 @@ import { Inter } from 'next/font/google';
 import Sidebar from '@/components/Sidebar';
 import Providers from './providers';
 import { getServerSession } from 'next-auth';
-import { isSetupComplete } from '@/lib/db';
+import { getAuthOptions } from '@/lib/auth';
+import { isSetupComplete, isAccountEnabled } from '@/lib/db';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -18,15 +19,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
+  const session = await getServerSession(getAuthOptions());
   const setupComplete = isSetupComplete();
-  
+
   return (
     <html lang="en">
       <body className={inter.className}>
         <Providers session={session}>
           <div className="flex h-screen bg-gray-100">
-            {setupComplete && <Sidebar />}
+            {session && setupComplete && <Sidebar />}
             <main className="flex-1 p-8 overflow-y-auto">{children}</main>
           </div>
         </Providers>
