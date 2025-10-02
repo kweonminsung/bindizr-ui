@@ -1,12 +1,11 @@
-import { NextResponse } from 'next/server';
-import db, { isSetupComplete } from '@/lib/db';
-import bcrypt from 'bcrypt';
-import crypto from 'crypto';
+import { NextResponse } from "next/server";
+import { isSetupComplete, setSetting } from "@/lib/db";
+import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
   if (isSetupComplete()) {
     return NextResponse.json(
-      { message: 'Setup has already been completed.' },
+      { message: "Setup has already been completed." },
       { status: 400 }
     );
   }
@@ -15,37 +14,31 @@ export async function POST(req: Request) {
 
   if (!bindizrUrl) {
     return NextResponse.json(
-      { message: 'Bindizr Server URL is required.' },
+      { message: "Bindizr Server URL is required." },
       { status: 400 }
     );
   }
 
   try {
-    db.prepare("INSERT INTO settings (key, value) VALUES ('bindizr_url', ?)").run(bindizrUrl);
+    setSetting("bindizr_url", bindizrUrl);
     if (secretKey) {
-      db.prepare("INSERT INTO settings (key, value) VALUES ('secret_key', ?)").run(secretKey);
+      setSetting("secret_key", secretKey);
     }
 
     if (username && password) {
       const hashedPassword = await bcrypt.hash(password, 10);
-      db.prepare(
-        "INSERT INTO settings (key, value) VALUES ('username', ?)"
-      ).run(username);
-      db.prepare(
-        "INSERT INTO settings (key, value) VALUES ('password', ?)"
-      ).run(hashedPassword);
+      setSetting("username", username);
+      setSetting("password", hashedPassword);
     }
 
-    db.prepare("INSERT INTO settings (key, value) VALUES ('setup_complete', 'true')").run();
+    setSetting("setup_complete", "true");
 
-    const secret = crypto.randomBytes(32).toString('hex');
-    db.prepare("INSERT INTO settings (key, value) VALUES ('nextauth_secret', ?)").run(secret);
-
-    return NextResponse.json({ message: 'Setup successful.' });
+    return NextResponse.json({ message: "Setup successful." });
   } catch (error) {
-    console.error('Setup error:', error);
+    console.error("Setup error:", error);
+
     return NextResponse.json(
-      { message: 'An error occurred during setup.' },
+      { message: "An error occurred during setup." },
       { status: 500 }
     );
   }

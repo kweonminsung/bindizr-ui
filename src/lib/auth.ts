@@ -1,14 +1,10 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { getSetting } from '@/lib/db';
+import { getNextAuthSecret, getSetting } from '@/lib/db';
 import bcrypt from 'bcrypt';
 
 export const getAuthOptions = (): NextAuthOptions => {
-  const secret = getSetting('nextauth_secret') || undefined;
-
-  if (!secret) {
-    console.warn('Missing nextauth_secret setting. Authentication will not work.');
-  }
+  const secret = getNextAuthSecret();
 
   return {
     providers: [

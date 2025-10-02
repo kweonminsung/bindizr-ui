@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import crypto from 'crypto';
 
 const dbPath = path.resolve(process.cwd(), 'database.db');
 const db = new Database(dbPath);
@@ -53,6 +54,16 @@ export function setSetting(key: string, value: string) {
     key,
     value
   );
+}
+
+export function getNextAuthSecret(): string {
+  if(getSetting('nextauth_secret')) {
+    return getSetting('nextauth_secret') as string;
+  }
+  
+  const secret = crypto.randomBytes(32).toString('hex');
+  setSetting('nextauth_secret', secret);
+  return secret;
 }
 
 export default db;

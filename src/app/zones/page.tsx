@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import ZoneList from '@/components/ZoneList';
-import ZoneForm from '@/components/ZoneForm';
-import Modal from '@/components/Modal';
-import { Zone } from '@/lib/types';
+import { useState } from "react";
+import ZoneList from "@/components/ZoneList";
+import ZoneForm from "@/components/ZoneForm";
+import Modal from "@/components/Modal";
+import { Zone } from "@/lib/types";
 
 export default function ZonesPage() {
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
@@ -28,7 +28,7 @@ export default function ZonesPage() {
 
   const handleSuccess = () => {
     handleCloseModal();
-    setRefreshKey(prevKey => prevKey + 1);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   return (

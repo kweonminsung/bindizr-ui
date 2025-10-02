@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import RecordList from '@/components/RecordList';
-import RecordForm from '@/components/RecordForm';
-import Modal from '@/components/Modal';
-import { Record, Zone } from '@/lib/types';
-import { getZones } from '@/lib/api';
+import { useState, Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import RecordList from "@/components/RecordList";
+import RecordForm from "@/components/RecordForm";
+import Modal from "@/components/Modal";
+import { Record, Zone } from "@/lib/types";
+import { getZones } from "@/lib/api";
 
 function RecordsContent() {
   const searchParams = useSearchParams();
-  const zoneId = searchParams.get('zoneId');
+  const zoneId = searchParams.get("zoneId");
   const [editingRecord, setEditingRecord] = useState<Record | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [zones, setZones] = useState<Zone[]>([]);
@@ -22,7 +22,7 @@ function RecordsContent() {
         const fetchedZones = await getZones();
         setZones(fetchedZones);
       } catch (error) {
-        console.error('Failed to fetch zones:', error);
+        console.error("Failed to fetch zones:", error);
       }
     };
     fetchZones();
@@ -45,7 +45,7 @@ function RecordsContent() {
 
   const handleSuccess = () => {
     handleCloseModal();
-    setRefreshKey(prevKey => prevKey + 1);
+    setRefreshKey((prevKey) => prevKey + 1);
   };
 
   return (
