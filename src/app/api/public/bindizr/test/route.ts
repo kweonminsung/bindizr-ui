@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const { bindizrUrl, secretKey } = await req.json();
 
   if (!bindizrUrl) {
     return NextResponse.json(
-      { message: 'Bindizr Server URL is required.' },
+      { message: "Bindizr Server URL is required." },
       { status: 400 }
     );
   }
@@ -13,13 +13,13 @@ export async function POST(req: Request) {
   try {
     const headers: { [key: string]: string } = {};
     if (secretKey) {
-      headers['Authorization'] = `Bearer ${secretKey}`;
+      headers["Authorization"] = `Bearer ${secretKey}`;
     }
 
     const response = await fetch(`${bindizrUrl}/zones`, { headers });
 
     if (response.ok) {
-      return NextResponse.json({ message: 'Connection successful.' });
+      return NextResponse.json({ message: "Connection successful." });
     } else {
       return NextResponse.json(
         { message: `Connection failed: ${response.statusText}` },
@@ -27,9 +27,10 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
-    console.error('Connection test error:', error);
+    console.error("Connection test error:", error);
+
     return NextResponse.json(
-      { message: 'Failed to connect to the server.' },
+      { message: "Failed to connect to the server." },
       { status: 500 }
     );
   }

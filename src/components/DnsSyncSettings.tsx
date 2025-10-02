@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from "react";
 
 interface CronLog {
   id: number;
@@ -29,12 +29,12 @@ export default function DnsSyncSettings() {
           setCronInterval(data.settings.interval);
           setLogs(data.logs);
         } else {
-          setLogs(prevLogs => [...prevLogs, ...data.logs]);
+          setLogs((prevLogs) => [...prevLogs, ...data.logs]);
         }
         setHasMore(data.logs.length > 0 && data.totalLogs > pageNum * 20);
       }
     } catch (error) {
-      console.error('Failed to fetch cron settings', error);
+      console.error("Failed to fetch cron settings", error);
     }
   }, []);
 
@@ -50,10 +50,10 @@ export default function DnsSyncSettings() {
     setLoading(true);
     const newCronEnabled = !cronEnabled;
     try {
-      const response = await fetch('/api/cron', {
-        method: 'POST',
+      const response = await fetch("/api/cron", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           enabled: newCronEnabled,
@@ -64,10 +64,10 @@ export default function DnsSyncSettings() {
         setCronEnabled(newCronEnabled);
         fetchSettings(); // Refresh logs
       } else {
-        alert('Failed to update settings');
+        alert("Failed to update settings");
       }
     } catch (error) {
-      alert('An error occurred while updating settings');
+      alert("An error occurred while updating settings");
     }
     setLoading(false);
   }, [cronEnabled, cronInterval, fetchSettings]);
@@ -91,24 +91,22 @@ export default function DnsSyncSettings() {
               type="number"
               min={MIN_INTERVAL_SEC}
               value={cronInterval}
-              onChange={e => setCronInterval(Number(e.target.value))}
+              onChange={(e) => setCronInterval(Number(e.target.value))}
               disabled={cronEnabled}
-              className="w-48 rounded disabled:bg-gray-700"
+              className="w-48 rounded"
             />
           </div>
 
           <button
             onClick={handleToggleCron}
             disabled={loading}
-            className={`btn ${
-              cronEnabled ? 'btn-danger' : 'btn-primary'
-            } disabled:bg-gray-500 disabled:cursor-not-allowed`}
+            className={`btn ${cronEnabled ? "btn-danger" : "btn-primary"}`}
           >
             {loading
-              ? 'Saving...'
+              ? "Saving..."
               : cronEnabled
-              ? 'Disable Cron Job'
-              : 'Enable Cron Job'}
+              ? "Disable Cron Job"
+              : "Enable Cron Job"}
           </button>
         </div>
       </div>
@@ -116,7 +114,7 @@ export default function DnsSyncSettings() {
       <div className="bg-white rounded-md p-4">
         <div
           className="h-64 overflow-y-auto"
-          onScroll={e => {
+          onScroll={(e) => {
             const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
             if (
               scrollHeight - scrollTop === clientHeight &&
@@ -129,7 +127,7 @@ export default function DnsSyncSettings() {
             }
           }}
         >
-          {logs.map(log => (
+          {logs.map((log) => (
             <div key={log.id} className="text-sm text-gray-400 mb-2">
               <span className="font-mono mr-2">
                 [{new Date(log.timestamp).toLocaleString()}]

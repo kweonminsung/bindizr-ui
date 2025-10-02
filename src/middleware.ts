@@ -5,8 +5,13 @@ import { getNextAuthSecret } from "./lib/db";
 export async function middleware(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
 
+  // Allow public and auth routes
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/public")) {
+    return NextResponse.next();
+  }
+
   // Fetch setup status
-  const setupStatusRes = await fetch(`${origin}/api/setup/status`);
+  const setupStatusRes = await fetch(`${origin}/api/public/settings`);
   if (!setupStatusRes.ok) {
     return new Response("Failed to check application status.", { status: 500 });
   }
@@ -54,7 +59,8 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Specify the paths that require this middleware
 export const config = {
-  matcher: ["/", "/login", "/zones", "/records", "/settings", "/api/cron"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
   runtime: "nodejs",
 };

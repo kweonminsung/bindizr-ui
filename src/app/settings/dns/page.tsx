@@ -3,7 +3,7 @@
 import DnsSyncSettings from "@/components/DnsSyncSettings";
 import DnsControls from "@/components/DnsControls";
 
-export default function SettingsPage() {
+export default function DnsSettingsPage() {
   return (
     <div>
       <DnsControls />

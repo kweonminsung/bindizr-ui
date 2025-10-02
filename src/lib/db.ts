@@ -1,8 +1,8 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import crypto from 'crypto';
+import Database from "better-sqlite3";
+import path from "path";
+import crypto from "crypto";
 
-const dbPath = path.resolve(process.cwd(), 'database.db');
+const dbPath = path.resolve(process.cwd(), "database.db");
 const db = new Database(dbPath);
 
 // Create tables if they don't exist
@@ -13,7 +13,6 @@ db.exec(`
   );
 `);
 
-
 db.exec(`
   CREATE TABLE IF NOT EXISTS cron_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,46 +22,71 @@ db.exec(`
 `);
 
 // Initialize settings if not present
-const cronEnabled = db.prepare("SELECT value FROM settings WHERE key = 'cron_enabled'").get();
+const cronEnabled = db
+  .prepare("SELECT value FROM settings WHERE key = 'cron_enabled'")
+  .get();
 if (!cronEnabled) {
-  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run('cron_enabled', '0');
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+    "cron_enabled",
+    "0"
+  );
 }
 
-const cronInterval = db.prepare("SELECT value FROM settings WHERE key = 'cron_interval'").get();
+const cronInterval = db
+  .prepare("SELECT value FROM settings WHERE key = 'cron_interval'")
+  .get();
 if (!cronInterval) {
-  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run('cron_interval', '300');
+  db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+    "cron_interval",
+    "3600"
+  );
 }
 
 // Check if setup is complete
-export function isSetupComplete() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'setup_complete'").get() as { value: string } | undefined;
-  return row?.value === 'true';
+export function isSetupComplete(): boolean {
+  const row = db
+    .prepare("SELECT value FROM settings WHERE key = 'setup_complete'")
+    .get() as { value: string } | undefined;
+  return row?.value === "true";
 }
 
-export function isAccountEnabled() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'username'").get() as { value: string } | undefined;
-  return !!row;
+export function isAccountEnabled(): boolean {
+  const usernameRow = db
+    .prepare("SELECT value FROM settings WHERE key = 'username'")
+    .get() as { value: string } | undefined;
+
+  const passwordRow = db
+    .prepare("SELECT value FROM settings WHERE key = 'password'")
+    .get() as { value: string } | undefined;
+
+  return !!(usernameRow?.value && passwordRow?.value);
 }
 
 export function getSetting(key: string): string | null {
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
-    return row?.value ?? null;
+  const row = db
+    .prepare("SELECT value FROM settings WHERE key = ?")
+    .get(key) as { value: string } | undefined;
+  return row?.value ?? null;
 }
 
-export function setSetting(key: string, value: string) {
-  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+export function setSetting(key: string, value: string | null) {
+  if (value === null) {
+    db.prepare("DELETE FROM settings WHERE key = ?").run(key);
+    return;
+  }
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(
     key,
     value
   );
 }
 
 export function getNextAuthSecret(): string {
-  if(getSetting('nextauth_secret')) {
-    return getSetting('nextauth_secret') as string;
+  if (getSetting("nextauth_secret")) {
+    return getSetting("nextauth_secret") as string;
   }
-  
-  const secret = crypto.randomBytes(32).toString('hex');
-  setSetting('nextauth_secret', secret);
+
+  const secret = crypto.randomBytes(32).toString("hex");
+  setSetting("nextauth_secret", secret);
   return secret;
 }
 

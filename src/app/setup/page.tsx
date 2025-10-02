@@ -1,32 +1,41 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function SetupPage() {
-  const [bindizrUrl, setBindizrUrl] = useState('');
-  const [secretKey, setSecretKey] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [bindizrUrl, setBindizrUrl] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [createAccount, setCreateAccount] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState("");
+  const [error, setError] = useState("");
   const [isConnectionTested, setIsConnectionTested] = useState(false);
   const router = useRouter();
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccessMessage('');
+    setError("");
+    setSuccessMessage("");
 
-    if (!bindizrUrl.startsWith('http://') && !bindizrUrl.startsWith('https://')) {
-      setError('Please enter a valid URL starting with http:// or https://');
+    if (createAccount && password !== confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
 
-    const res = await fetch('/api/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    if (
+      !bindizrUrl.startsWith("http://") &&
+      !bindizrUrl.startsWith("https://")
+    ) {
+      setError("Please enter a valid URL starting with http:// or https://");
+      return;
+    }
+
+    const res = await fetch("/api/public/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         bindizrUrl,
         secretKey,
@@ -36,35 +45,38 @@ export default function SetupPage() {
     });
 
     if (res.ok) {
-      router.push('/');
+      router.push("/");
     } else {
       const data = await res.json();
-      setError(data.message || 'An error occurred during setup.');
+      setError(data.message || "An error occurred during setup.");
     }
   };
 
   const testConnection = async () => {
-    setError('');
-    setSuccessMessage('');
-    if (!bindizrUrl.startsWith('http://') && !bindizrUrl.startsWith('https://')) {
-      setError('Please enter a valid URL starting with http:// or https://');
+    setError("");
+    setSuccessMessage("");
+    if (
+      !bindizrUrl.startsWith("http://") &&
+      !bindizrUrl.startsWith("https://")
+    ) {
+      setError("Please enter a valid URL starting with http:// or https://");
       return;
     }
     try {
-      const res = await fetch('/api/setup/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/public/bindizr/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bindizrUrl, secretKey }),
       });
       const data = await res.json();
       if (res.ok) {
-        setSuccessMessage('Connection successful!');
+        setSuccessMessage("Connection successful!");
         setIsConnectionTested(true);
       } else {
-        setError(data.message || 'Connection failed.');
+        setError(data.message || "Connection failed.");
       }
     } catch (err) {
-      setError('Failed to connect to the server.');
+      setError("Failed to connect to the server.");
     }
   };
 
@@ -113,7 +125,7 @@ export default function SetupPage() {
           <button
             type="button"
             onClick={testConnection}
-            className="w-full px-4 py-2 font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            className="w-full px-4 py-2 font-medium btn-primary"
           >
             Test Connection
           </button>
@@ -166,18 +178,32 @@ export default function SetupPage() {
                   className="w-full px-3 py-2 mt-1"
                 />
               </div>
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required={createAccount}
+                  className="w-full px-3 py-2 mt-1"
+                />
+              </div>
             </>
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-center text-red-600">{error}</p>}
           {successMessage && (
-            <p className="text-sm text-green-600">{successMessage}</p>
+            <p className="text-center text-green-600">{successMessage}</p>
           )}
           <button
             type="submit"
+            className="w-full px-4 py-2 font-medium btn-primary"
             disabled={!isConnectionTested}
-            className={`w-full px-4 py-2 font-medium btn-primary ${
-              !isConnectionTested ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
           >
             Save Configuration
           </button>
