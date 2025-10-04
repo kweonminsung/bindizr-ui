@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { reloadDns, getDnsStatus, postDnsConfig } from '@/lib/api';
+import { useState } from "react";
+import { reloadDns, getDnsStatus, postDnsConfig } from "@/lib/api";
 
 export default function DnsControls() {
   const [msg, setMsg] = useState<string | null>(null);
@@ -12,9 +12,9 @@ export default function DnsControls() {
     try {
       setMsg(await postDnsConfig());
       setMsg(await reloadDns());
-      alert('DNS reloaded successfully');
+      alert("DNS reloaded successfully");
     } catch (error) {
-      setMsg('An error occurred while synchronizing DNS');
+      setMsg("An error occurred while synchronizing DNS");
     }
     setLoading(false);
   };
@@ -24,7 +24,7 @@ export default function DnsControls() {
     try {
       setMsg(await getDnsStatus());
     } catch (error) {
-      setMsg('An error occurred while getting DNS status');
+      setMsg("An error occurred while getting DNS status");
     }
     setLoading(false);
   };
@@ -37,21 +37,21 @@ export default function DnsControls() {
           <button
             onClick={handleSync}
             disabled={loading}
-            className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
-            {loading ? 'Synchronizing...' : 'Sync DNS'}
+            {loading ? "Synchronizing..." : "Sync DNS"}
           </button>
           <button
             onClick={handleStatus}
             disabled={loading}
-            className="btn-primary disabled:bg-gray-500 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
-            {loading ? 'Getting Status...' : 'Get DNS Status'}
+            {loading ? "Getting Status..." : "Get DNS Status"}
           </button>
         </div>
         <div className="mt-6">
           <pre className="p-4 bg-white rounded-md whitespace-pre-wrap">
-            {msg ? msg : 'Response will appear here...'}
+            {msg ? msg : "Response will appear here..."}
           </pre>
         </div>
       </div>

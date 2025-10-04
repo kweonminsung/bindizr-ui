@@ -1,4 +1,4 @@
-# DNS dashborad for SCG
+# Bindizr UI
 
 A simple web interface for managing DNS zones and records.
 

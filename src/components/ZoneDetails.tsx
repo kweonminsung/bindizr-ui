@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Zone } from '@/lib/types';
-import { getRenderedZone } from '@/lib/api';
+import { useState } from "react";
+import { Zone } from "@/lib/types";
+import { getRenderedZone } from "@/lib/api";
 
 interface ZoneDetailsProps {
   zone: Zone;
@@ -24,7 +24,7 @@ export default function ZoneDetails({ zone }: ZoneDetailsProps) {
       const data = await getRenderedZone(zone.id);
       setRenderedZone(data);
     } catch (err) {
-      setError('Failed to fetch rendered zone configuration.');
+      setError("Failed to fetch rendered zone configuration.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -84,13 +84,13 @@ export default function ZoneDetails({ zone }: ZoneDetailsProps) {
         <button
           onClick={handleShowRenderedZone}
           disabled={isLoading}
-          className="btn-primary disabled:bg-gray-400"
+          className="btn-primary"
         >
           {isLoading
-            ? 'Loading...'
+            ? "Loading..."
             : renderedZone
-            ? 'Hide Rendered Zone'
-            : 'Show Rendered Zone'}
+            ? "Hide Rendered Zone"
+            : "Show Rendered Zone"}
         </button>
       </div>
 

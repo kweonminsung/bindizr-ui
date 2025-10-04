@@ -1,20 +1,26 @@
-import { NextResponse } from 'next/server';
-import { postDnsConfig, reloadDns } from '@/lib/api';
-import db from '@/lib/db';
+import { NextResponse } from "next/server";
+import { postDnsConfig, reloadDns } from "@/lib/api";
+import {
+  getSetting,
+  setSetting,
+  addCronLog,
+  getCronLogs,
+  getTotalCronLogs,
+} from "@/lib/db";
 
 let cronJob: NodeJS.Timeout | null = null;
 
 const log = (message: string) => {
-  db.prepare('INSERT INTO cron_logs (message) VALUES (?)').run(message);
+  addCronLog(message);
   console.log(message);
 };
 
 async function runCron() {
-  log('Running cron job...');
+  log("Running cron job...");
   try {
     await postDnsConfig();
     await reloadDns();
-    log('Cron job completed successfully.');
+    log("Cron job completed successfully.");
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log(`Cron job failed: ${errorMessage}`);
@@ -23,28 +29,25 @@ async function runCron() {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const limit = parseInt(searchParams.get('limit') || '20', 10);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "20", 10);
   const offset = (page - 1) * limit;
 
-  const settings = db.prepare('SELECT * FROM cron_settings').get();
-  const logs = db
-    .prepare('SELECT * FROM cron_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?')
-    .all(limit, offset);
-  const totalLogs = db
-    .prepare('SELECT COUNT(*) as count FROM cron_logs')
-    .get() as { count: number };
+  const enabled = getSetting("cron_enabled") === "true";
+  const interval = parseInt(getSetting("cron_interval") || "300", 10);
+  const settings = { enabled, interval };
 
-  return NextResponse.json({ settings, logs, totalLogs: totalLogs.count });
+  const logs = getCronLogs(limit, offset);
+  const totalLogs = getTotalCronLogs();
+
+  return NextResponse.json({ settings, logs, totalLogs });
 }
 
 export async function POST(request: Request) {
   const { enabled, interval } = await request.json();
 
-  db.prepare('UPDATE cron_settings SET enabled = ?, interval = ?').run(
-    enabled ? 1 : 0,
-    interval
-  );
+  setSetting("cron_enabled", enabled ? "true" : "false");
+  setSetting("cron_interval", interval.toString());
 
   if (cronJob) {
     clearInterval(cronJob);
@@ -60,11 +63,10 @@ export async function POST(request: Request) {
 }
 
 // Initialize cron job on startup
-const settings = db.prepare('SELECT * FROM cron_settings').get() as {
-  enabled: boolean;
-  interval: number;
-};
-if (settings && settings.enabled) {
-  cronJob = setInterval(runCron, settings.interval * 1000);
+const cronEnabled = getSetting("cron_enabled") === "true";
+const cronInterval = parseInt(getSetting("cron_interval") || "300", 10);
+
+if (cronEnabled) {
+  cronJob = setInterval(runCron, cronInterval * 1000);
   runCron();
 }
