@@ -28,7 +28,7 @@ const cronEnabled = db
 if (!cronEnabled) {
   db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
     "cron_enabled",
-    "0"
+    "false"
   );
 }
 
@@ -81,13 +81,39 @@ export function setSetting(key: string, value: string | null) {
 }
 
 export function getNextAuthSecret(): string {
-  if (getSetting("nextauth_secret")) {
-    return getSetting("nextauth_secret") as string;
+  const nextauthSecret = getSetting("nextauth_secret");
+
+  if (nextauthSecret) {
+    return nextauthSecret;
   }
 
   const secret = crypto.randomBytes(32).toString("hex");
   setSetting("nextauth_secret", secret);
   return secret;
+}
+
+export function addCronLog(message: string) {
+  db.prepare("INSERT INTO cron_logs (message) VALUES (?)").run(message);
+}
+
+export function getCronLogs(
+  limit: number,
+  offset: number
+): { id: number; timestamp: string; message: string }[] {
+  return db
+    .prepare("SELECT * FROM cron_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?")
+    .all(limit, offset) as {
+    id: number;
+    timestamp: string;
+    message: string;
+  }[];
+}
+
+export function getTotalCronLogs(): number {
+  const row = db.prepare("SELECT COUNT(*) as count FROM cron_logs").get() as {
+    count: number;
+  };
+  return row.count;
 }
 
 export default db;

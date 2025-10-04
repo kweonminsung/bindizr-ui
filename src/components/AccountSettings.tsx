@@ -24,7 +24,7 @@ export default function AccountSettings() {
   useEffect(() => {
     const fetchAccountStatus = async () => {
       try {
-        const res = await fetch("/api/public/settings");
+        const res = await fetch("/api/settings");
         if (res.ok) {
           const data = await res.json();
           setIsAccountEnabled(data.accountEnabled);

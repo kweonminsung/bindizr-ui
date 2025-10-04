@@ -1,13 +1,6 @@
-import { isAccountEnabled, isSetupComplete, setSetting } from "@/lib/db";
+import { isSetupComplete, setSetting } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-
-export async function GET() {
-  return NextResponse.json({
-    setupComplete: isSetupComplete(),
-    accountEnabled: isAccountEnabled(),
-  });
-}
 
 export async function POST(req: Request) {
   if (isSetupComplete()) {

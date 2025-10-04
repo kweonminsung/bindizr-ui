@@ -1,6 +1,6 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-import { getNextAuthSecret } from "./lib/db";
+import { getNextAuthSecret, isAccountEnabled, isSetupComplete } from "./lib/db";
 
 export async function middleware(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
@@ -10,12 +10,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Fetch setup status
-  const setupStatusRes = await fetch(`${origin}/api/public/settings`);
-  if (!setupStatusRes.ok) {
-    return new Response("Failed to check application status.", { status: 500 });
-  }
-  const { setupComplete, accountEnabled } = await setupStatusRes.json();
+  // Check setup and account status
+  const setupComplete = isSetupComplete();
+  const accountEnabled = isAccountEnabled();
 
   const isSetupPage = pathname.startsWith("/setup");
   const isLoginPage = pathname.startsWith("/login");
