@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { signIn} from 'next-auth/react';
+import { useState } from "react";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
-    const result = await signIn('credentials', {
+    const result = await signIn("credentials", {
       username,
       password,
-      callbackUrl: '/',
+      callbackUrl: "/",
     });
 
     if (result?.error) {

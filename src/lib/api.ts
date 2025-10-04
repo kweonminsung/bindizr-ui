@@ -10,13 +10,16 @@ async function getConfig() {
 
   const res = await fetch("/api/bindizr");
   const config = await res.json();
+
   API_BASE_URL = config.bindizrUrl;
   SECRET_KEY = config.secretKey;
+
   return { API_BASE_URL, SECRET_KEY };
 }
 
 const getHeaders = async () => {
   const { SECRET_KEY } = await getConfig();
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
@@ -28,6 +31,7 @@ const getHeaders = async () => {
 
 export async function getZones(): Promise<Zone[]> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/zones`, {
     headers: await getHeaders(),
   });
@@ -41,6 +45,7 @@ export async function getZones(): Promise<Zone[]> {
 
 export async function getRecords(zoneId?: number): Promise<Record[]> {
   const { API_BASE_URL } = await getConfig();
+
   const url = zoneId
     ? `${API_BASE_URL}/records?zone_id=${zoneId}`
     : `${API_BASE_URL}/records`;
@@ -55,6 +60,7 @@ export async function getRecords(zoneId?: number): Promise<Record[]> {
 
 export async function createZone(zone: Omit<Zone, "id">): Promise<Zone> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/zones`, {
     method: "POST",
     headers: await getHeaders(),
@@ -72,6 +78,7 @@ export async function createRecord(
   record: Omit<Record, "id">
 ): Promise<Record> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/records`, {
     method: "POST",
     headers: await getHeaders(),
@@ -87,6 +94,7 @@ export async function createRecord(
 
 export async function updateZone(zone: Zone): Promise<Zone> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/zones/${zone.id}`, {
     method: "PUT",
     headers: await getHeaders(),
@@ -102,6 +110,7 @@ export async function updateZone(zone: Zone): Promise<Zone> {
 
 export async function deleteZone(id: number): Promise<void> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/zones/${id}`, {
     method: "DELETE",
     headers: await getHeaders(),
@@ -115,6 +124,7 @@ export async function deleteZone(id: number): Promise<void> {
 
 export async function updateRecord(record: Record): Promise<Record> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/records/${record.id}`, {
     method: "PUT",
     headers: await getHeaders(),
@@ -130,6 +140,7 @@ export async function updateRecord(record: Record): Promise<Record> {
 
 export async function deleteRecord(id: number): Promise<void> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/records/${id}`, {
     method: "DELETE",
     headers: await getHeaders(),
@@ -144,6 +155,7 @@ export async function deleteRecord(id: number): Promise<void> {
 
 export async function reloadDns(): Promise<string> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/dns/reload`, {
     method: "POST",
     headers: await getHeaders(),
@@ -158,6 +170,7 @@ export async function reloadDns(): Promise<string> {
 
 export async function getDnsStatus(): Promise<string> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/dns/status`, {
     headers: await getHeaders(),
   });
@@ -171,6 +184,7 @@ export async function getDnsStatus(): Promise<string> {
 
 export async function postDnsConfig(): Promise<string> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/dns/config`, {
     method: "POST",
     headers: await getHeaders(),
@@ -185,6 +199,7 @@ export async function postDnsConfig(): Promise<string> {
 
 export async function getZoneHistories(zoneId: number): Promise<ZoneHistory[]> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/zones/${zoneId}/histories`, {
     headers: await getHeaders(),
   });
@@ -200,6 +215,7 @@ export async function getRecordHistories(
   recordId: number
 ): Promise<RecordHistory[]> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(
     `${API_BASE_URL}/records/${recordId}/histories`,
     { headers: await getHeaders() }
@@ -214,6 +230,7 @@ export async function getRecordHistories(
 
 export async function getRenderedZone(zoneId: number): Promise<string> {
   const { API_BASE_URL } = await getConfig();
+
   const response = await fetch(`${API_BASE_URL}/zones/${zoneId}/rendered`, {
     headers: await getHeaders(),
   });
