@@ -186,9 +186,28 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Check if accounts are enabled
+		accountEnabled, err := db.IsAccountEnabled()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// If accounts are disabled, skip authentication
+		if !accountEnabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Accounts are enabled, proceed with normal authentication
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			return
+		}
+
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
 			return
 		}
 
