@@ -1,46 +1,31 @@
-import type { NextAuthOptions } from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { getNextAuthSecret, getSetting } from '@/lib/db';
-import bcrypt from 'bcrypt';
+import { getSetting } from "@/lib/db";
+import bcrypt from "bcrypt";
 
-export const getAuthOptions = (): NextAuthOptions => {
-  const secret = getNextAuthSecret();
+export const validateCredentials = async (
+  username: string,
+  password: string
+): Promise<boolean> => {
+  try {
+    const storedUsername = getSetting("username");
+    const storedPassword = getSetting("password");
 
-  return {
-    providers: [
-      CredentialsProvider({
-        name: 'Credentials',
-        credentials: {
-          username: { label: 'Username', type: 'text' },
-          password: { label: 'Password', type: 'password' },
-        },
-        async authorize(credentials) {
-          if (!credentials) {
-            return null;
-          }
+    if (
+      storedUsername &&
+      storedPassword &&
+      username === storedUsername &&
+      (await bcrypt.compare(password, storedPassword))
+    ) {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Credential validation error:", error);
+    return false;
+  }
+};
 
-          const username = getSetting('username');
-          const password = getSetting('password');
-
-          if (
-            username &&
-            password &&
-            credentials.username === username &&
-            (await bcrypt.compare(credentials.password, password))
-          ) {
-            return { id: '1', name: username };
-          } else {
-            return null;
-          }
-        },
-      }),
-    ],
-    secret: secret,
-    session: {
-      strategy: 'jwt',
-    },
-    pages: {
-      signIn: '/login',
-    },
-  };
+export const isAuthEnabled = (): boolean => {
+  const username = getSetting("username");
+  const password = getSetting("password");
+  return !!(username && password);
 };

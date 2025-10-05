@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Zone } from "@/lib/types";
 import { getRenderedZone } from "@/lib/api";

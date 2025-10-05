@@ -1,12 +1,10 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import LogoutButton from "./LogoutButton";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AccountSettings() {
-  const { data: session, update } = useSession();
+  const { accountEnabled } = useAuth();
   const [isChangeAccountModalOpen, setChangeAccountModalOpen] = useState(false);
   const [isEnableAccountModalOpen, setEnableAccountModalOpen] = useState(false);
   const [username, setUsername] = useState("");
@@ -16,7 +14,7 @@ export default function AccountSettings() {
   const [newAccountPassword, setNewAccountPassword] = useState("");
   const [newAccountConfirmPassword, setNewAccountConfirmPassword] =
     useState("");
-  const [isAccountEnabled, setIsAccountEnabled] = useState(true);
+  const [isAccountEnabled, setIsAccountEnabled] = useState(accountEnabled);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");

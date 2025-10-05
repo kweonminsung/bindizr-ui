@@ -1,22 +1,21 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 
 export default function Sidebar() {
-  const pathname = usePathname();
+  const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const linkClasses = (path: string, exact = false) => {
-    const isActive = exact ? pathname === path : pathname.startsWith(path);
+    const isActive = exact
+      ? location.pathname === path
+      : location.pathname.startsWith(path);
     return `block px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
       isActive ? "bg-white text-(--primary)" : ""
     }`;
   };
 
   const subLinkClasses = (path: string) => {
-    const isActive = pathname.startsWith(path);
+    const isActive = location.pathname.startsWith(path);
     return `block pl-8 pr-6 py-3 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
       isActive ? "bg-white text-(--primary)" : ""
     }`;
@@ -25,7 +24,7 @@ export default function Sidebar() {
   return (
     <aside className="w-55 bg-(--primary) py-4 flex flex-col text-white shadow-lg">
       <header className="mb-8">
-        <Link href="/zones">
+        <Link to="/zones">
           <h1 className="text-center text-2xl cursor-pointer">
             <span className="font-bold">DNS</span> Dashboard
           </h1>
@@ -34,12 +33,12 @@ export default function Sidebar() {
       <nav className="flex-grow">
         <ul>
           <li>
-            <Link href="/zones" className={linkClasses("/zones")}>
+            <Link to="/zones" className={linkClasses("/zones")}>
               Zones
             </Link>
           </li>
           <li>
-            <Link href="/records" className={linkClasses("/records")}>
+            <Link to="/records" className={linkClasses("/records")}>
               Records
             </Link>
           </li>
@@ -47,7 +46,7 @@ export default function Sidebar() {
             <button
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               className={`w-full text-left px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out flex justify-between items-center ${
-                pathname.startsWith("/settings")
+                location.pathname.startsWith("/settings")
                   ? "bg-white text-(--primary)"
                   : ""
               }`}
@@ -74,7 +73,7 @@ export default function Sidebar() {
               <ul className="bg-gray-700">
                 <li>
                   <Link
-                    href="/settings/general"
+                    to="/settings/general"
                     className={subLinkClasses("/settings/general")}
                   >
                     General
@@ -82,7 +81,7 @@ export default function Sidebar() {
                 </li>
                 <li>
                   <Link
-                    href="/settings/dns"
+                    to="/settings/dns"
                     className={subLinkClasses("/settings/dns")}
                   >
                     DNS Controls

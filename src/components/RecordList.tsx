@@ -1,11 +1,9 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { getRecords, deleteRecord } from '@/lib/api';
-import { Record } from '@/lib/types';
-import Modal from './Modal';
-import RecordDetails from './RecordDetails';
-import HistoryList from './HistoryList';
+import { useEffect, useState } from "react";
+import { getRecords, deleteRecord } from "@/lib/api";
+import { Record } from "@/lib/types";
+import Modal from "./Modal";
+import RecordDetails from "./RecordDetails";
+import HistoryList from "./HistoryList";
 
 interface RecordListProps {
   zoneId?: number;
@@ -26,8 +24,8 @@ export default function RecordList({
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(10);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedType, setSelectedType] = useState("");
 
   useEffect(() => {
     async function fetchRecords() {
@@ -35,7 +33,7 @@ export default function RecordList({
         const data = await getRecords(zoneId);
         setRecords(data);
       } catch (err) {
-        setError('Failed to fetch records');
+        setError("Failed to fetch records");
       } finally {
         setLoading(false);
       }
@@ -44,12 +42,12 @@ export default function RecordList({
   }, [zoneId]);
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
+    if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         await deleteRecord(id);
-        setRecords(records.filter(record => record.id !== id));
+        setRecords(records.filter((record) => record.id !== id));
       } catch (error) {
-        alert('Failed to delete record');
+        alert("Failed to delete record");
       }
     }
   };
@@ -81,13 +79,13 @@ export default function RecordList({
     return <p className="text-center text-red-500">{error}</p>;
   }
 
-  const recordTypes = [...new Set(records.map(record => record.record_type))];
+  const recordTypes = [...new Set(records.map((record) => record.record_type))];
 
   const filteredRecords = records
-    .filter(record =>
+    .filter((record) =>
       record.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .filter(record =>
+    .filter((record) =>
       selectedType ? record.record_type === selectedType : true
     );
 
@@ -107,16 +105,16 @@ export default function RecordList({
           type="text"
           placeholder="Search records..."
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded-md"
         />
         <select
           value={selectedType}
-          onChange={e => setSelectedType(e.target.value)}
+          onChange={(e) => setSelectedType(e.target.value)}
           className="p-2 border border-gray-300 rounded-md"
         >
           <option value="">All Types</option>
-          {recordTypes.map(type => (
+          {recordTypes.map((type) => (
             <option key={type} value={type}>
               {type}
             </option>
@@ -153,7 +151,7 @@ export default function RecordList({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {currentRecords.map(record => (
+          {currentRecords.map((record) => (
             <tr key={record.id} className="transition-colors hover:bg-gray-50">
               <td
                 onClick={() => handleShowDetails(record)}
@@ -204,12 +202,12 @@ export default function RecordList({
       <div className="flex justify-between items-center p-4">
         <div>
           <p className="text-sm text-gray-700">
-            Showing{' '}
-            <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
+            Showing{" "}
+            <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}
             <span className="font-medium">
               {Math.min(indexOfLastRecord, filteredRecords.length)}
-            </span>{' '}
-            of <span className="font-medium">{filteredRecords.length}</span>{' '}
+            </span>{" "}
+            of <span className="font-medium">{filteredRecords.length}</span>{" "}
             results
           </p>
         </div>
@@ -223,8 +221,8 @@ export default function RecordList({
                   onClick={() => paginate(i + 1)}
                   className={`px-3 py-1 mx-1 rounded-md text-sm font-medium ${
                     currentPage === i + 1
-                      ? 'bg-(--primary) text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      ? "bg-(--primary) text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {i + 1}

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { reloadDns, getDnsStatus, postDnsConfig } from "@/lib/api";
 
