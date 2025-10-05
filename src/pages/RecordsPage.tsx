@@ -47,27 +47,19 @@ export default function RecordsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">DNS Records</h1>
-        <button onClick={handleOpenModal} className="btn-primary">
-          Add Record
-        </button>
-      </div>
-
+    <div>
       <RecordList
-        zoneId={zoneId}
+        key={refreshKey}
         onEditRecord={handleEditRecord}
-        refreshKey={refreshKey}
+        onCreateRecord={handleOpenModal}
+        zoneId={zoneId ? parseInt(zoneId) : undefined}
       />
-
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm
           record={editingRecord}
-          zones={zones}
-          selectedZoneId={zoneId}
-          onClose={handleCloseModal}
           onSuccess={handleSuccess}
+          zoneId={zoneId ? parseInt(zoneId) : undefined}
+          zones={zones}
         />
       </Modal>
     </div>

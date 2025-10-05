@@ -7,27 +7,29 @@ A simple web interface for managing DNS zones and records.
 1.  **Install dependencies:**
 
     ```bash
-    npm install
+    $ npm install
     ```
 
-2.  **Set up environment variables:**
+2.  **Build the project:**
 
-    Create a `.env.local` file in the root of the project and add the following variables:
-
-    ```
-    NEXT_PUBLIC_API_TOKEN=your_api_token_here
-    NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-    ```
-
-3.  **Run the development server:**
     ```bash
-    npm run dev
+    $ npm run build
+
+    $ cd server
+    $ go build
+    ```
+
+3.  **Run the server:**
+
+    ```bash
+    $ go run server/main.go
     ```
 
 ## Dependencies
 
-- [Node.js](https://nodejs.org) v20 or higher
-- [Next.js](https://nextjs.org/) v15
-- [Tailwind CSS](https://tailwindcss.com/) v4
+- [Go](https://golang.org/) v1.20 or higher
 - [Sqlite3](https://sqlite.org/)
+- [Node.js](https://nodejs.org) v20 or higher
+- [React](https://reactjs.org/) v19
+- [Tailwind CSS](https://tailwindcss.com/) v4
 - [Bindizr](https://github.com/kweonminsung/bindizr)

@@ -1,7 +1,7 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import LayoutWrapper from "@/components/LayoutWrapper";
+import Middleware from "@/components/Middleware";
+import Sidebar from "@/components/Sidebar";
 
 // Import page components
 import LoginPage from "@/pages/LoginPage";
@@ -12,62 +12,32 @@ import GeneralSettingsPage from "@/pages/GeneralSettingsPage";
 import DnsSettingsPage from "@/pages/DnsSettingsPage";
 
 function App() {
+  const location = useLocation();
+  const showSidebar = ["/records", "/zones", "/settings"].some((path) =>
+    location.pathname.startsWith(path)
+  );
+
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/setup" element={<SetupPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <LayoutWrapper>
-                <Navigate to="/zones" replace />
-              </LayoutWrapper>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/zones"
-          element={
-            <ProtectedRoute>
-              <LayoutWrapper>
-                <ZonesPage />
-              </LayoutWrapper>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/records"
-          element={
-            <ProtectedRoute>
-              <LayoutWrapper>
-                <RecordsPage />
-              </LayoutWrapper>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings/general"
-          element={
-            <ProtectedRoute>
-              <LayoutWrapper>
-                <GeneralSettingsPage />
-              </LayoutWrapper>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings/dns"
-          element={
-            <ProtectedRoute>
-              <LayoutWrapper>
-                <DnsSettingsPage />
-              </LayoutWrapper>
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <Middleware>
+        <div className="flex h-screen bg-gray-100">
+          {showSidebar && <Sidebar />}
+          <main className="flex-1 p-8 overflow-y-auto">
+            <Routes>
+              <Route path="/setup" element={<SetupPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<Navigate to="/zones" replace />} />
+              <Route path="/zones" element={<ZonesPage />} />
+              <Route path="/records" element={<RecordsPage />} />
+              <Route
+                path="/settings/general"
+                element={<GeneralSettingsPage />}
+              />
+              <Route path="/settings/dns" element={<DnsSettingsPage />} />
+            </Routes>
+          </main>
+        </div>
+      </Middleware>
     </AuthProvider>
   );
 }

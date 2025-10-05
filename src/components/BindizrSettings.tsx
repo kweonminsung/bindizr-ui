@@ -12,7 +12,17 @@ export default function BindizrSettings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("/api/bindizr");
+      const token = localStorage.getItem("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/bindizr", {
+        headers,
+      });
       if (res.ok) {
         const data = await res.json();
         setBindizrUrl(data.bindizrUrl || "");
@@ -75,11 +85,17 @@ export default function BindizrSettings() {
     setIsLoading(true);
 
     try {
+      const token = localStorage.getItem("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/bindizr", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ bindizrUrl, secretKey }),
       });
 

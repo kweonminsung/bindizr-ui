@@ -30,22 +30,14 @@ export default function ZonesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">DNS Zones</h1>
-        <button onClick={handleOpenModal} className="btn-primary">
-          Add Zone
-        </button>
-      </div>
-
-      <ZoneList onEditZone={handleEditZone} />
-
+    <div>
+      <ZoneList
+        key={refreshKey}
+        onEditZone={handleEditZone}
+        onCreateZone={handleOpenModal}
+      />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-        <ZoneForm
-          zone={editingZone}
-          onClose={handleCloseModal}
-          onSuccess={handleSuccess}
-        />
+        <ZoneForm zone={editingZone} onSuccess={handleSuccess} />
       </Modal>
     </div>
   );

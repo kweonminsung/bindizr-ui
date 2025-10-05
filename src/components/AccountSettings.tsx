@@ -22,7 +22,17 @@ export default function AccountSettings() {
   useEffect(() => {
     const fetchAccountStatus = async () => {
       try {
-        const res = await fetch("/api/settings");
+        const token = localStorage.getItem("auth_token");
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const res = await fetch("/api/settings", {
+          headers,
+        });
         if (res.ok) {
           const data = await res.json();
           setIsAccountEnabled(data.accountEnabled);
@@ -31,11 +41,29 @@ export default function AccountSettings() {
         console.error("Failed to fetch account status:", error);
       }
     };
+
+    const fetchUserInfo = async () => {
+      try {
+        const token = localStorage.getItem("auth_token");
+        if (token) {
+          const res = await fetch("/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setUsername(data.username || "");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user info:", error);
+      }
+    };
+
     fetchAccountStatus();
-    if (session?.user?.name) {
-      setUsername(session.user.name);
-    }
-  }, [session]);
+    fetchUserInfo();
+  }, []);
 
   const handleAccountChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +71,7 @@ export default function AccountSettings() {
       setMessage("New passwords do not match.");
       return;
     }
-    if (username === session?.user?.name && !newPassword) {
+    if (!username.trim() && !newPassword) {
       setMessage("No changes were made.");
       return;
     }
@@ -51,9 +79,17 @@ export default function AccountSettings() {
     setMessage("");
 
     try {
+      const token = localStorage.getItem("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/account", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           newUsername: username,
           newPassword: newPassword || undefined,
@@ -62,7 +98,6 @@ export default function AccountSettings() {
       const data = await res.json();
       setMessage(data.message);
       if (res.ok) {
-        await update({ name: username });
         setNewPassword("");
         setConfirmPassword("");
         setTimeout(() => {
@@ -82,9 +117,17 @@ export default function AccountSettings() {
       setIsLoading(true);
       setStatusMessage("");
       try {
+        const token = localStorage.getItem("auth_token");
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
         const res = await fetch("/api/account", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ isEnabled: false }),
         });
         const data = await res.json();
@@ -116,9 +159,17 @@ export default function AccountSettings() {
     setIsLoading(true);
     setStatusMessage("");
     try {
+      const token = localStorage.getItem("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/account", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           isEnabled: true,
           username: newAccountUsername,
@@ -141,9 +192,6 @@ export default function AccountSettings() {
   };
 
   const handleOpenModal = () => {
-    if (session?.user?.name) {
-      setUsername(session.user.name);
-    }
     setMessage("");
     setNewPassword("");
     setConfirmPassword("");

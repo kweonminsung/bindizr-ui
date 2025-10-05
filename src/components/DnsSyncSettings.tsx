@@ -19,7 +19,17 @@ export default function DnsSyncSettings() {
 
   const fetchSettings = useCallback(async (pageNum = 1) => {
     try {
-      const response = await fetch(`/api/cron?page=${pageNum}&limit=20`);
+      const token = localStorage.getItem("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/cron?page=${pageNum}&limit=20`, {
+        headers,
+      });
       if (response.ok) {
         const data = await response.json();
         if (pageNum === 1) {
@@ -48,11 +58,17 @@ export default function DnsSyncSettings() {
     setLoading(true);
     const newCronEnabled = !cronEnabled;
     try {
+      const token = localStorage.getItem("auth_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch("/api/cron", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           enabled: newCronEnabled,
           interval: cronInterval,

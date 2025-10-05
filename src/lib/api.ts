@@ -8,7 +8,17 @@ async function getConfig() {
     return { API_BASE_URL, SECRET_KEY };
   }
 
-  const res = await fetch("/api/bindizr");
+  const token = localStorage.getItem("auth_token");
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch("/api/bindizr", {
+    headers,
+  });
   const config = await res.json();
 
   API_BASE_URL = config.bindizrUrl;

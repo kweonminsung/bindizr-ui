@@ -8,9 +8,10 @@ import HistoryList from "./HistoryList";
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
+  onCreateZone: () => void;
 }
 
-export default function ZoneList({ onEditZone }: ZoneListProps) {
+export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -210,6 +211,9 @@ export default function ZoneList({ onEditZone }: ZoneListProps) {
               )
             )}
           </div>
+          <button onClick={onCreateZone} className="btn-primary ml-4">
+            Create Zone
+          </button>
         </div>
       </div>
     </div>
