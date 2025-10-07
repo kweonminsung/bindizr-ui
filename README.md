@@ -1,29 +1,28 @@
 # Bindizr UI
 
-A simple web interface for managing DNS zones and records.
+A modern web interface for managing DNS zones and records with [Bindizr](https://github.com/kweonminsung/bindizr) backend.
+
+<img src="public/example.png" alt="Bindizr UI Screenshot" width="500" />
 
 ## Getting Started
 
-1.  **Install dependencies:**
+1. **Build and install dependencies:**
 
-    ```bash
-    $ npm install
-    ```
+   ```bash
+   # Install Go dependencies
+   $ go mod tidy
 
-2.  **Build the project:**
+   # Install Node.js dependencies
+   $ cd ui
+   $ npm install
+   ```
 
-    ```bash
-    $ npm run build
+2. **Start development server:**
 
-    $ cd server
-    $ go build
-    ```
-
-3.  **Run the server:**
-
-    ```bash
-    $ go run server/main.go
-    ```
+   ```bash
+   # Start dev server(default port: 8080)
+   $ GO_ENV=development go run main.go
+   ```
 
 ## Dependencies
 
