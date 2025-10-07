@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"bindizr-ui/server/db"
+	"bindizr-ui/db"
 )
 
 type BindizrSettings struct {

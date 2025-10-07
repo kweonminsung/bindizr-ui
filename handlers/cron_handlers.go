@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"bindizr-ui/server/db"
+	"bindizr-ui/db"
 
 	"github.com/robfig/cron/v3"
 )

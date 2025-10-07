@@ -1,4 +1,4 @@
-module bindizr-ui/server
+module bindizr-ui
 
 go 1.25.1
 

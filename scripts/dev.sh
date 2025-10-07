@@ -2,10 +2,15 @@
 
 # Development server script
 echo "Starting development server..."
-echo "Using local dist files from ../dist"
+echo "Using local ui/dist files"
+
+# Build frontend first
+echo "Building frontend..."
+cd ui
+npm run build
+cd ..
 
 export GO_ENV=development
 export PORT=8080
 
-cd server
 go run .

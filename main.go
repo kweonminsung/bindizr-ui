@@ -10,12 +10,12 @@ import (
 	"os"
 	"time"
 
-	"bindizr-ui/server/db"
-	"bindizr-ui/server/handlers"
-	"bindizr-ui/server/middleware"
+	"bindizr-ui/db"
+	"bindizr-ui/handlers"
+	"bindizr-ui/middleware"
 )
 
-//go:embed dist
+//go:embed ui/dist
 var distFS embed.FS
 
 const (
@@ -57,18 +57,18 @@ func main() {
 
 	// Configure static file serving based on environment
 	if isDevelopment() {
-		fmt.Println("Development mode: Using local dist files")
-		// Development: serve files from local ../dist directory
-		mux.Handle("/assets/", http.FileServer(http.Dir("../dist")))
+		fmt.Println("Development mode: Using local ui/dist files")
+		// Development: serve files from local ui/dist directory
+		mux.Handle("/assets/", http.FileServer(http.Dir("ui/dist")))
 		
 		// Static file serving - serve local index.html for all non-API routes
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "../dist/index.html")
+			http.ServeFile(w, r, "ui/dist/index.html")
 		})
 	} else {
-		fmt.Println("Production mode: Using embedded dist files")
+		fmt.Println("Production mode: Using embedded ui/dist files")
 		// Production: serve embedded files
-		distSubFS, err := fs.Sub(distFS, "dist")
+		distSubFS, err := fs.Sub(distFS, "ui/dist")
 		if err != nil {
 			log.Fatal("Failed to create sub filesystem:", err)
 		}

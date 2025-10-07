@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"bindizr-ui/server/db"
+	"bindizr-ui/db"
 )
 
 type AppSettings struct {

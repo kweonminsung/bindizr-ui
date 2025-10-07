@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"bindizr-ui/server/db"
+	"bindizr-ui/db"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
