@@ -11,6 +11,6 @@ npm run build
 cd ..
 
 export GO_ENV=development
-export PORT=8080
+export PORT=9000
 
 go run .

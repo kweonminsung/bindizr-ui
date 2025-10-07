@@ -10,7 +10,7 @@ A modern web interface for managing DNS zones and records with [Bindizr](https:/
 
    ```bash
    # Install Go dependencies
-   $ go mod tidy
+   $ go mod download
 
    # Install Node.js dependencies
    $ cd ui
@@ -20,7 +20,7 @@ A modern web interface for managing DNS zones and records with [Bindizr](https:/
 2. **Start development server:**
 
    ```bash
-   # Start dev server(default port: 8080)
+   # Start dev server(default port: 9000)
    $ GO_ENV=development go run main.go
    ```
 

@@ -19,7 +19,7 @@ import (
 var distFS embed.FS
 
 const (
-	DEFAULT_PORT = "8080"
+	DEFAULT_PORT = "9000"
 )
 
 // getPort returns the port from environment variable or default

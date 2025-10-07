@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  bindizr-ui:
+    build: .
+    ports:
+      - "9000:9000"
+    environment:
+      - GO_ENV=production
+      - PORT=9000
