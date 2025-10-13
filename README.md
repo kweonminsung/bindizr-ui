@@ -1,8 +1,8 @@
 # Bindizr UI
 
 <p>
-    <a href="https://github.com/kweonminsung/bindizr-ui/actions/workflows/ci.yaml">
-        <img src="https://github.com/kweonminsung/bindizr-ui/actions/workflows/ci.yaml/badge.svg" />
+    <a href="https://github.com/kweonminsung/bindizr-ui/actions/workflows/ci.yml">
+        <img src="https://github.com/kweonminsung/bindizr-ui/actions/workflows/ci.yml/badge.svg" />
     </a>
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
