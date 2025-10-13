@@ -26,7 +26,9 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./ui
-        run: npm ci
+        run: |
+          npm ci
+          npm install --force
 
       - name: Build frontend
         working-directory: ./ui

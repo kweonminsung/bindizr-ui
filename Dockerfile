@@ -8,7 +8,8 @@ WORKDIR /app/ui
 COPY ui/package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --only=production \
+ && npm install --force
 
 # Copy source code
 COPY ui/ ./

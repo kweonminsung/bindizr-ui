@@ -22,5 +22,10 @@
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "^5",
     "vite": "^7.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-musl": "^4.22.4",
+    "@parcel/css-linux-x64-musl": "^1.16.0",
+    "@tailwindcss/oxide-linux-x64-musl": "^4.0.0"
   }
 }
