@@ -26,7 +26,11 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: ./ui
-        run: npm ci
+        run: |
+          npm ci --only=production \
+          && npm install @rollup/rollup-linux-x64-musl \
+          && npm install @parcel/css-linux-x64-musl lightningcss \
+          && npm install @tailwindcss/oxide-linux-x64-musl
 
       - name: Build frontend
         working-directory: ./ui
