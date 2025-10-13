@@ -167,7 +167,6 @@ export async function reloadDns(): Promise<string> {
   const { API_BASE_URL } = await getConfig();
 
   const response = await fetch(`${API_BASE_URL}/dns/reload`, {
-    method: "POST",
     headers: await getHeaders(),
   });
   if (!response.ok) {

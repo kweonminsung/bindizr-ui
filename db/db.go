@@ -117,7 +117,7 @@ func GetCronLogs(limit, offset int) ([]CronLog, error) {
 	}
 	defer rows.Close()
 
-	var logs []CronLog
+	logs := make([]CronLog, 0)
 	for rows.Next() {
 		var log CronLog
 		if err := rows.Scan(&log.ID, &log.Timestamp, &log.Message); err != nil {
