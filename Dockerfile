@@ -9,7 +9,9 @@ COPY ui/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production \
- && npm install --force
+ && npm install @rollup/rollup-linux-x64-musl \
+ && npm install @parcel/css-linux-x64-musl lightningcss \
+ && npm install @tailwindcss/oxide-linux-x64-musl
 
 # Copy source code
 COPY ui/ ./
