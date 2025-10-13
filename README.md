@@ -1,5 +1,14 @@
 # Bindizr UI
 
+<p>
+    <a href="https://github.com/kweonminsung/bindizr-ui/actions/workflows/ci.yaml">
+        <img src="https://github.com/kweonminsung/bindizr-ui/actions/workflows/ci.yaml/badge.svg" />
+    </a>
+    <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
+        <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
+    </a>
+</p>
+
 A modern web interface for managing DNS zones and records with [Bindizr](https://github.com/kweonminsung/bindizr) backend.
 
 <img src="public/example.png" alt="Bindizr UI Screenshot" width="500" />

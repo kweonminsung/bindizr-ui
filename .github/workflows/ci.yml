@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Install frontend dependencies
+        working-directory: ./ui
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./ui
+        run: npm run build
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Build Go application
+        run: go build -o bindizr-ui main.go
+
+      - name: Quick smoke test
+        run: |
+          timeout 5s ./bindizr-ui || if [ $? -eq 124 ]; then 
+            echo "✅ Application starts successfully"
+          else 
+            echo "❌ Application failed to start"
+            exit 1
+          fi
