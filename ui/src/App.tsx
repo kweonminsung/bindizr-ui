@@ -30,6 +30,10 @@ function App() {
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/records" element={<RecordsPage />} />
               <Route
+                path="/settings"
+                element={<Navigate to="/settings/general" replace />}
+              />
+              <Route
                 path="/settings/general"
                 element={<GeneralSettingsPage />}
               />
