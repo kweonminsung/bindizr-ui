@@ -8,10 +8,7 @@ WORKDIR /app/ui
 COPY ui/package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production \
- && npm install @rollup/rollup-linux-x64-musl \
- && npm install @parcel/css-linux-x64-musl lightningcss \
- && npm install @tailwindcss/oxide-linux-x64-musl
+RUN npm ci --only=production
 
 # Copy source code
 COPY ui/ ./
