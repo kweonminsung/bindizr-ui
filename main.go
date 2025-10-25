@@ -7,7 +7,10 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"bindizr-ui/db"
@@ -19,7 +22,8 @@ import (
 var distFS embed.FS
 
 const (
-	DEFAULT_PORT = "9000"
+	DEFAULT_PORT    = "9000"
+	DEFAULT_UI_PORT = "8000"
 )
 
 // getPort returns the port from environment variable or default
@@ -27,6 +31,15 @@ func getPort() string {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = DEFAULT_PORT
+	}
+	return port
+}
+
+// getUiPort returns the ui port from environment variable or default
+func getUiPort() string {
+	port := os.Getenv("DEFAULT_UI_PORT")
+	if port == "" {
+		port = DEFAULT_UI_PORT
 	}
 	return port
 }
@@ -57,13 +70,22 @@ func main() {
 
 	// Configure static file serving based on environment
 	if isDevelopment() {
-		fmt.Println("Development mode: Using local ui/dist files")
-		// Development: serve files from local ui/dist directory
-		mux.Handle("/assets/", http.FileServer(http.Dir("ui/dist")))
-		
-		// Static file serving - serve local index.html for all non-API routes
+		uiPort := getUiPort()
+		fmt.Printf("Development mode: Proxying to localhost:%s\n", uiPort)
+		devServerURL, err := url.Parse("http://localhost:" + uiPort)
+		if err != nil {
+			log.Fatal("Failed to parse dev server URL: ", err)
+		}
+		proxy := httputil.NewSingleHostReverseProxy(devServerURL)
+
+		// Proxy all non-API routes to the dev server
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			http.ServeFile(w, r, "ui/dist/index.html")
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				// This should not happen if API routes are registered first, but as a safeguard
+				http.NotFound(w, r)
+				return
+			}
+			proxy.ServeHTTP(w, r)
 		})
 	} else {
 		fmt.Println("Production mode: Using embedded ui/dist files")

@@ -208,24 +208,30 @@ export default function AccountSettings() {
           <h3 className="text-xl font-semibold mb-2 text-(--primary)">
             Change Account
           </h3>
-          <button onClick={handleOpenModal} className="btn-primary">
-            Change Account
-          </button>
+          <div className="flex flex-col">
+            <p className="mb-4">Change your username and password</p>
+            <button
+              onClick={handleOpenModal}
+              className="btn-primary w-full sm:w-auto sm:self-start"
+            >
+              Change Account
+            </button>
+          </div>
         </div>
 
         <div>
           <h3 className="text-xl font-semibold mb-2 text-(--primary)">
             Account Status
           </h3>
-          <div className="flex flex-col sm:flex-row sm:items-center">
-            <p className="mr-0 sm:mr-4 mb-4 sm:mb-0">
+          <div className="flex flex-col">
+            <p className="mb-4">
               Account is currently {isAccountEnabled ? "Enabled" : "Disabled"}
             </p>
             <button
               onClick={() => handleAccountStatusChange(!isAccountEnabled)}
               className={`btn ${
                 isAccountEnabled ? "btn-danger" : "btn-primary"
-              }`}
+              } w-full sm:w-auto sm:self-start`}
               disabled={isLoading}
             >
               {isLoading
@@ -239,7 +245,17 @@ export default function AccountSettings() {
             <p className="mt-4 text-green-500">{statusMessage}</p>
           )}
         </div>
-        {isAccountEnabled && <LogoutButton />}
+        {isAccountEnabled && (
+          <div className="mt-12">
+            <h3 className="text-xl font-semibold mb-2 text-(--primary)">
+              Logout
+            </h3>
+            <div className="flex flex-col">
+              <p className="mb-4">Logout from your account.</p>
+              <LogoutButton />
+            </div>
+          </div>
+        )}
       </div>
 
       <Modal

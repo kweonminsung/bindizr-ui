@@ -11,10 +11,8 @@ export default function LogoutButton() {
   };
 
   return (
-    <div className="mt-4">
-      <button onClick={handleLogout} className="btn-primary">
-        Logout
-      </button>
-    </div>
+    <button onClick={handleLogout} className="btn-primary">
+      Logout
+    </button>
   );
 }

@@ -122,9 +122,17 @@ export default function BindizrSettings() {
         Bindizr Settings
       </h2>
       <div className="rounded-md">
-        <button onClick={handleOpenModal} className="btn-primary">
-          Edit Bindizr Settings
-        </button>
+        <div className="flex flex-col">
+          <p className="mb-4">
+            Configure the connection to your Bindizr server
+          </p>
+          <button
+            onClick={handleOpenModal}
+            className="btn-primary w-full sm:w-auto sm:self-start"
+          >
+            Edit Bindizr Settings
+          </button>
+        </div>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
