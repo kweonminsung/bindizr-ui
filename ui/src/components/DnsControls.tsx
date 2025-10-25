@@ -31,7 +31,7 @@ export default function DnsControls() {
     <div className="mb-6">
       <h2 className="text-2xl font-bold text-(--primary) mb-4">DNS Controls</h2>
       <div className="rounded-md">
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
           <button
             onClick={handleSync}
             disabled={loading}

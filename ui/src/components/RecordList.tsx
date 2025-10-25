@@ -100,95 +100,110 @@ export default function RecordList({
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex space-x-4">
-        <input
-          type="text"
-          placeholder="Search records..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md"
-        />
-        <select
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          className="p-2 border border-gray-300 rounded-md"
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto">
+          <input
+            type="text"
+            placeholder="Search records..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0 sm:mr-4"
+          />
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">All Types</option>
+            {recordTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={onCreateRecord}
+          className="btn-primary w-full sm:w-auto mt-4 sm:mt-0"
         >
-          <option value="">All Types</option>
-          {recordTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+          Create Record
+        </button>
       </div>
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Name
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Type
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Value
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {currentRecords.map((record) => (
-            <tr key={record.id} className="transition-colors hover:bg-gray-50">
-              <td
-                onClick={() => handleShowDetails(record)}
-                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                {record.name}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                {record.record_type}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-gray-500 truncate max-w-xs">
-                {record.value}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-right">
-                <button
-                  onClick={() => handleShowHistories(record)}
-                  className="mr-4 font-medium text-purple-600 hover:underline"
-                >
-                  Histories
-                </button>
-                <button
-                  onClick={() => onEditRecord(record)}
-                  className="mr-4 font-medium text-blue-600 hover:underline"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(record.id)}
-                  className="font-medium text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
-              </td>
+                Name
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Type
+              </th>
+              <th
+                scope="col"
+                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Value
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {currentRecords.map((record) => (
+              <tr
+                key={record.id}
+                className="transition-colors hover:bg-gray-50"
+              >
+                <td
+                  onClick={() => handleShowDetails(record)}
+                  className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
+                >
+                  {record.name}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                  {record.record_type}
+                </td>
+                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500 truncate max-w-xs">
+                  {record.value}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                    <button
+                      onClick={() => handleShowHistories(record)}
+                      className="font-medium text-purple-600 hover:underline"
+                    >
+                      Histories
+                    </button>
+                    <button
+                      onClick={() => onEditRecord(record)}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(record.id)}
+                      className="font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {selectedRecord && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
           <RecordDetails record={selectedRecord} />
@@ -199,8 +214,8 @@ export default function RecordList({
           <HistoryList resourceId={selectedRecord.id} resourceType="record" />
         </Modal>
       )}
-      <div className="flex justify-between items-center p-4">
-        <div>
+      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
+        <div className="mb-4 sm:mb-0">
           <p className="text-sm text-gray-700">
             Showing{" "}
             <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}
@@ -212,14 +227,14 @@ export default function RecordList({
           </p>
         </div>
         <div className="flex items-center">
-          <div className="flex">
+          <div className="flex flex-wrap justify-center">
             {Array.from(
               { length: Math.ceil(filteredRecords.length / recordsPerPage) },
               (_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => paginate(i + 1)}
-                  className={`px-3 py-1 mx-1 rounded-md text-sm font-medium ${
+                  className={`px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium ${
                     currentPage === i + 1
                       ? "bg-(--primary) text-white"
                       : "bg-white text-gray-700 hover:bg-gray-50"
@@ -230,9 +245,6 @@ export default function RecordList({
               )
             )}
           </div>
-          <button onClick={onCreateRecord} className="btn-primary ml-4">
-            Create Record
-          </button>
         </div>
       </div>
     </div>

@@ -92,7 +92,7 @@ export default function DnsSyncSettings() {
         DNS Sync Cron
       </h2>
       <div className="mb-4">
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
           <div>
             <label
               htmlFor="cron-interval"

@@ -217,8 +217,8 @@ export default function AccountSettings() {
           <h3 className="text-xl font-semibold mb-2 text-(--primary)">
             Account Status
           </h3>
-          <div className="flex items-center">
-            <p className="mr-4">
+          <div className="flex flex-col sm:flex-row sm:items-center">
+            <p className="mr-0 sm:mr-4 mb-4 sm:mb-0">
               Account is currently {isAccountEnabled ? "Enabled" : "Disabled"}
             </p>
             <button
