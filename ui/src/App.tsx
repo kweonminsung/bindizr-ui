@@ -23,7 +23,7 @@ function App() {
   return (
     <AuthProvider>
       <Middleware>
-        <div className="relative min-h-screen md:flex">
+        <div className="relative h-screen md:flex">
           {showSidebar && (
             <button
               onClick={() => setSidebarOpen(!isSidebarOpen)}
