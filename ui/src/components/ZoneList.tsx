@@ -87,89 +87,96 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4">
+      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <input
           type="text"
           placeholder="Search zones..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md"
+          className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0"
         />
+        <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
+          Create Zone
+        </button>
       </div>
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Zone Name
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Primary NS
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Admin Email
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {currentZones.map((zone) => (
-            <tr key={zone.id} className="transition-colors hover:bg-gray-50">
-              <td
-                onClick={() => navigate(`/records?zoneId=${zone.id}`)}
-                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                {zone.name}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                {zone.primary_ns}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                {zone.admin_email}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-right">
-                <button
-                  onClick={() => handleShowDetails(zone)}
-                  className="mr-4 font-medium text-green-600 hover:underline"
-                >
-                  Details
-                </button>
-                <button
-                  onClick={() => handleShowHistories(zone)}
-                  className="mr-4 font-medium text-purple-600 hover:underline"
-                >
-                  Histories
-                </button>
-                <button
-                  onClick={() => onEditZone(zone)}
-                  className="mr-4 font-medium text-blue-600 hover:underline"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(zone.id)}
-                  className="font-medium text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
-              </td>
+                Zone Name
+              </th>
+              <th
+                scope="col"
+                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Primary NS
+              </th>
+              <th
+                scope="col"
+                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Admin Email
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {currentZones.map((zone) => (
+              <tr key={zone.id} className="transition-colors hover:bg-gray-50">
+                <td
+                  onClick={() => navigate(`/records?zoneId=${zone.id}`)}
+                  className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
+                >
+                  {zone.name}
+                </td>
+                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                  {zone.primary_ns}
+                </td>
+                <td className="hidden lg:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                  {zone.admin_email}
+                </td>
+                <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                    <button
+                      onClick={() => handleShowDetails(zone)}
+                      className="font-medium text-green-600 hover:underline"
+                    >
+                      Details
+                    </button>
+                    <button
+                      onClick={() => handleShowHistories(zone)}
+                      className="font-medium text-purple-600 hover:underline"
+                    >
+                      Histories
+                    </button>
+                    <button
+                      onClick={() => onEditZone(zone)}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(zone.id)}
+                      className="font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {selectedZone && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
           <ZoneDetails zone={selectedZone} />
@@ -180,8 +187,8 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           <HistoryList resourceId={selectedZone.id} resourceType="zone" />
         </Modal>
       )}
-      <div className="flex justify-between items-center p-4">
-        <div>
+      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
+        <div className="mb-4 sm:mb-0">
           <p className="text-sm text-gray-700">
             Showing <span className="font-medium">{indexOfFirstZone + 1}</span>{" "}
             to{" "}
@@ -193,14 +200,14 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           </p>
         </div>
         <div className="flex items-center">
-          <div className="flex">
+          <div className="flex flex-wrap justify-center">
             {Array.from(
               { length: Math.ceil(filteredZones.length / zonesPerPage) },
               (_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => paginate(i + 1)}
-                  className={`px-3 py-1 mx-1 rounded-md text-sm font-medium ${
+                  className={`px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium ${
                     currentPage === i + 1
                       ? "bg-(--primary) text-white"
                       : "bg-white text-gray-700 hover:bg-gray-50"
@@ -211,9 +218,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
               )
             )}
           </div>
-          <button onClick={onCreateZone} className="btn-primary ml-4">
-            Create Zone
-          </button>
         </div>
       </div>
     </div>
