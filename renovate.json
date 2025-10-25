@@ -6,9 +6,9 @@
     "baseBranches": [
         "main"
     ],
+    "automerge": true,
     "packageRules": [
         {
-            "autoMerge": true,
             "matchPackagePatterns": [
                 ".*"
             ],
