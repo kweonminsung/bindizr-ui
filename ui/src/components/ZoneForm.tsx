@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { createZone, updateZone } from '@/lib/api';
-import { Zone } from '@/lib/types';
+import { useState, useEffect } from "react";
+import { createZone, updateZone } from "@/lib/api";
+import { Zone } from "@/lib/types";
 
 interface ZoneFormProps {
   zone: Zone | null;
@@ -10,13 +10,14 @@ interface ZoneFormProps {
 }
 
 export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
-  const [formData, setFormData] = useState<Omit<Zone, 'id'>>({
-    name: '',
-    primary_ns: '',
-    primary_ns_ip: '',
-    admin_email: '',
+  const [formData, setFormData] = useState<Omit<Zone, "id">>({
+    name: "",
+    primary_ns: "",
+    primary_ns_ip: "",
+    primary_ns_ipv6: "",
+    admin_email: "",
     ttl: 3600,
-    serial: 2025100101,
+    serial: 0,
     refresh: 7200,
     retry: 3600,
     expire: 604800,
@@ -31,11 +32,15 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.primary_ns_ip && !formData.primary_ns_ipv6) {
+      alert("Primary NS IP or Primary NS IPv6 is required.");
+      return;
+    }
     try {
       if (zone) {
         await updateZone({ ...formData, id: zone.id });
@@ -44,18 +49,19 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
       }
       onSuccess();
     } catch (error) {
-      alert('Failed to save zone');
+      alert("Failed to save zone");
     }
   };
 
   const handleCancel = () => {
     setFormData({
-      name: '',
-      primary_ns: '',
-      primary_ns_ip: '',
-      admin_email: '',
+      name: "",
+      primary_ns: "",
+      primary_ns_ip: "",
+      primary_ns_ipv6: "",
+      admin_email: "",
       ttl: 3600,
-      serial: 2025100101,
+      serial: 0,
       refresh: 7200,
       retry: 3600,
       expire: 604800,
@@ -66,7 +72,7 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {zone ? 'Edit Zone' : 'Create New Zone'}
+        {zone ? "Edit Zone" : "Create New Zone"}
       </h2>
 
       {/* General Information */}
@@ -109,7 +115,7 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
               className="w-full"
             />
           </div>
-          <div>
+          <div className="md:col-span-2">
             <label
               htmlFor="primary_ns"
               className="block text-sm font-medium text-gray-600 mb-1"
@@ -139,8 +145,25 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
               name="primary_ns_ip"
               value={formData.primary_ns_ip}
               onChange={handleChange}
-              required
               className="w-full"
+              placeholder="(Required if IPv6 is empty)"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="primary_ns_ipv6"
+              className="block text-sm font-medium text-gray-600 mb-1"
+            >
+              Primary NS IPv6
+            </label>
+            <input
+              type="text"
+              id="primary_ns_ipv6"
+              name="primary_ns_ipv6"
+              value={formData.primary_ns_ipv6 || ""}
+              onChange={handleChange}
+              className="w-full"
+              placeholder="(Required if IP is empty)"
             />
           </div>
         </div>
@@ -253,11 +276,18 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-2 pt-4">
-        <button type="button" onClick={onSuccess} className="btn-secondary">
+        <button
+          type="button"
+          onClick={() => {
+            handleCancel();
+            onSuccess();
+          }}
+          className="btn-secondary"
+        >
           Cancel
         </button>
         <button type="submit" className="btn-primary">
-          {zone ? 'Update Zone' : 'Create Zone'}
+          {zone ? "Update Zone" : "Create Zone"}
         </button>
       </div>
     </form>

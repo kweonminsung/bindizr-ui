@@ -37,7 +37,7 @@ func getPort() string {
 
 // getUiPort returns the ui port from environment variable or default
 func getUiPort() string {
-	port := os.Getenv("DEFAULT_UI_PORT")
+	port := os.Getenv("UI_PORT")
 	if port == "" {
 		port = DEFAULT_UI_PORT
 	}

@@ -42,14 +42,20 @@ export default function ZoneDetails({ zone }: ZoneDetailsProps) {
           <p className="text-sm text-gray-500">Admin Email</p>
           <p className="text-lg text-gray-900 break-all">{zone.admin_email}</p>
         </div>
+        <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-500">Primary NS</p>
+          <p className="text-lg text-gray-900">{zone.primary_ns}</p>
+        </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-500">Primary NS</p>
-            <p className="text-lg text-gray-900">{zone.primary_ns}</p>
-          </div>
           <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Primary NS IP</p>
             <p className="text-lg text-gray-900">{zone.primary_ns_ip}</p>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-sm text-gray-500">Primary NS IPv6</p>
+            <p className="text-lg text-gray-900 break-all">
+              {zone.primary_ns_ipv6 || "-"}
+            </p>
           </div>
           <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">TTL</p>

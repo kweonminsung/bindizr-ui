@@ -2,7 +2,8 @@ export interface Zone {
   id: number;
   name: string;
   primary_ns: string;
-  primary_ns_ip: string;
+  primary_ns_ip?: string;
+  primary_ns_ipv6?: string;
   admin_email: string;
   ttl: number;
   serial: number;
@@ -16,15 +17,15 @@ export interface Record {
   id: number;
   name: string;
   record_type:
-    | 'A'
-    | 'AAAA'
-    | 'CNAME'
-    | 'MX'
-    | 'TXT'
-    | 'NS'
-    | 'SOA'
-    | 'SRV'
-    | 'PTR';
+    | "A"
+    | "AAAA"
+    | "CNAME"
+    | "MX"
+    | "TXT"
+    | "NS"
+    | "SOA"
+    | "SRV"
+    | "PTR";
   value: string;
   zone_id: number;
   ttl?: number;

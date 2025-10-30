@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
-import LogoutButton from "./LogoutButton";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function AccountSettings() {
-  const { accountEnabled } = useAuth();
+  const navigate = useNavigate();
+
+  const { accountEnabled, logout } = useAuth();
   const [isChangeAccountModalOpen, setChangeAccountModalOpen] = useState(false);
   const [isEnableAccountModalOpen, setEnableAccountModalOpen] = useState(false);
   const [username, setUsername] = useState("");
@@ -191,6 +193,11 @@ export default function AccountSettings() {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   const handleOpenModal = () => {
     setMessage("");
     setNewPassword("");
@@ -252,7 +259,12 @@ export default function AccountSettings() {
             </h3>
             <div className="flex flex-col">
               <p className="mb-4">Logout from your account.</p>
-              <LogoutButton />
+              <button
+                onClick={handleLogout}
+                className="btn-primary w-full sm:w-auto sm:self-start"
+              >
+                Logout
+              </button>
             </div>
           </div>
         )}

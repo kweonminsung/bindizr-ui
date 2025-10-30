@@ -117,6 +117,18 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
               </th>
               <th
                 scope="col"
+                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Primary NS IP
+              </th>
+              <th
+                scope="col"
+                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Primary NS IPv6
+              </th>
+              <th
+                scope="col"
                 className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Admin Email
@@ -140,6 +152,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
                   {zone.primary_ns}
+                </td>
+                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                  {zone.primary_ns_ip || "-"}
+                </td>
+                <td className="hidden lg:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                  {zone.primary_ns_ipv6 || "-"}
                 </td>
                 <td className="hidden lg:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
                   {zone.admin_email}
