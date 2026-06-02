@@ -1,37 +1,59 @@
 import { useEffect, useState } from "react";
-import { getRecords, deleteRecord } from "@/lib/api";
-import { Record } from "@/lib/types";
+import { getRecordsPage, deleteRecord } from "@/lib/api";
+import { Record, RecordType } from "@/lib/types";
+import { formatRecordValue } from "@/lib/recordValue";
 import Modal from "./Modal";
 import RecordDetails from "./RecordDetails";
-import HistoryList from "./HistoryList";
 
 interface RecordListProps {
-  zoneId?: number;
+  zoneName?: string;
   onEditRecord: (record: Record) => void;
   onCreateRecord: () => void;
 }
 
+const RECORD_TYPES: RecordType[] = [
+  "A",
+  "AAAA",
+  "CNAME",
+  "MX",
+  "TXT",
+  "NS",
+  "SOA",
+  "SRV",
+  "PTR",
+];
+
 export default function RecordList({
-  zoneId,
+  zoneName,
   onEditRecord,
   onCreateRecord,
 }: RecordListProps) {
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [recordsPerPage] = useState(10);
+  const recordsPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedType, setSelectedType] = useState<RecordType | "">("");
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function fetchRecords() {
+      setLoading(true);
+      setError(null);
       try {
-        const data = await getRecords(zoneId);
-        setRecords(data);
+        const data = await getRecordsPage({
+          zone_name: zoneName,
+          search: searchQuery,
+          record_type: selectedType,
+          limit: recordsPerPage,
+          offset: (currentPage - 1) * recordsPerPage,
+        });
+        setRecords(data.items);
+        setHasNextPage(data.hasNext);
       } catch (err) {
         setError("Failed to fetch records");
       } finally {
@@ -39,13 +61,13 @@ export default function RecordList({
       }
     }
     fetchRecords();
-  }, [zoneId]);
+  }, [currentPage, refreshKey, searchQuery, selectedType, zoneName]);
 
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         await deleteRecord(id);
-        setRecords(records.filter((record) => record.id !== id));
+        setRefreshKey((prev) => prev + 1);
       } catch (error) {
         alert("Failed to delete record");
       }
@@ -62,41 +84,21 @@ export default function RecordList({
     setIsDetailModalOpen(false);
   };
 
-  const handleShowHistories = (record: Record) => {
-    setSelectedRecord(record);
-    setIsHistoryModalOpen(true);
-  };
-
-  const handleCloseHistories = () => {
-    setSelectedRecord(null);
-    setIsHistoryModalOpen(false);
-  };
-
-  if (loading) {
+  if (
+    loading &&
+    records.length === 0 &&
+    searchQuery === "" &&
+    selectedType === "" &&
+    currentPage === 1
+  ) {
     return <p className="text-center text-gray-500">Loading records...</p>;
   }
   if (error) {
     return <p className="text-center text-red-500">{error}</p>;
   }
 
-  const recordTypes = [...new Set(records.map((record) => record.record_type))];
-
-  const filteredRecords = records
-    .filter((record) =>
-      record.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .filter((record) =>
-      selectedType ? record.record_type === selectedType : true
-    );
-
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = filteredRecords.slice(
-    indexOfFirstRecord,
-    indexOfLastRecord
-  );
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const indexOfFirstRecord = (currentPage - 1) * recordsPerPage;
+  const indexOfLastRecord = indexOfFirstRecord + records.length;
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -106,16 +108,22 @@ export default function RecordList({
             type="text"
             placeholder="Search records..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0 sm:mr-4"
           />
           <select
             value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
+            onChange={(e) => {
+              setSelectedType(e.target.value as RecordType | "");
+              setCurrentPage(1);
+            }}
             className="w-full sm:w-auto p-2 border border-gray-300 rounded-md"
           >
             <option value="">All Types</option>
-            {recordTypes.map((type) => (
+            {RECORD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
@@ -160,7 +168,7 @@ export default function RecordList({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {currentRecords.map((record) => (
+            {records.map((record) => (
               <tr
                 key={record.id}
                 className="transition-colors hover:bg-gray-50"
@@ -175,16 +183,10 @@ export default function RecordList({
                   {record.record_type}
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500 truncate max-w-xs">
-                  {record.value}
+                  {formatRecordValue(record.value)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                    <button
-                      onClick={() => handleShowHistories(record)}
-                      className="font-medium text-purple-600 hover:underline"
-                    >
-                      Histories
-                    </button>
                     <button
                       onClick={() => onEditRecord(record)}
                       className="font-medium text-blue-600 hover:underline"
@@ -209,42 +211,38 @@ export default function RecordList({
           <RecordDetails record={selectedRecord} />
         </Modal>
       )}
-      {selectedRecord && (
-        <Modal isOpen={isHistoryModalOpen} onClose={handleCloseHistories}>
-          <HistoryList resourceId={selectedRecord.id} resourceType="record" />
-        </Modal>
-      )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
         <div className="mb-4 sm:mb-0">
           <p className="text-sm text-gray-700">
-            Showing{" "}
-            <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}
-            <span className="font-medium">
-              {Math.min(indexOfLastRecord, filteredRecords.length)}
-            </span>{" "}
-            of <span className="font-medium">{filteredRecords.length}</span>{" "}
-            results
+            {records.length > 0 ? (
+              <>
+                Showing{" "}
+                <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}
+                <span className="font-medium">{indexOfLastRecord}</span>
+              </>
+            ) : (
+              "No records found"
+            )}
           </p>
         </div>
         <div className="flex items-center">
-          <div className="flex flex-wrap justify-center">
-            {Array.from(
-              { length: Math.ceil(filteredRecords.length / recordsPerPage) },
-              (_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => paginate(i + 1)}
-                  className={`px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium ${
-                    currentPage === i + 1
-                      ? "bg-(--primary) text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              )
-            )}
-          </div>
+          <button
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-(--primary) text-white">
+            {currentPage}
+          </span>
+          <button
+            onClick={() => setCurrentPage((page) => page + 1)}
+            disabled={!hasNextPage}
+            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

@@ -1,85 +1,119 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { createRecord, updateRecord, getZones } from '@/lib/api';
-import { Record, Zone } from '@/lib/types';
+import { useEffect, useState } from "react";
+import { createRecord, updateRecord } from "@/lib/api";
+import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
+import { Record, RecordType, Zone } from "@/lib/types";
 
 interface RecordFormProps {
-  zoneId?: number;
+  zoneName?: string;
   record: Record | null;
   onSuccess: () => void;
   zones: Zone[];
 }
 
+interface RecordFormData {
+  name: string;
+  record_type: RecordType;
+  value: string;
+  ttl: string;
+  priority: string;
+  zone_name: string;
+}
+
+const defaultFormData: RecordFormData = {
+  name: "",
+  record_type: "A",
+  value: "",
+  ttl: "3600",
+  priority: "10",
+  zone_name: "",
+};
+
+const toOptionalNumber = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : Number(trimmed);
+};
+
 export default function RecordForm({
-  zoneId,
+  zoneName,
   record,
   onSuccess,
   zones,
 }: RecordFormProps) {
-  const [formData, setFormData] = useState<Omit<Record, 'id'>>({
-    name: '',
-    record_type: 'A',
-    value: '',
-    ttl: 3600,
-    priority: 10,
-    zone_id: 0,
+  const [formData, setFormData] = useState<RecordFormData>({
+    ...defaultFormData,
+    zone_name: zoneName ?? "",
   });
 
   useEffect(() => {
     if (record) {
-      setFormData(record);
+      setFormData({
+        name: record.name,
+        record_type: record.record_type,
+        value: recordValueToInput(record.value),
+        ttl: record.ttl?.toString() ?? "",
+        priority: record.priority?.toString() ?? "",
+        zone_name:
+          record.zone_name ??
+          zones.find((zone) => zone.id === record.zone_id)?.name ??
+          "",
+      });
+      return;
     }
-  }, [record]);
+
+    setFormData({
+      ...defaultFormData,
+      zone_name: zoneName ?? "",
+    });
+  }, [record, zoneName, zones]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === 'zone_id' ? parseInt(value) : value,
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const selectedZoneName = zoneName ?? formData.zone_name;
+    if (!record && !selectedZoneName) {
+      alert("Zone is required");
+      return;
+    }
+
     try {
-      const zone_id_to_use = zoneId ?? (formData as Record).zone_id;
-      if (!zone_id_to_use) {
-        alert('Zone ID is required');
-        return;
-      }
+      const payload = {
+        name: formData.name,
+        record_type: formData.record_type,
+        value: inputToRecordValue(formData.value),
+        ttl: toOptionalNumber(formData.ttl),
+        priority: toOptionalNumber(formData.priority),
+      };
+
       if (record) {
-        await updateRecord({
-          ...formData,
-          id: record.id,
-          zone_id: zone_id_to_use,
-        });
+        await updateRecord(record.id, payload);
       } else {
-        await createRecord({ ...formData, zone_id: zone_id_to_use });
+        await createRecord({
+          ...payload,
+          zone_name: selectedZoneName,
+        });
       }
       onSuccess();
     } catch (error) {
-      alert('Failed to save record');
+      alert("Failed to save record");
     }
-  };
-
-  const handleCancel = () => {
-    setFormData({
-      name: '',
-      record_type: 'A',
-      value: '',
-      ttl: 3600,
-      priority: 10,
-      zone_id: 0,
-    });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {record ? 'Edit Record' : 'Create New Record'}
+        {record ? "Edit Record" : "Create New Record"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -120,7 +154,6 @@ export default function RecordForm({
             <option value="MX">MX</option>
             <option value="TXT">TXT</option>
             <option value="NS">NS</option>
-            {/* <option value="SOA">SOA</option> */}
             <option value="SRV">SRV</option>
             <option value="PTR">PTR</option>
           </select>
@@ -132,13 +165,13 @@ export default function RecordForm({
           >
             Value
           </label>
-          <input
-            type="text"
+          <textarea
             id="value"
             name="value"
             value={formData.value}
             onChange={handleChange}
             required
+            rows={3}
             className="w-full"
           />
         </div>
@@ -174,25 +207,25 @@ export default function RecordForm({
             className="w-full"
           />
         </div>
-        {!zoneId && !record && (
+        {!zoneName && !record && (
           <div className="md:col-span-2">
             <label
-              htmlFor="zone_id"
+              htmlFor="zone_name"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
               Zone
             </label>
             <select
-              id="zone_id"
-              name="zone_id"
-              value={formData.zone_id}
+              id="zone_name"
+              name="zone_name"
+              value={formData.zone_name}
               onChange={handleChange}
               required
               className="w-full"
             >
               <option value="">Select a zone</option>
-              {zones.map(zone => (
-                <option key={zone.id} value={zone.id}>
+              {zones.map((zone) => (
+                <option key={zone.id} value={zone.name}>
                   {zone.name}
                 </option>
               ))}
@@ -206,7 +239,7 @@ export default function RecordForm({
           Cancel
         </button>
         <button type="submit" className="btn-primary">
-          {record ? 'Update Record' : 'Create Record'}
+          {record ? "Update Record" : "Create Record"}
         </button>
       </div>
     </form>

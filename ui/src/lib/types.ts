@@ -2,46 +2,87 @@ export interface Zone {
   id: number;
   name: string;
   primary_ns: string;
-  primary_ns_ip?: string;
-  primary_ns_ipv6?: string;
   admin_email: string;
   ttl: number;
-  serial: number;
+  serial?: number | null;
   refresh: number;
   retry: number;
   expire: number;
   minimum_ttl: number;
 }
 
+export interface ZonePayload {
+  name: string;
+  primary_ns: string;
+  admin_email: string;
+  ttl: number;
+  serial?: number | null;
+  refresh?: number | null;
+  retry?: number | null;
+  expire?: number | null;
+  minimum_ttl?: number | null;
+}
+
+export type RecordValue = string | string[];
+
+export type RecordType =
+  | "A"
+  | "AAAA"
+  | "CNAME"
+  | "MX"
+  | "TXT"
+  | "NS"
+  | "SOA"
+  | "SRV"
+  | "PTR";
+
 export interface Record {
   id: number;
   name: string;
-  record_type:
-    | "A"
-    | "AAAA"
-    | "CNAME"
-    | "MX"
-    | "TXT"
-    | "NS"
-    | "SOA"
-    | "SRV"
-    | "PTR";
-  value: string;
+  record_type: RecordType;
+  value: RecordValue;
   zone_id: number;
-  ttl?: number;
-  priority?: number;
+  zone_name?: string | null;
+  ttl?: number | null;
+  priority?: number | null;
 }
 
-export interface ZoneHistory {
-  id: number;
-  log: string;
-  created_at: string;
-  zone_id: number;
+export interface CreateRecordPayload {
+  name: string;
+  record_type: RecordType;
+  value: RecordValue;
+  zone_name: string;
+  ttl?: number | null;
+  priority?: number | null;
 }
 
-export interface RecordHistory {
-  id: number;
-  log: string;
-  created_at: string;
-  record_id: number;
+export interface UpdateRecordPayload {
+  name: string;
+  record_type: RecordType;
+  value: RecordValue;
+  ttl?: number | null;
+  priority?: number | null;
+}
+
+export interface NotifyZonePayload {
+  zone_name?: string | null;
+}
+
+export interface ListResult<T> {
+  items: T[];
+  hasNext: boolean;
+}
+
+export interface ZoneListQuery {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface RecordListQuery {
+  zone_name?: string;
+  search?: string;
+  record_type?: RecordType | "";
+  limit?: number;
+  offset?: number;
 }

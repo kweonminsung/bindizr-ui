@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"bindizr-ui/db"
 
@@ -29,18 +30,19 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	var payload BindizrTestPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		writeJSONError(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
 
 	if payload.BindizrUrl == "" {
-		http.Error(w, "Bindizr Server URL is required.", http.StatusBadRequest)
+		writeJSONError(w, "Bindizr Server URL is required.", http.StatusBadRequest)
 		return
 	}
 
-	req, err := http.NewRequest("GET", payload.BindizrUrl+"/zones", nil)
+	bindizrURL := strings.TrimRight(payload.BindizrUrl, "/")
+	req, err := http.NewRequest("GET", bindizrURL+"/zones", nil)
 	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		writeJSONError(w, "Failed to create request", http.StatusInternalServerError)
 		return
 	}
 
@@ -51,16 +53,23 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		http.Error(w, "Failed to connect to the server.", http.StatusInternalServerError)
+		writeJSONError(w, "Failed to connect to the server.", http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
+	w.Header().Set("Content-Type", "application/json")
 	if resp.StatusCode == http.StatusOK {
 		json.NewEncoder(w).Encode(map[string]string{"message": "Connection successful."})
 	} else {
-		http.Error(w, "Connection failed: "+resp.Status, resp.StatusCode)
+		writeJSONError(w, "Connection failed: "+resp.Status, resp.StatusCode)
 	}
+}
+
+func writeJSONError(w http.ResponseWriter, message string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"message": message})
 }
 
 func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {

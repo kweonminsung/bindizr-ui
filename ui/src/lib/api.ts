@@ -1,4 +1,14 @@
-import { Zone, Record, ZoneHistory, RecordHistory } from "./types";
+import {
+  CreateRecordPayload,
+  ListResult,
+  NotifyZonePayload,
+  Record,
+  RecordListQuery,
+  UpdateRecordPayload,
+  Zone,
+  ZoneListQuery,
+  ZonePayload,
+} from "./types";
 
 let API_BASE_URL: string | null = null;
 let SECRET_KEY: string | null = null;
@@ -39,36 +49,102 @@ const getHeaders = async () => {
   return headers;
 };
 
-export async function getZones(): Promise<Zone[]> {
+const appendQueryParam = (
+  params: URLSearchParams,
+  key: string,
+  value: string | number | undefined | null
+) => {
+  if (value !== undefined && value !== null && value !== "") {
+    params.set(key, String(value));
+  }
+};
+
+export async function getZones(queryParams: ZoneListQuery = {}): Promise<Zone[]> {
   const { API_BASE_URL } = await getConfig();
 
-  const response = await fetch(`${API_BASE_URL}/zones`, {
+  const params = new URLSearchParams();
+  appendQueryParam(params, "search", queryParams.search?.trim());
+  appendQueryParam(params, "limit", queryParams.limit);
+  appendQueryParam(params, "offset", queryParams.offset);
+
+  const query = params.toString();
+  const response = await fetch(`${API_BASE_URL}/zones${query ? `?${query}` : ""}`, {
     headers: await getHeaders(),
   });
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to fetch zones");
     console.error("Failed to fetch zones:", errorText);
     throw new Error("Failed to fetch zones");
   }
   return (await response.json()).zones as Zone[];
 }
 
-export async function getRecords(zoneId?: number): Promise<Record[]> {
+export async function getZonesPage(
+  queryParams: ZoneListQuery = {}
+): Promise<ListResult<Zone>> {
+  const limit = queryParams.limit ?? 10;
+  const zones = await getZones({
+    ...queryParams,
+    limit: limit + 1,
+  });
+
+  return {
+    items: zones.slice(0, limit),
+    hasNext: zones.length > limit,
+  };
+}
+
+async function parseJsonError(response: Response, fallback: string) {
+  const text = await response.text();
+  if (!text) {
+    return fallback;
+  }
+
+  try {
+    const data = JSON.parse(text) as { error?: string; message?: string };
+    return data.error || data.message || text;
+  } catch {
+    return text;
+  }
+}
+
+export async function getRecords(queryParams: RecordListQuery = {}): Promise<Record[]> {
   const { API_BASE_URL } = await getConfig();
 
-  const url = zoneId
-    ? `${API_BASE_URL}/records?zone_id=${zoneId}`
-    : `${API_BASE_URL}/records`;
+  const params = new URLSearchParams();
+  appendQueryParam(params, "zone_name", queryParams.zone_name);
+  appendQueryParam(params, "search", queryParams.search?.trim());
+  appendQueryParam(params, "record_type", queryParams.record_type);
+  appendQueryParam(params, "limit", queryParams.limit);
+  appendQueryParam(params, "offset", queryParams.offset);
+
+  const query = params.toString();
+  const url = `${API_BASE_URL}/records${query ? `?${query}` : ""}`;
   const response = await fetch(url, { headers: await getHeaders() });
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to fetch records");
     console.error("Failed to fetch records:", errorText);
     throw new Error("Failed to fetch records");
   }
   return (await response.json()).records as Record[];
 }
 
-export async function createZone(zone: Omit<Zone, "id">): Promise<Zone> {
+export async function getRecordsPage(
+  queryParams: RecordListQuery = {}
+): Promise<ListResult<Record>> {
+  const limit = queryParams.limit ?? 10;
+  const records = await getRecords({
+    ...queryParams,
+    limit: limit + 1,
+  });
+
+  return {
+    items: records.slice(0, limit),
+    hasNext: records.length > limit,
+  };
+}
+
+export async function createZone(zone: ZonePayload): Promise<Zone> {
   const { API_BASE_URL } = await getConfig();
 
   const response = await fetch(`${API_BASE_URL}/zones`, {
@@ -77,15 +153,15 @@ export async function createZone(zone: Omit<Zone, "id">): Promise<Zone> {
     body: JSON.stringify(zone),
   });
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to create zone");
     console.error("Failed to create zone:", errorText);
     throw new Error("Failed to create zone");
   }
-  return response.json();
+  return (await response.json()).zone as Zone;
 }
 
 export async function createRecord(
-  record: Omit<Record, "id">
+  record: CreateRecordPayload
 ): Promise<Record> {
   const { API_BASE_URL } = await getConfig();
 
@@ -95,57 +171,66 @@ export async function createRecord(
     body: JSON.stringify(record),
   });
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to create record");
     console.error("Failed to create record:", errorText);
     throw new Error("Failed to create record");
   }
-  return response.json();
+  return (await response.json()).record as Record;
 }
 
-export async function updateZone(zone: Zone): Promise<Zone> {
+export async function updateZone(name: string, zone: ZonePayload): Promise<Zone> {
   const { API_BASE_URL } = await getConfig();
 
-  const response = await fetch(`${API_BASE_URL}/zones/${zone.id}`, {
-    method: "PUT",
-    headers: await getHeaders(),
-    body: JSON.stringify(zone),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/zones/${encodeURIComponent(name)}`,
+    {
+      method: "PUT",
+      headers: await getHeaders(),
+      body: JSON.stringify(zone),
+    }
+  );
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to update zone");
     console.error("Failed to update zone:", errorText);
     throw new Error("Failed to update zone");
   }
-  return response.json();
+  return (await response.json()).zone as Zone;
 }
 
-export async function deleteZone(id: number): Promise<void> {
+export async function deleteZone(name: string): Promise<void> {
   const { API_BASE_URL } = await getConfig();
 
-  const response = await fetch(`${API_BASE_URL}/zones/${id}`, {
-    method: "DELETE",
-    headers: await getHeaders(),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/zones/${encodeURIComponent(name)}`,
+    {
+      method: "DELETE",
+      headers: await getHeaders(),
+    }
+  );
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to delete zone");
     console.error("Failed to delete zone:", errorText);
     throw new Error("Failed to delete zone");
   }
 }
 
-export async function updateRecord(record: Record): Promise<Record> {
+export async function updateRecord(
+  id: number,
+  record: UpdateRecordPayload
+): Promise<Record> {
   const { API_BASE_URL } = await getConfig();
 
-  const response = await fetch(`${API_BASE_URL}/records/${record.id}`, {
+  const response = await fetch(`${API_BASE_URL}/records/${id}`, {
     method: "PUT",
     headers: await getHeaders(),
     body: JSON.stringify(record),
   });
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to update record");
     console.error("Failed to update record:", errorText);
     throw new Error("Failed to update record");
   }
-  return response.json();
+  return (await response.json()).record as Record;
 }
 
 export async function deleteRecord(id: number): Promise<void> {
@@ -156,97 +241,28 @@ export async function deleteRecord(id: number): Promise<void> {
     headers: await getHeaders(),
   });
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await parseJsonError(response, "Failed to delete record");
     console.error("Failed to delete record:", errorText);
     throw new Error("Failed to delete record");
   }
-  return response.json();
 }
 
-export async function reloadDns(): Promise<string> {
+export async function notifyZones(zoneName?: string | null): Promise<string> {
   const { API_BASE_URL } = await getConfig();
 
-  const response = await fetch(`${API_BASE_URL}/dns/reload`, {
-    headers: await getHeaders(),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to reload DNS:", errorText);
-    throw new Error("Failed to reload DNS");
-  }
-  return (await response.json()).msg as string;
-}
+  const body: NotifyZonePayload = {
+    zone_name: zoneName ?? null,
+  };
 
-export async function getDnsStatus(): Promise<string> {
-  const { API_BASE_URL } = await getConfig();
-
-  const response = await fetch(`${API_BASE_URL}/dns/status`, {
-    headers: await getHeaders(),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to get DNS status:", errorText);
-    throw new Error("Failed to get DNS status");
-  }
-  return (await response.json()).status as string;
-}
-
-export async function postDnsConfig(): Promise<string> {
-  const { API_BASE_URL } = await getConfig();
-
-  const response = await fetch(`${API_BASE_URL}/dns/config`, {
+  const response = await fetch(`${API_BASE_URL}/notify/zones`, {
     method: "POST",
     headers: await getHeaders(),
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to post DNS config:", errorText);
-    throw new Error("Failed to post DNS config");
+    const errorText = await parseJsonError(response, "Failed to send DNS notify");
+    console.error("Failed to send DNS notify:", errorText);
+    throw new Error("Failed to send DNS notify");
   }
-  return (await response.json()).msg as string;
-}
-
-export async function getZoneHistories(zoneId: number): Promise<ZoneHistory[]> {
-  const { API_BASE_URL } = await getConfig();
-
-  const response = await fetch(`${API_BASE_URL}/zones/${zoneId}/histories`, {
-    headers: await getHeaders(),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to fetch zone histories:", errorText);
-    throw new Error("Failed to fetch zone histories");
-  }
-  return (await response.json()).zone_histories as ZoneHistory[];
-}
-
-export async function getRecordHistories(
-  recordId: number
-): Promise<RecordHistory[]> {
-  const { API_BASE_URL } = await getConfig();
-
-  const response = await fetch(
-    `${API_BASE_URL}/records/${recordId}/histories`,
-    { headers: await getHeaders() }
-  );
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to fetch record histories:", errorText);
-    throw new Error("Failed to fetch record histories");
-  }
-  return (await response.json()).record_histories as RecordHistory[];
-}
-
-export async function getRenderedZone(zoneId: number): Promise<string> {
-  const { API_BASE_URL } = await getConfig();
-
-  const response = await fetch(`${API_BASE_URL}/zones/${zoneId}/rendered`, {
-    headers: await getHeaders(),
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to fetch rendered zone:", errorText);
-    throw new Error("Failed to fetch rendered zone");
-  }
-  return await response.text();
+  return (await response.json()).message as string;
 }

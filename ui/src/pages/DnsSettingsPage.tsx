@@ -1,10 +1,10 @@
+import NotifyControls from "@/components/NotifyControls";
 import DnsSyncSettings from "@/components/DnsSyncSettings";
-import DnsControls from "@/components/DnsControls";
 
 export default function DnsSettingsPage() {
   return (
     <div>
-      <DnsControls />
+      <NotifyControls />
       <DnsSyncSettings />
     </div>
   );

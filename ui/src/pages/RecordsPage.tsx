@@ -8,7 +8,7 @@ import { getZones } from "@/lib/api";
 
 export default function RecordsPage() {
   const [searchParams] = useSearchParams();
-  const zoneId = searchParams.get("zoneId");
+  const zoneName = searchParams.get("zoneName") ?? undefined;
   const [editingRecord, setEditingRecord] = useState<Record | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [zones, setZones] = useState<Zone[]>([]);
@@ -52,13 +52,13 @@ export default function RecordsPage() {
         key={refreshKey}
         onEditRecord={handleEditRecord}
         onCreateRecord={handleOpenModal}
-        zoneId={zoneId ? parseInt(zoneId) : undefined}
+        zoneName={zoneName}
       />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm
           record={editingRecord}
           onSuccess={handleSuccess}
-          zoneId={zoneId ? parseInt(zoneId) : undefined}
+          zoneName={zoneName}
           zones={zones}
         />
       </Modal>

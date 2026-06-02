@@ -1,6 +1,7 @@
 'use client';
 
 import { Record } from '@/lib/types';
+import { formatRecordValue } from '@/lib/recordValue';
 
 interface RecordDetailsProps {
   record: Record;
@@ -18,7 +19,9 @@ export default function RecordDetails({ record }: RecordDetailsProps) {
         </div>
         <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Value</p>
-          <p className="text-lg text-gray-900 break-all">{record.value}</p>
+          <p className="text-lg text-gray-900 break-all">
+            {formatRecordValue(record.value)}
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
@@ -36,8 +39,10 @@ export default function RecordDetails({ record }: RecordDetailsProps) {
             </div>
           )}
           <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-500">Zone ID</p>
-            <p className="text-lg text-gray-900">{record.zone_id}</p>
+            <p className="text-sm text-gray-500">Zone</p>
+            <p className="text-lg text-gray-900">
+              {record.zone_name ?? record.zone_id}
+            </p>
           </div>
         </div>
       </div>

@@ -100,7 +100,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                       className={subLinkClasses("/settings/dns")}
                       onClick={onClose}
                     >
-                      DNS Controls
+                      DNS
                     </Link>
                   </li>
                 </ul>
@@ -109,7 +109,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </ul>
         </nav>
         <footer className="text-center text-xs text-gray-200 py-4">
-          <p>v1.0.0</p>
+          <p>v{__APP_VERSION__}</p>
           <p>
             Powered by{" "}
             <a

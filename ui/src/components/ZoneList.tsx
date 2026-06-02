@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getZones, deleteZone } from "@/lib/api";
+import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
 import { Zone } from "@/lib/types";
 import Modal from "./Modal";
 import ZoneDetails from "./ZoneDetails";
-import HistoryList from "./HistoryList";
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
@@ -16,18 +15,29 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [zonesPerPage] = useState(10);
+  const zonesPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [notifyingZoneName, setNotifyingZoneName] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     async function fetchZones() {
+      setLoading(true);
+      setError(null);
       try {
-        const data = await getZones();
-        setZones(data);
+        const data = await getZonesPage({
+          search: searchQuery,
+          limit: zonesPerPage,
+          offset: (currentPage - 1) * zonesPerPage,
+        });
+        setZones(data.items);
+        setHasNextPage(data.hasNext);
       } catch (err) {
         setError("Failed to fetch zones");
       } finally {
@@ -35,13 +45,13 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
       }
     }
     fetchZones();
-  }, []);
+  }, [currentPage, refreshKey, searchQuery]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
       try {
-        await deleteZone(id);
-        setZones(zones.filter((zone) => zone.id !== id));
+        await deleteZone(zone.name);
+        setRefreshKey((prev) => prev + 1);
       } catch (error) {
         alert("Failed to delete zone");
       }
@@ -53,37 +63,32 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     setIsDetailModalOpen(true);
   };
 
+  const handleNotify = async (zone: Zone) => {
+    setNotifyingZoneName(zone.name);
+    try {
+      const message = await notifyZones(zone.name);
+      alert(message);
+    } catch (error) {
+      alert("Failed to send DNS NOTIFY");
+    } finally {
+      setNotifyingZoneName(null);
+    }
+  };
+
   const handleCloseDetails = () => {
     setSelectedZone(null);
     setIsDetailModalOpen(false);
   };
 
-  const handleShowHistories = (zone: Zone) => {
-    setSelectedZone(zone);
-    setIsHistoryModalOpen(true);
-  };
-
-  const handleCloseHistories = () => {
-    setSelectedZone(null);
-    setIsHistoryModalOpen(false);
-  };
-
-  if (loading) {
+  if (loading && zones.length === 0 && searchQuery === "" && currentPage === 1) {
     return <p className="text-center text-gray-500">Loading zones...</p>;
   }
   if (error) {
     return <p className="text-center text-red-500">{error}</p>;
   }
 
-  const filteredZones = zones.filter((zone) =>
-    zone.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const indexOfLastZone = currentPage * zonesPerPage;
-  const indexOfFirstZone = indexOfLastZone - zonesPerPage;
-  const currentZones = filteredZones.slice(indexOfFirstZone, indexOfLastZone);
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const indexOfFirstZone = (currentPage - 1) * zonesPerPage;
+  const indexOfLastZone = indexOfFirstZone + zones.length;
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -92,7 +97,10 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           type="text"
           placeholder="Search zones..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
           className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0"
         />
         <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
@@ -119,18 +127,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                 scope="col"
                 className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                Primary NS IP
-              </th>
-              <th
-                scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Primary NS IPv6
-              </th>
-              <th
-                scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
                 Admin Email
               </th>
               <th
@@ -142,10 +138,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {currentZones.map((zone) => (
+            {zones.map((zone) => (
               <tr key={zone.id} className="transition-colors hover:bg-gray-50">
                 <td
-                  onClick={() => navigate(`/records?zoneId=${zone.id}`)}
+                  onClick={() =>
+                    navigate(`/records?zoneName=${encodeURIComponent(zone.name)}`)
+                  }
                   className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
                 >
                   {zone.name}
@@ -154,12 +152,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                   {zone.primary_ns}
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {zone.primary_ns_ip || "-"}
-                </td>
-                <td className="hidden lg:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {zone.primary_ns_ipv6 || "-"}
-                </td>
-                <td className="hidden lg:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
                   {zone.admin_email}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
@@ -171,19 +163,20 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                       Details
                     </button>
                     <button
-                      onClick={() => handleShowHistories(zone)}
-                      className="font-medium text-purple-600 hover:underline"
-                    >
-                      Histories
-                    </button>
-                    <button
                       onClick={() => onEditZone(zone)}
                       className="font-medium text-blue-600 hover:underline"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(zone.id)}
+                      onClick={() => handleNotify(zone)}
+                      disabled={notifyingZoneName === zone.name}
+                      className="font-medium text-amber-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                    >
+                      {notifyingZoneName === zone.name ? "Notifying..." : "Notify"}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(zone)}
                       className="font-medium text-red-600 hover:underline"
                     >
                       Delete
@@ -200,42 +193,38 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           <ZoneDetails zone={selectedZone} />
         </Modal>
       )}
-      {selectedZone && (
-        <Modal isOpen={isHistoryModalOpen} onClose={handleCloseHistories}>
-          <HistoryList resourceId={selectedZone.id} resourceType="zone" />
-        </Modal>
-      )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
         <div className="mb-4 sm:mb-0">
           <p className="text-sm text-gray-700">
-            Showing <span className="font-medium">{indexOfFirstZone + 1}</span>{" "}
-            to{" "}
-            <span className="font-medium">
-              {Math.min(indexOfLastZone, filteredZones.length)}
-            </span>{" "}
-            of <span className="font-medium">{filteredZones.length}</span>{" "}
-            results
+            {zones.length > 0 ? (
+              <>
+                Showing{" "}
+                <span className="font-medium">{indexOfFirstZone + 1}</span> to{" "}
+                <span className="font-medium">{indexOfLastZone}</span>
+              </>
+            ) : (
+              "No zones found"
+            )}
           </p>
         </div>
         <div className="flex items-center">
-          <div className="flex flex-wrap justify-center">
-            {Array.from(
-              { length: Math.ceil(filteredZones.length / zonesPerPage) },
-              (_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => paginate(i + 1)}
-                  className={`px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium ${
-                    currentPage === i + 1
-                      ? "bg-(--primary) text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              )
-            )}
-          </div>
+          <button
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-(--primary) text-white">
+            {currentPage}
+          </span>
+          <button
+            onClick={() => setCurrentPage((page) => page + 1)}
+            disabled={!hasNextPage}
+            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
