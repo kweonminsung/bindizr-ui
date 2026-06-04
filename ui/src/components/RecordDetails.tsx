@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Record } from '@/lib/types';
-import { formatRecordValue } from '@/lib/recordValue';
+import { Record } from "@/lib/types";
+import { formatRecordValue } from "@/lib/recordValue";
 
 interface RecordDetailsProps {
   record: Record;

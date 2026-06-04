@@ -17,7 +17,7 @@ function App() {
   const location = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const showSidebar = ["/records", "/zones", "/settings"].some((path) =>
-    location.pathname.startsWith(path)
+    location.pathname.startsWith(path),
   );
 
   return (

@@ -104,8 +104,8 @@ export default function DnsSyncSettings() {
             {loading
               ? "Saving..."
               : cronEnabled
-              ? "Disable Cron Job"
-              : "Enable Cron Job"}
+                ? "Disable Cron Job"
+                : "Enable Cron Job"}
           </button>
         </div>
       </div>

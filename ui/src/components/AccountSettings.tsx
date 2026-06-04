@@ -208,8 +208,8 @@ export default function AccountSettings() {
               {isLoading
                 ? "Updating..."
                 : isAccountEnabled
-                ? "Disable Account"
-                : "Enable Account"}
+                  ? "Disable Account"
+                  : "Enable Account"}
             </button>
           </div>
           {statusMessage && (

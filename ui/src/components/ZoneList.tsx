@@ -24,7 +24,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [notifyingZoneName, setNotifyingZoneName] = useState<string | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -81,7 +81,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     setIsDetailModalOpen(false);
   };
 
-  if (loading && zones.length === 0 && searchQuery === "" && currentPage === 1) {
+  if (
+    loading &&
+    zones.length === 0 &&
+    searchQuery === "" &&
+    currentPage === 1
+  ) {
     return <p className="text-center text-gray-500">Loading zones...</p>;
   }
   if (error) {
@@ -143,7 +148,9 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
               <tr key={zone.id} className="transition-colors hover:bg-gray-50">
                 <td
                   onClick={() =>
-                    navigate(`/records?zoneName=${encodeURIComponent(zone.name)}`)
+                    navigate(
+                      `/records?zoneName=${encodeURIComponent(zone.name)}`,
+                    )
                   }
                   className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
                 >
@@ -174,7 +181,9 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                       disabled={notifyingZoneName === zone.name}
                       className="font-medium text-amber-600 hover:underline disabled:text-gray-400 disabled:no-underline"
                     >
-                      {notifyingZoneName === zone.name ? "Notifying..." : "Notify"}
+                      {notifyingZoneName === zone.name
+                        ? "Notifying..."
+                        : "Notify"}
                     </button>
                     <button
                       onClick={() => handleDelete(zone)}

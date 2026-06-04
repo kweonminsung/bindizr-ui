@@ -52,7 +52,7 @@ const getHeaders = async () => {
 const appendQueryParam = (
   params: URLSearchParams,
   key: string,
-  value: string | number | undefined | null
+  value: string | number | undefined | null,
 ) => {
   if (value !== undefined && value !== null && value !== "") {
     params.set(key, String(value));
@@ -64,7 +64,9 @@ const toListResult = <T>(items: T[], limit: number): ListResult<T> => ({
   hasNext: items.length > limit,
 });
 
-export async function getZones(queryParams: ZoneListQuery = {}): Promise<Zone[]> {
+export async function getZones(
+  queryParams: ZoneListQuery = {},
+): Promise<Zone[]> {
   const { API_BASE_URL } = await getConfig();
 
   const params = new URLSearchParams();
@@ -73,9 +75,12 @@ export async function getZones(queryParams: ZoneListQuery = {}): Promise<Zone[]>
   appendQueryParam(params, "offset", queryParams.offset);
 
   const query = params.toString();
-  const response = await fetch(`${API_BASE_URL}/zones${query ? `?${query}` : ""}`, {
-    headers: await getHeaders(),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/zones${query ? `?${query}` : ""}`,
+    {
+      headers: await getHeaders(),
+    },
+  );
   if (!response.ok) {
     const errorText = await parseJsonError(response, "Failed to fetch zones");
     console.error("Failed to fetch zones:", errorText);
@@ -85,7 +90,7 @@ export async function getZones(queryParams: ZoneListQuery = {}): Promise<Zone[]>
 }
 
 export async function getZonesPage(
-  queryParams: ZoneListQuery = {}
+  queryParams: ZoneListQuery = {},
 ): Promise<ListResult<Zone>> {
   const limit = queryParams.limit ?? 10;
   const zones = await getZones({
@@ -110,7 +115,9 @@ async function parseJsonError(response: Response, fallback: string) {
   }
 }
 
-export async function getRecords(queryParams: RecordListQuery = {}): Promise<Record[]> {
+export async function getRecords(
+  queryParams: RecordListQuery = {},
+): Promise<Record[]> {
   const { API_BASE_URL } = await getConfig();
 
   const params = new URLSearchParams();
@@ -132,7 +139,7 @@ export async function getRecords(queryParams: RecordListQuery = {}): Promise<Rec
 }
 
 export async function getRecordsPage(
-  queryParams: RecordListQuery = {}
+  queryParams: RecordListQuery = {},
 ): Promise<ListResult<Record>> {
   const limit = queryParams.limit ?? 10;
   const records = await getRecords({
@@ -160,7 +167,7 @@ export async function createZone(zone: ZonePayload): Promise<Zone> {
 }
 
 export async function createRecord(
-  record: CreateRecordPayload
+  record: CreateRecordPayload,
 ): Promise<Record> {
   const { API_BASE_URL } = await getConfig();
 
@@ -177,7 +184,10 @@ export async function createRecord(
   return (await response.json()).record as Record;
 }
 
-export async function updateZone(name: string, zone: ZonePayload): Promise<Zone> {
+export async function updateZone(
+  name: string,
+  zone: ZonePayload,
+): Promise<Zone> {
   const { API_BASE_URL } = await getConfig();
 
   const response = await fetch(
@@ -186,7 +196,7 @@ export async function updateZone(name: string, zone: ZonePayload): Promise<Zone>
       method: "PUT",
       headers: await getHeaders(),
       body: JSON.stringify(zone),
-    }
+    },
   );
   if (!response.ok) {
     const errorText = await parseJsonError(response, "Failed to update zone");
@@ -204,7 +214,7 @@ export async function deleteZone(name: string): Promise<void> {
     {
       method: "DELETE",
       headers: await getHeaders(),
-    }
+    },
   );
   if (!response.ok) {
     const errorText = await parseJsonError(response, "Failed to delete zone");
@@ -215,7 +225,7 @@ export async function deleteZone(name: string): Promise<void> {
 
 export async function updateRecord(
   id: number,
-  record: UpdateRecordPayload
+  record: UpdateRecordPayload,
 ): Promise<Record> {
   const { API_BASE_URL } = await getConfig();
 
@@ -259,7 +269,10 @@ export async function notifyZones(zoneName?: string | null): Promise<string> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to send DNS notify");
+    const errorText = await parseJsonError(
+      response,
+      "Failed to send DNS notify",
+    );
     console.error("Failed to send DNS notify:", errorText);
     throw new Error("Failed to send DNS notify");
   }
