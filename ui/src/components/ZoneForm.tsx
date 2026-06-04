@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createZone, updateZone } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
 
@@ -34,21 +35,27 @@ const defaultFormData: ZoneFormData = {
   minimum_ttl: "3600",
 };
 
+const toFormString = (value: unknown, fallback: string) =>
+  value === null || value === undefined ? fallback : String(value);
+
 export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
 
   useEffect(() => {
     if (zone) {
       setFormData({
-        name: zone.name,
-        primary_ns: zone.primary_ns,
-        admin_email: zone.admin_email,
-        ttl: zone.ttl.toString(),
-        serial: zone.serial?.toString() ?? "",
-        refresh: zone.refresh.toString(),
-        retry: zone.retry.toString(),
-        expire: zone.expire.toString(),
-        minimum_ttl: zone.minimum_ttl.toString(),
+        name: toFormString(zone.name, defaultFormData.name),
+        primary_ns: toFormString(zone.primary_ns, defaultFormData.primary_ns),
+        admin_email: toFormString(zone.admin_email, defaultFormData.admin_email),
+        ttl: toFormString(zone.ttl, defaultFormData.ttl),
+        serial: toFormString(zone.serial, defaultFormData.serial),
+        refresh: toFormString(zone.refresh, defaultFormData.refresh),
+        retry: toFormString(zone.retry, defaultFormData.retry),
+        expire: toFormString(zone.expire, defaultFormData.expire),
+        minimum_ttl: toFormString(
+          zone.minimum_ttl,
+          defaultFormData.minimum_ttl,
+        ),
       });
       return;
     }
@@ -84,7 +91,7 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
       }
       onSuccess();
     } catch (error) {
-      alert("Failed to save zone");
+      alert(getErrorMessage(error, "Failed to save zone"));
     }
   };
 

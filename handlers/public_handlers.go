@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"bindizr-ui/db"
@@ -39,7 +40,12 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bindizrURL := strings.TrimRight(payload.BindizrUrl, "/")
+	bindizrURL, ok := normalizeBindizrURL(payload.BindizrUrl)
+	if !ok {
+		writeJSONError(w, "Invalid Bindizr URL. Only http:// and https:// URLs are supported.", http.StatusBadRequest)
+		return
+	}
+
 	req, err := http.NewRequest("GET", bindizrURL+"/zones", nil)
 	if err != nil {
 		writeJSONError(w, "Failed to create request", http.StatusInternalServerError)
@@ -99,7 +105,13 @@ func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.SetSetting("bindizr_url", payload.BindizrUrl)
+	bindizrURL, ok := normalizeBindizrURL(payload.BindizrUrl)
+	if !ok {
+		http.Error(w, "Invalid Bindizr URL. Only http:// and https:// URLs are supported.", http.StatusBadRequest)
+		return
+	}
+
+	db.SetSetting("bindizr_url", bindizrURL)
 	if payload.SecretKey != "" {
 		db.SetSetting("secret_key", payload.SecretKey)
 	}
@@ -118,4 +130,17 @@ func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Setup successful."})
+}
+
+func normalizeBindizrURL(rawURL string) (string, bool) {
+	parsedURL, err := url.Parse(strings.TrimRight(rawURL, "/"))
+	if err != nil || parsedURL.Host == "" {
+		return "", false
+	}
+
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return "", false
+	}
+
+	return parsedURL.String(), true
 }

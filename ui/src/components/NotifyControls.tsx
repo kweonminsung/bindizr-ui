@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getZones, notifyZones } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 
 export default function NotifyControls() {
@@ -14,7 +15,7 @@ export default function NotifyControls() {
       try {
         setZones(await getZones());
       } catch (error) {
-        setMessage("Failed to fetch zones");
+        setMessage(getErrorMessage(error, "Failed to fetch zones"));
       } finally {
         setLoadingZones(false);
       }
@@ -29,7 +30,7 @@ export default function NotifyControls() {
     try {
       setMessage(await notifyZones(zoneName));
     } catch (error) {
-      setMessage("Failed to send DNS NOTIFY");
+      setMessage(getErrorMessage(error, "Failed to send DNS NOTIFY"));
     } finally {
       setLoading(false);
     }

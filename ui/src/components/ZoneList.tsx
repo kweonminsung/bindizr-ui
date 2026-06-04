@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
@@ -28,6 +29,8 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   );
 
   useEffect(() => {
+    let active = true;
+
     async function fetchZones() {
       setLoading(true);
       setError(null);
@@ -37,15 +40,26 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
         });
-        setZones(data.items);
-        setHasNextPage(data.hasNext);
-      } catch (err) {
-        setError("Failed to fetch zones");
+        if (active) {
+          setZones(data.items);
+          setHasNextPage(data.hasNext);
+        }
+      } catch (error) {
+        if (active) {
+          setError(getErrorMessage(error, "Failed to fetch zones"));
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
+
     fetchZones();
+
+    return () => {
+      active = false;
+    };
   }, [currentPage, refreshKey, searchQuery]);
 
   const handleDelete = async (zone: Zone) => {
@@ -54,7 +68,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         await deleteZone(zone.name);
         setRefreshKey((prev) => prev + 1);
       } catch (error) {
-        alert("Failed to delete zone");
+        alert(getErrorMessage(error, "Failed to delete zone"));
       }
     }
   };
@@ -70,7 +84,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
       const message = await notifyZones(zone.name);
       alert(message);
     } catch (error) {
-      alert("Failed to send DNS NOTIFY");
+      alert(getErrorMessage(error, "Failed to send DNS NOTIFY"));
     } finally {
       setNotifyingZoneName(null);
     }

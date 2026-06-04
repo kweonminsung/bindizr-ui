@@ -5,6 +5,7 @@ import RecordForm from "@/components/RecordForm";
 import Modal from "@/components/Modal";
 import { Record, Zone } from "@/lib/types";
 import { getZones } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 
 export default function RecordsPage() {
   const [searchParams] = useSearchParams();
@@ -20,7 +21,10 @@ export default function RecordsPage() {
         const fetchedZones = await getZones();
         setZones(fetchedZones);
       } catch (error) {
-        console.error("Failed to fetch zones:", error);
+        console.error(
+          "Failed to fetch zones:",
+          getErrorMessage(error, "Failed to fetch zones"),
+        );
       }
     };
     fetchZones();

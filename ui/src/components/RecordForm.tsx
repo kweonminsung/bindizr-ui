@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createRecord, updateRecord } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
 import { Record, RECORD_TYPES, RecordType, Zone } from "@/lib/types";
@@ -104,7 +105,7 @@ export default function RecordForm({
       }
       onSuccess();
     } catch (error) {
-      alert("Failed to save record");
+      alert(getErrorMessage(error, "Failed to save record"));
     }
   };
 

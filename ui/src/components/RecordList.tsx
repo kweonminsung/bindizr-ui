@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getRecordsPage, deleteRecord } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 import { Record, RECORD_TYPES, RecordType } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import Modal from "./Modal";
@@ -30,6 +31,8 @@ export default function RecordList({
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
+
     async function fetchRecords() {
       setLoading(true);
       setError(null);
@@ -41,15 +44,26 @@ export default function RecordList({
           limit: recordsPerPage,
           offset: (currentPage - 1) * recordsPerPage,
         });
-        setRecords(data.items);
-        setHasNextPage(data.hasNext);
-      } catch (err) {
-        setError("Failed to fetch records");
+        if (active) {
+          setRecords(data.items);
+          setHasNextPage(data.hasNext);
+        }
+      } catch (error) {
+        if (active) {
+          setError(getErrorMessage(error, "Failed to fetch records"));
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
+
     fetchRecords();
+
+    return () => {
+      active = false;
+    };
   }, [currentPage, refreshKey, searchQuery, selectedType, zoneName]);
 
   const handleDelete = async (id: number) => {
@@ -58,7 +72,7 @@ export default function RecordList({
         await deleteRecord(id);
         setRefreshKey((prev) => prev + 1);
       } catch (error) {
-        alert("Failed to delete record");
+        alert(getErrorMessage(error, "Failed to delete record"));
       }
     }
   };

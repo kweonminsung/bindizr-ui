@@ -82,9 +82,7 @@ export async function getZones(
     },
   );
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to fetch zones");
-    console.error("Failed to fetch zones:", errorText);
-    throw new Error("Failed to fetch zones");
+    await throwApiError(response, "Failed to fetch zones");
   }
   return (await response.json()).zones as Zone[];
 }
@@ -115,6 +113,15 @@ async function parseJsonError(response: Response, fallback: string) {
   }
 }
 
+async function throwApiError(
+  response: Response,
+  fallback: string,
+): Promise<never> {
+  const errorText = await parseJsonError(response, fallback);
+  console.error(`${fallback}:`, errorText);
+  throw new Error(errorText);
+}
+
 export async function getRecords(
   queryParams: RecordListQuery = {},
 ): Promise<Record[]> {
@@ -131,9 +138,7 @@ export async function getRecords(
   const url = `${API_BASE_URL}/records${query ? `?${query}` : ""}`;
   const response = await fetch(url, { headers: await getHeaders() });
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to fetch records");
-    console.error("Failed to fetch records:", errorText);
-    throw new Error("Failed to fetch records");
+    await throwApiError(response, "Failed to fetch records");
   }
   return (await response.json()).records as Record[];
 }
@@ -159,9 +164,7 @@ export async function createZone(zone: ZonePayload): Promise<Zone> {
     body: JSON.stringify(zone),
   });
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to create zone");
-    console.error("Failed to create zone:", errorText);
-    throw new Error("Failed to create zone");
+    await throwApiError(response, "Failed to create zone");
   }
   return (await response.json()).zone as Zone;
 }
@@ -177,9 +180,7 @@ export async function createRecord(
     body: JSON.stringify(record),
   });
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to create record");
-    console.error("Failed to create record:", errorText);
-    throw new Error("Failed to create record");
+    await throwApiError(response, "Failed to create record");
   }
   return (await response.json()).record as Record;
 }
@@ -199,9 +200,7 @@ export async function updateZone(
     },
   );
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to update zone");
-    console.error("Failed to update zone:", errorText);
-    throw new Error("Failed to update zone");
+    await throwApiError(response, "Failed to update zone");
   }
   return (await response.json()).zone as Zone;
 }
@@ -217,9 +216,7 @@ export async function deleteZone(name: string): Promise<void> {
     },
   );
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to delete zone");
-    console.error("Failed to delete zone:", errorText);
-    throw new Error("Failed to delete zone");
+    await throwApiError(response, "Failed to delete zone");
   }
 }
 
@@ -235,9 +232,7 @@ export async function updateRecord(
     body: JSON.stringify(record),
   });
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to update record");
-    console.error("Failed to update record:", errorText);
-    throw new Error("Failed to update record");
+    await throwApiError(response, "Failed to update record");
   }
   return (await response.json()).record as Record;
 }
@@ -250,9 +245,7 @@ export async function deleteRecord(id: number): Promise<void> {
     headers: await getHeaders(),
   });
   if (!response.ok) {
-    const errorText = await parseJsonError(response, "Failed to delete record");
-    console.error("Failed to delete record:", errorText);
-    throw new Error("Failed to delete record");
+    await throwApiError(response, "Failed to delete record");
   }
 }
 
@@ -269,12 +262,7 @@ export async function notifyZones(zoneName?: string | null): Promise<string> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const errorText = await parseJsonError(
-      response,
-      "Failed to send DNS notify",
-    );
-    console.error("Failed to send DNS notify:", errorText);
-    throw new Error("Failed to send DNS notify");
+    await throwApiError(response, "Failed to send DNS notify");
   }
   return (await response.json()).message as string;
 }
