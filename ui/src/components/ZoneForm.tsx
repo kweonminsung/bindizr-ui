@@ -1,33 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createZone, updateZone } from "@/lib/api";
-import { Zone } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors";
+import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
+import { Zone, ZonePayload } from "@/lib/types";
 
 interface ZoneFormProps {
   zone: Zone | null;
   onSuccess: () => void;
 }
 
+interface ZoneFormData {
+  name: string;
+  primary_ns: string;
+  admin_email: string;
+  ttl: string;
+  serial: string;
+  refresh: string;
+  retry: string;
+  expire: string;
+  minimum_ttl: string;
+}
+
+const defaultFormData: ZoneFormData = {
+  name: "",
+  primary_ns: "",
+  admin_email: "",
+  ttl: "3600",
+  serial: "",
+  refresh: "7200",
+  retry: "3600",
+  expire: "604800",
+  minimum_ttl: "3600",
+};
+
+const toFormString = (value: unknown, fallback: string) =>
+  value === null || value === undefined ? fallback : String(value);
+
 export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
-  const [formData, setFormData] = useState<Omit<Zone, "id">>({
-    name: "",
-    primary_ns: "",
-    primary_ns_ip: "",
-    primary_ns_ipv6: "",
-    admin_email: "",
-    ttl: 3600,
-    serial: 0,
-    refresh: 7200,
-    retry: 3600,
-    expire: 604800,
-    minimum_ttl: 3600,
-  });
+  const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
 
   useEffect(() => {
     if (zone) {
-      setFormData(zone);
+      setFormData({
+        name: toFormString(zone.name, defaultFormData.name),
+        primary_ns: toFormString(zone.primary_ns, defaultFormData.primary_ns),
+        admin_email: toFormString(
+          zone.admin_email,
+          defaultFormData.admin_email,
+        ),
+        ttl: toFormString(zone.ttl, defaultFormData.ttl),
+        serial: toFormString(zone.serial, defaultFormData.serial),
+        refresh: toFormString(zone.refresh, defaultFormData.refresh),
+        retry: toFormString(zone.retry, defaultFormData.retry),
+        expire: toFormString(zone.expire, defaultFormData.expire),
+        minimum_ttl: toFormString(
+          zone.minimum_ttl,
+          defaultFormData.minimum_ttl,
+        ),
+      });
+      return;
     }
+
+    setFormData(defaultFormData);
   }, [zone]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,36 +73,29 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.primary_ns_ip && !formData.primary_ns_ipv6) {
-      alert("Primary NS IP or Primary NS IPv6 is required.");
-      return;
-    }
+
     try {
+      const payload: ZonePayload = {
+        name: formData.name,
+        primary_ns: formData.primary_ns,
+        admin_email: formData.admin_email,
+        ttl: toRequiredNumber(formData.ttl, "TTL"),
+        serial: toOptionalNumber(formData.serial, "Serial"),
+        refresh: toOptionalNumber(formData.refresh, "Refresh"),
+        retry: toOptionalNumber(formData.retry, "Retry"),
+        expire: toOptionalNumber(formData.expire, "Expire"),
+        minimum_ttl: toOptionalNumber(formData.minimum_ttl, "Minimum TTL"),
+      };
+
       if (zone) {
-        await updateZone({ ...formData, id: zone.id });
+        await updateZone(zone.name, payload);
       } else {
-        await createZone(formData);
+        await createZone(payload);
       }
       onSuccess();
     } catch (error) {
-      alert("Failed to save zone");
+      alert(getErrorMessage(error, "Failed to save zone"));
     }
-  };
-
-  const handleCancel = () => {
-    setFormData({
-      name: "",
-      primary_ns: "",
-      primary_ns_ip: "",
-      primary_ns_ipv6: "",
-      admin_email: "",
-      ttl: 3600,
-      serial: 0,
-      refresh: 7200,
-      retry: 3600,
-      expire: 604800,
-      minimum_ttl: 3600,
-    });
   };
 
   return (
@@ -75,7 +104,6 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
         {zone ? "Edit Zone" : "Create New Zone"}
       </h2>
 
-      {/* General Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
           General
@@ -132,44 +160,9 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
               className="w-full"
             />
           </div>
-          <div>
-            <label
-              htmlFor="primary_ns_ip"
-              className="block text-sm font-medium text-gray-600 mb-1"
-            >
-              Primary NS IP
-            </label>
-            <input
-              type="text"
-              id="primary_ns_ip"
-              name="primary_ns_ip"
-              value={formData.primary_ns_ip}
-              onChange={handleChange}
-              className="w-full"
-              placeholder="(Required if IPv6 is empty)"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="primary_ns_ipv6"
-              className="block text-sm font-medium text-gray-600 mb-1"
-            >
-              Primary NS IPv6
-            </label>
-            <input
-              type="text"
-              id="primary_ns_ipv6"
-              name="primary_ns_ipv6"
-              value={formData.primary_ns_ipv6 || ""}
-              onChange={handleChange}
-              className="w-full"
-              placeholder="(Required if IP is empty)"
-            />
-          </div>
         </div>
       </div>
 
-      {/* Timing Configuration */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
           Timing
@@ -188,6 +181,7 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
               name="ttl"
               value={formData.ttl}
               onChange={handleChange}
+              required
               className="w-full"
             />
           </div>
@@ -274,16 +268,8 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
         </div>
       </div>
 
-      {/* Action Buttons */}
       <div className="flex justify-end space-x-2 pt-4">
-        <button
-          type="button"
-          onClick={() => {
-            handleCancel();
-            onSuccess();
-          }}
-          className="btn-secondary"
-        >
+        <button type="button" onClick={onSuccess} className="btn-secondary">
           Cancel
         </button>
         <button type="submit" className="btn-primary">

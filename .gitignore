@@ -28,3 +28,5 @@ dist
 *.db
 *.log
 *.exe
+
+openapi.yaml

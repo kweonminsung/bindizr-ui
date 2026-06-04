@@ -20,9 +20,9 @@ type CronSettings struct {
 }
 
 type CronData struct {
-	Settings  CronSettings  `json:"settings"`
+	Settings  CronSettings `json:"settings"`
 	Logs      []db.CronLog `json:"logs"`
-	TotalLogs int           `json:"totalLogs"`
+	TotalLogs int          `json:"totalLogs"`
 }
 
 func InitCron() {

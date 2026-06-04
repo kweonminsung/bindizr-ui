@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getLocalApiHeaders } from "@/lib/localApi";
 
 export default function SetupPage() {
   const [bindizrUrl, setBindizrUrl] = useState("");
@@ -33,7 +34,7 @@ export default function SetupPage() {
 
     const res = await fetch("/api/public/settings", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getLocalApiHeaders({ auth: false }),
       body: JSON.stringify({
         bindizrUrl,
         secretKey,
@@ -46,7 +47,7 @@ export default function SetupPage() {
       navigate("/");
     } else {
       const data = await res.json();
-      setError(data.error || "Setup failed.");
+      setError(data.message || data.error || "Setup failed.");
     }
   };
 
@@ -63,7 +64,7 @@ export default function SetupPage() {
     try {
       const res = await fetch("/api/public/bindizr/test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getLocalApiHeaders({ auth: false }),
         body: JSON.stringify({ bindizrUrl, secretKey }),
       });
       const data = await res.json();

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
       <div className="fixed inset-0 bg-black opacity-50 cursor-pointer"></div>
       <div
         className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg relative border border-gray-200"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}

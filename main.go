@@ -94,7 +94,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to create sub filesystem:", err)
 		}
-		
+
 		mux.Handle("/assets/", http.FileServer(http.FS(distSubFS)))
 
 		// Static file serving - serve embedded index.html for all non-API routes
@@ -105,7 +105,7 @@ func main() {
 				return
 			}
 			defer indexFile.Close()
-			
+
 			w.Header().Set("Content-Type", "text/html")
 			http.ServeContent(w, r, "index.html", time.Time{}, indexFile.(io.ReadSeeker))
 		})
@@ -113,10 +113,10 @@ func main() {
 
 	port := getPort()
 	fmt.Printf("Starting server on port %s...\n", port)
-	
+
 	// Apply logging middleware to all requests
 	loggedMux := middleware.LoggingMiddleware(mux)
-	
+
 	if err := http.ListenAndServe(":"+port, loggedMux); err != nil {
 		log.Fatal(err)
 	}
