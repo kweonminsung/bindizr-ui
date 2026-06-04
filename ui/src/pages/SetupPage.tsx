@@ -47,7 +47,7 @@ export default function SetupPage() {
       navigate("/");
     } else {
       const data = await res.json();
-      setError(data.error || "Setup failed.");
+      setError(data.message || data.error || "Setup failed.");
     }
   };
 
