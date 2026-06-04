@@ -45,6 +45,7 @@ export default function NotifyControls() {
             value={selectedZoneName}
             onChange={(e) => setSelectedZoneName(e.target.value)}
             disabled={loading || loadingZones}
+            aria-label="DNS NOTIFY zone"
             className="w-full sm:w-72 rounded"
           >
             <option value="">All zones</option>

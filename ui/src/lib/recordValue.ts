@@ -14,5 +14,9 @@ export function inputToRecordValue(value: string): RecordValue {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  return lines.length > 1 ? lines : value;
+  if (lines.length === 0) {
+    return "";
+  }
+
+  return lines.length > 1 ? lines : lines[0];
 }

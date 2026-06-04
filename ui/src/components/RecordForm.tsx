@@ -28,7 +28,7 @@ const defaultFormData: RecordFormData = {
   record_type: "A",
   value: "",
   ttl: "3600",
-  priority: "10",
+  priority: "",
   zone_name: "",
 };
 
@@ -87,12 +87,17 @@ export default function RecordForm({
     }
 
     try {
+      const value = inputToRecordValue(formData.value);
+      if (value === "") {
+        throw new Error("Record value is required");
+      }
+
       const payload = {
         name: formData.name,
         record_type: formData.record_type,
-        value: inputToRecordValue(formData.value),
-        ttl: toOptionalNumber(formData.ttl),
-        priority: toOptionalNumber(formData.priority),
+        value,
+        ttl: toOptionalNumber(formData.ttl, "TTL"),
+        priority: toOptionalNumber(formData.priority, "Priority"),
       };
 
       if (record) {

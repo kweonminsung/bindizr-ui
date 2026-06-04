@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { toOptionalNumber } from "@/lib/form";
+import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
 
 interface ZoneFormProps {
@@ -74,19 +74,19 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const payload: ZonePayload = {
-      name: formData.name,
-      primary_ns: formData.primary_ns,
-      admin_email: formData.admin_email,
-      ttl: Number(formData.ttl),
-      serial: toOptionalNumber(formData.serial),
-      refresh: toOptionalNumber(formData.refresh),
-      retry: toOptionalNumber(formData.retry),
-      expire: toOptionalNumber(formData.expire),
-      minimum_ttl: toOptionalNumber(formData.minimum_ttl),
-    };
-
     try {
+      const payload: ZonePayload = {
+        name: formData.name,
+        primary_ns: formData.primary_ns,
+        admin_email: formData.admin_email,
+        ttl: toRequiredNumber(formData.ttl, "TTL"),
+        serial: toOptionalNumber(formData.serial, "Serial"),
+        refresh: toOptionalNumber(formData.refresh, "Refresh"),
+        retry: toOptionalNumber(formData.retry, "Retry"),
+        expire: toOptionalNumber(formData.expire, "Expire"),
+        minimum_ttl: toOptionalNumber(formData.minimum_ttl, "Minimum TTL"),
+      };
+
       if (zone) {
         await updateZone(zone.name, payload);
       } else {

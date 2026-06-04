@@ -4,6 +4,8 @@ import { getRecordsPage, deleteRecord } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
+  getPageSizeFromSearchParams,
+  updatePageSizeSearchParam,
   updatePageSearchParam,
 } from "@/lib/pageQuery";
 import { Record, RECORD_TYPES, RecordType } from "@/lib/types";
@@ -30,7 +32,7 @@ export default function RecordList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
-  const recordsPerPage = 10;
+  const recordsPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<RecordType | "">("");
   const [totalRecords, setTotalRecords] = useState(0);
@@ -38,6 +40,10 @@ export default function RecordList({
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
+  };
+
+  const handlePageSizeChange = (pageSize: number) => {
+    setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
   };
 
   useEffect(() => {
@@ -74,13 +80,24 @@ export default function RecordList({
     return () => {
       active = false;
     };
-  }, [currentPage, refreshKey, searchQuery, selectedType, zoneName]);
+  }, [
+    currentPage,
+    recordsPerPage,
+    refreshKey,
+    searchQuery,
+    selectedType,
+    zoneName,
+  ]);
 
   const handleDelete = async (id: number) => {
     if (window.confirm("Are you sure you want to delete this record?")) {
       try {
         await deleteRecord(id);
-        setRefreshKey((prev) => prev + 1);
+        if (records.length === 1 && currentPage > 1) {
+          handlePageChange(currentPage - 1);
+        } else {
+          setRefreshKey((prev) => prev + 1);
+        }
       } catch (error) {
         alert(getErrorMessage(error, "Failed to delete record"));
       }
@@ -244,6 +261,7 @@ export default function RecordList({
           pageSize={recordsPerPage}
           totalItems={totalRecords}
           onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
         />
       </div>
     </div>

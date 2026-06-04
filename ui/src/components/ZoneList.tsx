@@ -4,6 +4,8 @@ import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
+  getPageSizeFromSearchParams,
+  updatePageSizeSearchParam,
   updatePageSearchParam,
 } from "@/lib/pageQuery";
 import { Zone } from "@/lib/types";
@@ -25,7 +27,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
-  const zonesPerPage = 10;
+  const zonesPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -35,6 +37,10 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
+  };
+
+  const handlePageSizeChange = (pageSize: number) => {
+    setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
   };
 
   useEffect(() => {
@@ -69,13 +75,17 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [currentPage, refreshKey, searchQuery]);
+  }, [currentPage, refreshKey, searchQuery, zonesPerPage]);
 
   const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
       try {
         await deleteZone(zone.name);
-        setRefreshKey((prev) => prev + 1);
+        if (zones.length === 1 && currentPage > 1) {
+          handlePageChange(currentPage - 1);
+        } else {
+          setRefreshKey((prev) => prev + 1);
+        }
       } catch (error) {
         alert(getErrorMessage(error, "Failed to delete zone"));
       }
@@ -246,6 +256,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           pageSize={zonesPerPage}
           totalItems={totalZones}
           onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
         />
       </div>
     </div>

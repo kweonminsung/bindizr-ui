@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/lib/errors";
 
 export default function RecordsPage() {
   const [searchParams] = useSearchParams();
-  const zoneName = searchParams.get("zoneName") ?? undefined;
+  const zoneName = searchParams.get("zoneName")?.trim() || undefined;
   const [editingRecord, setEditingRecord] = useState<Record | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [zones, setZones] = useState<Zone[]>([]);
