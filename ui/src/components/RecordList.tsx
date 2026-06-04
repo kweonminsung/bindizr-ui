@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getRecordsPage, deleteRecord } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
+import {
+  getPageFromSearchParams,
+  updatePageSearchParam,
+} from "@/lib/pageQuery";
 import { Record, RECORD_TYPES, RecordType } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import Modal from "./Modal";
@@ -18,17 +23,22 @@ export default function RecordList({
   onEditRecord,
   onCreateRecord,
 }: RecordListProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<RecordType | "">("");
-  const [hasNextPage, setHasNextPage] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const handlePageChange = (page: number) => {
+    setSearchParams(updatePageSearchParam(searchParams, page));
+  };
 
   useEffect(() => {
     let active = true;
@@ -46,7 +56,7 @@ export default function RecordList({
         });
         if (active) {
           setRecords(data.items);
-          setHasNextPage(data.hasNext);
+          setTotalRecords(data.pagination.total);
         }
       } catch (error) {
         if (active) {
@@ -113,7 +123,7 @@ export default function RecordList({
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              setCurrentPage(1);
+              handlePageChange(1);
             }}
             className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0 sm:mr-4"
           />
@@ -121,7 +131,7 @@ export default function RecordList({
             value={selectedType}
             onChange={(e) => {
               setSelectedType(e.target.value as RecordType | "");
-              setCurrentPage(1);
+              handlePageChange(1);
             }}
             className="w-full sm:w-auto p-2 border border-gray-300 rounded-md"
           >
@@ -221,7 +231,8 @@ export default function RecordList({
               <>
                 Showing{" "}
                 <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastRecord}</span>
+                <span className="font-medium">{indexOfLastRecord}</span> of{" "}
+                <span className="font-medium">{totalRecords}</span>
               </>
             ) : (
               "No records found"
@@ -230,8 +241,9 @@ export default function RecordList({
         </div>
         <PaginationControls
           currentPage={currentPage}
-          hasNextPage={hasNextPage}
-          onPageChange={setCurrentPage}
+          pageSize={recordsPerPage}
+          totalItems={totalRecords}
+          onPageChange={handlePageChange}
         />
       </div>
     </div>

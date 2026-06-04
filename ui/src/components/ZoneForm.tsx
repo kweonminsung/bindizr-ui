@@ -46,7 +46,10 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
       setFormData({
         name: toFormString(zone.name, defaultFormData.name),
         primary_ns: toFormString(zone.primary_ns, defaultFormData.primary_ns),
-        admin_email: toFormString(zone.admin_email, defaultFormData.admin_email),
+        admin_email: toFormString(
+          zone.admin_email,
+          defaultFormData.admin_email,
+        ),
         ttl: toFormString(zone.ttl, defaultFormData.ttl),
         serial: toFormString(zone.serial, defaultFormData.serial),
         refresh: toFormString(zone.refresh, defaultFormData.refresh),

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
+import {
+  getPageFromSearchParams,
+  updatePageSearchParam,
+} from "@/lib/pageQuery";
 import { Zone } from "@/lib/types";
 import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
@@ -14,19 +18,24 @@ interface ZoneListProps {
 
 export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentPage = getPageFromSearchParams(searchParams);
   const zonesPerPage = 10;
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasNextPage, setHasNextPage] = useState(false);
+  const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [notifyingZoneName, setNotifyingZoneName] = useState<string | null>(
     null,
   );
+
+  const handlePageChange = (page: number) => {
+    setSearchParams(updatePageSearchParam(searchParams, page));
+  };
 
   useEffect(() => {
     let active = true;
@@ -42,7 +51,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         });
         if (active) {
           setZones(data.items);
-          setHasNextPage(data.hasNext);
+          setTotalZones(data.pagination.total);
         }
       } catch (error) {
         if (active) {
@@ -119,7 +128,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
-            setCurrentPage(1);
+            handlePageChange(1);
           }}
           className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0"
         />
@@ -224,7 +233,8 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
               <>
                 Showing{" "}
                 <span className="font-medium">{indexOfFirstZone + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastZone}</span>
+                <span className="font-medium">{indexOfLastZone}</span> of{" "}
+                <span className="font-medium">{totalZones}</span>
               </>
             ) : (
               "No zones found"
@@ -233,8 +243,9 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         </div>
         <PaginationControls
           currentPage={currentPage}
-          hasNextPage={hasNextPage}
-          onPageChange={setCurrentPage}
+          pageSize={zonesPerPage}
+          totalItems={totalZones}
+          onPageChange={handlePageChange}
         />
       </div>
     </div>

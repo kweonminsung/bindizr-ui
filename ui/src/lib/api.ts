@@ -2,6 +2,7 @@ import {
   CreateRecordPayload,
   ListResult,
   NotifyZonePayload,
+  Pagination,
   Record,
   RecordListQuery,
   UpdateRecordPayload,
@@ -59,14 +60,22 @@ const appendQueryParam = (
   }
 };
 
-const toListResult = <T>(items: T[], limit: number): ListResult<T> => ({
-  items: items.slice(0, limit),
-  hasNext: items.length > limit,
+interface ListResponse<T> {
+  items: T[];
+  pagination: Pagination;
+}
+
+const toListResult = <T>(response: ListResponse<T>): ListResult<T> => ({
+  items: response.items,
+  pagination: response.pagination,
+  hasNext:
+    response.pagination.offset + response.items.length <
+    response.pagination.total,
 });
 
-export async function getZones(
+async function getZoneListResult(
   queryParams: ZoneListQuery = {},
-): Promise<Zone[]> {
+): Promise<ListResult<Zone>> {
   const { API_BASE_URL } = await getConfig();
 
   const params = new URLSearchParams();
@@ -84,19 +93,22 @@ export async function getZones(
   if (!response.ok) {
     await throwApiError(response, "Failed to fetch zones");
   }
-  return (await response.json()).zones as Zone[];
+  return toListResult((await response.json()) as ListResponse<Zone>);
+}
+
+export async function getZones(
+  queryParams: ZoneListQuery = {},
+): Promise<Zone[]> {
+  return (await getZoneListResult(queryParams)).items;
 }
 
 export async function getZonesPage(
   queryParams: ZoneListQuery = {},
 ): Promise<ListResult<Zone>> {
-  const limit = queryParams.limit ?? 10;
-  const zones = await getZones({
+  return getZoneListResult({
     ...queryParams,
-    limit: limit + 1,
+    limit: queryParams.limit ?? 10,
   });
-
-  return toListResult(zones, limit);
 }
 
 async function parseJsonError(response: Response, fallback: string) {
@@ -122,9 +134,9 @@ async function throwApiError(
   throw new Error(errorText);
 }
 
-export async function getRecords(
+async function getRecordListResult(
   queryParams: RecordListQuery = {},
-): Promise<Record[]> {
+): Promise<ListResult<Record>> {
   const { API_BASE_URL } = await getConfig();
 
   const params = new URLSearchParams();
@@ -140,19 +152,22 @@ export async function getRecords(
   if (!response.ok) {
     await throwApiError(response, "Failed to fetch records");
   }
-  return (await response.json()).records as Record[];
+  return toListResult((await response.json()) as ListResponse<Record>);
+}
+
+export async function getRecords(
+  queryParams: RecordListQuery = {},
+): Promise<Record[]> {
+  return (await getRecordListResult(queryParams)).items;
 }
 
 export async function getRecordsPage(
   queryParams: RecordListQuery = {},
 ): Promise<ListResult<Record>> {
-  const limit = queryParams.limit ?? 10;
-  const records = await getRecords({
+  return getRecordListResult({
     ...queryParams,
-    limit: limit + 1,
+    limit: queryParams.limit ?? 10,
   });
-
-  return toListResult(records, limit);
 }
 
 export async function createZone(zone: ZonePayload): Promise<Zone> {

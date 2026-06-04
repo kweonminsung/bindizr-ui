@@ -1,7 +1,7 @@
 import { RecordValue } from "./types";
 
 export function formatRecordValue(value: RecordValue) {
-  return Array.isArray(value) ? value.join(" ") : value;
+  return Array.isArray(value) ? value.join("") : value;
 }
 
 export function recordValueToInput(value: RecordValue) {

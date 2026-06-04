@@ -71,8 +71,15 @@ export interface NotifyZonePayload {
   zone_name?: string | null;
 }
 
+export interface Pagination {
+  limit: number;
+  offset: number;
+  total: number;
+}
+
 export interface ListResult<T> {
   items: T[];
+  pagination: Pagination;
   hasNext: boolean;
 }
 
