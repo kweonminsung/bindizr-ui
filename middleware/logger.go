@@ -10,16 +10,16 @@ import (
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Create a custom ResponseWriter to capture status code
 		wrapped := &responseWriter{
 			ResponseWriter: w,
 			statusCode:     200,
 		}
-		
+
 		// Process the request
 		next.ServeHTTP(wrapped, r)
-		
+
 		// Log the request with auth header info
 		duration := time.Since(start)
 		authHeader := r.Header.Get("Authorization")
@@ -31,12 +31,12 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		} else {
 			authHeader = "none"
 		}
-		
-		log.Printf("[%s] %s %s - %d (%v) [Auth: %s]", 
-			r.Method, 
-			r.URL.Path, 
-			r.RemoteAddr, 
-			wrapped.statusCode, 
+
+		log.Printf("[%s] %s %s - %d (%v) [Auth: %s]",
+			r.Method,
+			r.URL.Path,
+			r.RemoteAddr,
+			wrapped.statusCode,
 			duration,
 			authHeader,
 		)

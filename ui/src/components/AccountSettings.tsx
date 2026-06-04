@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
 import { useAuth } from "@/contexts/AuthContext";
+import { getLocalApiHeaders } from "@/lib/localApi";
 import { useNavigate } from "react-router-dom";
 
 export default function AccountSettings() {
@@ -24,16 +25,8 @@ export default function AccountSettings() {
   useEffect(() => {
     const fetchAccountStatus = async () => {
       try {
-        const token = localStorage.getItem("auth_token");
-        const headers: HeadersInit = {
-          "Content-Type": "application/json",
-        };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
         const res = await fetch("/api/settings", {
-          headers,
+          headers: getLocalApiHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
@@ -46,17 +39,12 @@ export default function AccountSettings() {
 
     const fetchUserInfo = async () => {
       try {
-        const token = localStorage.getItem("auth_token");
-        if (token) {
-          const res = await fetch("/api/auth/me", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setUsername(data.username || "");
-          }
+        const res = await fetch("/api/auth/me", {
+          headers: getLocalApiHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUsername(data.username || "");
         }
       } catch (error) {
         console.error("Failed to fetch user info:", error);
@@ -81,17 +69,9 @@ export default function AccountSettings() {
     setMessage("");
 
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const res = await fetch("/api/account", {
         method: "PATCH",
-        headers,
+        headers: getLocalApiHeaders(),
         body: JSON.stringify({
           newUsername: username,
           newPassword: newPassword || undefined,
@@ -119,17 +99,9 @@ export default function AccountSettings() {
       setIsLoading(true);
       setStatusMessage("");
       try {
-        const token = localStorage.getItem("auth_token");
-        const headers: HeadersInit = {
-          "Content-Type": "application/json",
-        };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
         const res = await fetch("/api/account", {
           method: "POST",
-          headers,
+          headers: getLocalApiHeaders(),
           body: JSON.stringify({ isEnabled: false }),
         });
         const data = await res.json();
@@ -161,17 +133,9 @@ export default function AccountSettings() {
     setIsLoading(true);
     setStatusMessage("");
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const res = await fetch("/api/account", {
         method: "POST",
-        headers,
+        headers: getLocalApiHeaders(),
         body: JSON.stringify({
           isEnabled: true,
           username: newAccountUsername,

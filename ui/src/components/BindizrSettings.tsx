@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getLocalApiHeaders } from "@/lib/localApi";
 import Modal from "./Modal";
 
 export default function BindizrSettings() {
@@ -12,16 +13,8 @@ export default function BindizrSettings() {
 
   const fetchSettings = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const res = await fetch("/api/bindizr", {
-        headers,
+        headers: getLocalApiHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -59,7 +52,7 @@ export default function BindizrSettings() {
     try {
       const res = await fetch("/api/public/bindizr/test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getLocalApiHeaders({ auth: false }),
         body: JSON.stringify({ bindizrUrl, secretKey }),
       });
       const data = await res.json();
@@ -85,17 +78,9 @@ export default function BindizrSettings() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const res = await fetch("/api/bindizr", {
         method: "POST",
-        headers,
+        headers: getLocalApiHeaders(),
         body: JSON.stringify({ bindizrUrl, secretKey }),
       });
 

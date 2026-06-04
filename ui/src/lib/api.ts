@@ -59,6 +59,11 @@ const appendQueryParam = (
   }
 };
 
+const toListResult = <T>(items: T[], limit: number): ListResult<T> => ({
+  items: items.slice(0, limit),
+  hasNext: items.length > limit,
+});
+
 export async function getZones(queryParams: ZoneListQuery = {}): Promise<Zone[]> {
   const { API_BASE_URL } = await getConfig();
 
@@ -88,10 +93,7 @@ export async function getZonesPage(
     limit: limit + 1,
   });
 
-  return {
-    items: zones.slice(0, limit),
-    hasNext: zones.length > limit,
-  };
+  return toListResult(zones, limit);
 }
 
 async function parseJsonError(response: Response, fallback: string) {
@@ -138,10 +140,7 @@ export async function getRecordsPage(
     limit: limit + 1,
   });
 
-  return {
-    items: records.slice(0, limit),
-    hasNext: records.length > limit,
-  };
+  return toListResult(records, limit);
 }
 
 export async function createZone(zone: ZonePayload): Promise<Zone> {

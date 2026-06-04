@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { getRecordsPage, deleteRecord } from "@/lib/api";
-import { Record, RecordType } from "@/lib/types";
+import { Record, RECORD_TYPES, RecordType } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import Modal from "./Modal";
+import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
 
 interface RecordListProps {
@@ -10,18 +11,6 @@ interface RecordListProps {
   onEditRecord: (record: Record) => void;
   onCreateRecord: () => void;
 }
-
-const RECORD_TYPES: RecordType[] = [
-  "A",
-  "AAAA",
-  "CNAME",
-  "MX",
-  "TXT",
-  "NS",
-  "SOA",
-  "SRV",
-  "PTR",
-];
 
 export default function RecordList({
   zoneName,
@@ -225,25 +214,11 @@ export default function RecordList({
             )}
           </p>
         </div>
-        <div className="flex items-center">
-          <button
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
-          >
-            Previous
-          </button>
-          <span className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-(--primary) text-white">
-            {currentPage}
-          </span>
-          <button
-            onClick={() => setCurrentPage((page) => page + 1)}
-            disabled={!hasNextPage}
-            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
-          >
-            Next
-          </button>
-        </div>
+        <PaginationControls
+          currentPage={currentPage}
+          hasNextPage={hasNextPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );

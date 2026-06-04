@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createRecord, updateRecord } from "@/lib/api";
+import { toOptionalNumber } from "@/lib/form";
 import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
-import { Record, RecordType, Zone } from "@/lib/types";
+import { Record, RECORD_TYPES, RecordType, Zone } from "@/lib/types";
 
 interface RecordFormProps {
   zoneName?: string;
@@ -28,11 +29,6 @@ const defaultFormData: RecordFormData = {
   ttl: "3600",
   priority: "10",
   zone_name: "",
-};
-
-const toOptionalNumber = (value: string) => {
-  const trimmed = value.trim();
-  return trimmed === "" ? null : Number(trimmed);
 };
 
 export default function RecordForm({
@@ -148,14 +144,11 @@ export default function RecordForm({
             onChange={handleChange}
             className="w-full"
           >
-            <option value="A">A</option>
-            <option value="AAAA">AAAA</option>
-            <option value="CNAME">CNAME</option>
-            <option value="MX">MX</option>
-            <option value="TXT">TXT</option>
-            <option value="NS">NS</option>
-            <option value="SRV">SRV</option>
-            <option value="PTR">PTR</option>
+            {RECORD_TYPES.filter((type) => type !== "SOA").map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
           </select>
         </div>
         <div className="md:col-span-2">

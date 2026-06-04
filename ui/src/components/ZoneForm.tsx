@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createZone, updateZone } from "@/lib/api";
+import { toOptionalNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
 
 interface ZoneFormProps {
@@ -31,11 +32,6 @@ const defaultFormData: ZoneFormData = {
   retry: "3600",
   expire: "604800",
   minimum_ttl: "3600",
-};
-
-const toOptionalNumber = (value: string) => {
-  const trimmed = value.trim();
-  return trimmed === "" ? null : Number(trimmed);
 };
 
 export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
 import { Zone } from "@/lib/types";
 import Modal from "./Modal";
+import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 
 interface ZoneListProps {
@@ -207,25 +208,11 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
             )}
           </p>
         </div>
-        <div className="flex items-center">
-          <button
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
-          >
-            Previous
-          </button>
-          <span className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-(--primary) text-white">
-            {currentPage}
-          </span>
-          <button
-            onClick={() => setCurrentPage((page) => page + 1)}
-            disabled={!hasNextPage}
-            className="px-3 py-1 mx-1 my-1 rounded-md text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:hover:bg-white"
-          >
-            Next
-          </button>
-        </div>
+        <PaginationControls
+          currentPage={currentPage}
+          hasNextPage={hasNextPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );

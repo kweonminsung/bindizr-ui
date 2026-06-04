@@ -25,16 +25,19 @@ export interface ZonePayload {
 
 export type RecordValue = string | string[];
 
-export type RecordType =
-  | "A"
-  | "AAAA"
-  | "CNAME"
-  | "MX"
-  | "TXT"
-  | "NS"
-  | "SOA"
-  | "SRV"
-  | "PTR";
+export const RECORD_TYPES = [
+  "A",
+  "AAAA",
+  "CNAME",
+  "MX",
+  "TXT",
+  "NS",
+  "SOA",
+  "SRV",
+  "PTR",
+] as const;
+
+export type RecordType = (typeof RECORD_TYPES)[number];
 
 export interface Record {
   id: number;

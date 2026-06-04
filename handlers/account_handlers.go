@@ -11,9 +11,9 @@ import (
 )
 
 type AccountPayload struct {
-	IsEnabled  *bool  `json:"isEnabled"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
+	IsEnabled   *bool  `json:"isEnabled"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
 	NewUsername string `json:"newUsername"`
 	NewPassword string `json:"newPassword"`
 }

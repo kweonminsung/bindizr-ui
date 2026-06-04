@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { getLocalApiHeaders } from "@/lib/localApi";
 
 interface CronLog {
   id: number;
@@ -19,16 +20,8 @@ export default function DnsSyncSettings() {
 
   const fetchSettings = useCallback(async (pageNum = 1) => {
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const response = await fetch(`/api/cron?page=${pageNum}&limit=20`, {
-        headers,
+        headers: getLocalApiHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -58,17 +51,9 @@ export default function DnsSyncSettings() {
     setLoading(true);
     const newCronEnabled = !cronEnabled;
     try {
-      const token = localStorage.getItem("auth_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const response = await fetch("/api/cron", {
         method: "POST",
-        headers,
+        headers: getLocalApiHeaders(),
         body: JSON.stringify({
           enabled: newCronEnabled,
           interval: cronInterval,

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { getLocalApiHeaders } from "@/lib/localApi";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -47,9 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const token = localStorage.getItem("auth_token");
           if (token) {
             const authResponse = await fetch("/api/auth/me", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+              headers: getLocalApiHeaders(),
             });
             setIsAuthenticated(authResponse.ok);
             if (!authResponse.ok) {
@@ -78,9 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getLocalApiHeaders({ auth: false }),
         body: JSON.stringify({ username, password }),
       });
 
@@ -105,9 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token) {
         await fetch("/api/auth/logout", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: getLocalApiHeaders(),
         });
       }
     } catch (error) {
