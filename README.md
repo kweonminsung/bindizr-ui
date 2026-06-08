@@ -16,6 +16,20 @@ A modern web interface for managing DNS zones and records with [Bindizr](https:/
 
 <img src="public/example.png" alt="Bindizr UI Screenshot" width="500" />
 
+## Run with Docker
+
+```bash
+$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-beta.4
+```
+
+Or with Docker Compose:
+
+```bash
+$ docker compose up -d
+```
+
+Then open <http://localhost:9000>.
+
 ## Getting Started
 
 1. **Build and install dependencies:**
