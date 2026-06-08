@@ -10,45 +10,11 @@ import {
   ZoneListQuery,
   ZonePayload,
 } from "./types";
+import { getLocalApiHeaders } from "./localApi";
 
-let API_BASE_URL: string | null = null;
-let SECRET_KEY: string | null = null;
+const API_BASE_URL = "/api/bindizr/proxy";
 
-async function getConfig() {
-  if (API_BASE_URL) {
-    return { API_BASE_URL, SECRET_KEY };
-  }
-
-  const token = localStorage.getItem("auth_token");
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch("/api/bindizr", {
-    headers,
-  });
-  const config = await res.json();
-
-  API_BASE_URL = config.bindizrUrl;
-  SECRET_KEY = config.secretKey;
-
-  return { API_BASE_URL, SECRET_KEY };
-}
-
-const getHeaders = async () => {
-  const { SECRET_KEY } = await getConfig();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-  if (SECRET_KEY) {
-    headers["Authorization"] = `Bearer ${SECRET_KEY}`;
-  }
-  return headers;
-};
+const getHeaders = () => getLocalApiHeaders();
 
 const appendQueryParam = (
   params: URLSearchParams,
@@ -76,8 +42,6 @@ const toListResult = <T>(response: ListResponse<T>): ListResult<T> => ({
 async function getZoneListResult(
   queryParams: ZoneListQuery = {},
 ): Promise<ListResult<Zone>> {
-  const { API_BASE_URL } = await getConfig();
-
   const params = new URLSearchParams();
   appendQueryParam(params, "search", queryParams.search?.trim());
   appendQueryParam(params, "limit", queryParams.limit);
@@ -137,8 +101,6 @@ async function throwApiError(
 async function getRecordListResult(
   queryParams: RecordListQuery = {},
 ): Promise<ListResult<Record>> {
-  const { API_BASE_URL } = await getConfig();
-
   const params = new URLSearchParams();
   appendQueryParam(params, "zone_name", queryParams.zone_name);
   appendQueryParam(params, "search", queryParams.search?.trim());
@@ -171,8 +133,6 @@ export async function getRecordsPage(
 }
 
 export async function createZone(zone: ZonePayload): Promise<Zone> {
-  const { API_BASE_URL } = await getConfig();
-
   const response = await fetch(`${API_BASE_URL}/zones`, {
     method: "POST",
     headers: await getHeaders(),
@@ -187,8 +147,6 @@ export async function createZone(zone: ZonePayload): Promise<Zone> {
 export async function createRecord(
   record: CreateRecordPayload,
 ): Promise<Record> {
-  const { API_BASE_URL } = await getConfig();
-
   const response = await fetch(`${API_BASE_URL}/records`, {
     method: "POST",
     headers: await getHeaders(),
@@ -204,8 +162,6 @@ export async function updateZone(
   name: string,
   zone: ZonePayload,
 ): Promise<Zone> {
-  const { API_BASE_URL } = await getConfig();
-
   const response = await fetch(
     `${API_BASE_URL}/zones/${encodeURIComponent(name)}`,
     {
@@ -221,8 +177,6 @@ export async function updateZone(
 }
 
 export async function deleteZone(name: string): Promise<void> {
-  const { API_BASE_URL } = await getConfig();
-
   const response = await fetch(
     `${API_BASE_URL}/zones/${encodeURIComponent(name)}`,
     {
@@ -239,8 +193,6 @@ export async function updateRecord(
   id: number,
   record: UpdateRecordPayload,
 ): Promise<Record> {
-  const { API_BASE_URL } = await getConfig();
-
   const response = await fetch(`${API_BASE_URL}/records/${id}`, {
     method: "PUT",
     headers: await getHeaders(),
@@ -253,8 +205,6 @@ export async function updateRecord(
 }
 
 export async function deleteRecord(id: number): Promise<void> {
-  const { API_BASE_URL } = await getConfig();
-
   const response = await fetch(`${API_BASE_URL}/records/${id}`, {
     method: "DELETE",
     headers: await getHeaders(),
@@ -268,8 +218,6 @@ export async function notifyZones(
   zoneName?: string | null,
   force = false,
 ): Promise<string> {
-  const { API_BASE_URL } = await getConfig();
-
   const body: NotifyZonePayload = {
     force,
     zone_name: zoneName ?? null,

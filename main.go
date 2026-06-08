@@ -23,7 +23,7 @@ var distFS embed.FS
 
 const (
 	DEFAULT_PORT    = "9000"
-	DEFAULT_UI_PORT = "8000"
+	DEFAULT_UI_PORT = "9001"
 )
 
 // getPort returns the port from environment variable or default
@@ -61,7 +61,8 @@ func main() {
 	mux.HandleFunc("/api/public/settings", handlers.PublicSettingsHandler)
 	mux.HandleFunc("/api/settings", handlers.SettingsHandler)
 	mux.HandleFunc("/api/account", handlers.AuthMiddleware(handlers.AccountHandler))
-	mux.HandleFunc("/api/bindizr", handlers.AuthMiddleware(handlers.BindizrHandler))
+	mux.HandleFunc("/api/bindizr/settings", handlers.AuthMiddleware(handlers.BindizrSettingsHandler))
+	mux.HandleFunc("/api/bindizr/proxy/", handlers.AuthMiddleware(handlers.BindizrProxyHandler))
 	mux.HandleFunc("/api/cron", handlers.AuthMiddleware(handlers.CronHandler))
 	mux.HandleFunc("/api/auth/login", handlers.LoginHandler)
 	mux.HandleFunc("/api/auth/status", handlers.AuthStatusHandler)

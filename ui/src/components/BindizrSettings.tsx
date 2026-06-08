@@ -13,7 +13,7 @@ export default function BindizrSettings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("/api/bindizr", {
+      const res = await fetch("/api/bindizr/settings", {
         headers: getLocalApiHeaders(),
       });
       if (res.ok) {
@@ -78,7 +78,7 @@ export default function BindizrSettings() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/bindizr", {
+      const res = await fetch("/api/bindizr/settings", {
         method: "POST",
         headers: getLocalApiHeaders(),
         body: JSON.stringify({ bindizrUrl, secretKey }),
