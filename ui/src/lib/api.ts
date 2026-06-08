@@ -264,10 +264,14 @@ export async function deleteRecord(id: number): Promise<void> {
   }
 }
 
-export async function notifyZones(zoneName?: string | null): Promise<string> {
+export async function notifyZones(
+  zoneName?: string | null,
+  force = false,
+): Promise<string> {
   const { API_BASE_URL } = await getConfig();
 
   const body: NotifyZonePayload = {
+    force,
     zone_name: zoneName ?? null,
   };
 

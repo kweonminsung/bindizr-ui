@@ -69,6 +69,7 @@ export interface UpdateRecordPayload {
 
 export interface NotifyZonePayload {
   zone_name?: string | null;
+  force?: boolean;
 }
 
 export interface Pagination {
