@@ -1,5 +1,9 @@
 import {
+  BulkRecordItem,
+  BulkRecordsResult,
   CreateRecordPayload,
+  ImportZonePayload,
+  ImportZoneResult,
   ListResult,
   NotifyZonePayload,
   Pagination,
@@ -212,6 +216,42 @@ export async function deleteRecord(id: number): Promise<void> {
   if (!response.ok) {
     await throwApiError(response, "Failed to delete record");
   }
+}
+
+export async function importZoneFile(
+  zoneName: string,
+  payload: ImportZonePayload,
+): Promise<ImportZoneResult> {
+  const response = await fetch(
+    `${API_BASE_URL}/zones/${encodeURIComponent(zoneName)}/imports`,
+    {
+      method: "POST",
+      headers: await getHeaders(),
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!response.ok) {
+    await throwApiError(response, "Failed to import zone file");
+  }
+  return (await response.json()) as ImportZoneResult;
+}
+
+export async function createRecordsBulk(
+  zoneName: string,
+  records: BulkRecordItem[],
+): Promise<BulkRecordsResult> {
+  const response = await fetch(
+    `${API_BASE_URL}/zones/${encodeURIComponent(zoneName)}/records/bulk`,
+    {
+      method: "POST",
+      headers: await getHeaders(),
+      body: JSON.stringify({ records }),
+    },
+  );
+  if (!response.ok) {
+    await throwApiError(response, "Failed to bulk create records");
+  }
+  return (await response.json()) as BulkRecordsResult;
 }
 
 export async function notifyZones(

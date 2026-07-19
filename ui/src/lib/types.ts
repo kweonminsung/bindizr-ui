@@ -67,6 +67,45 @@ export interface UpdateRecordPayload {
   priority?: number | null;
 }
 
+export interface BulkRecordItem {
+  name: string;
+  record_type: RecordType;
+  value: RecordValue;
+  ttl?: number | null;
+  priority?: number | null;
+}
+
+export interface BulkRecordsResult {
+  inserted: number;
+  records: Record[];
+}
+
+export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
+
+export type ImportMode = (typeof IMPORT_MODES)[number];
+
+export interface ImportZonePayload {
+  content: string;
+  mode?: ImportMode;
+  dry_run?: boolean;
+}
+
+export interface ImportSummary {
+  parsed: number;
+  added: number;
+  deleted: number;
+  updated: number;
+  unchanged: number;
+  skipped: number;
+}
+
+export interface ImportZoneResult {
+  applied: boolean;
+  dry_run: boolean;
+  summary: ImportSummary;
+  errors: string[];
+}
+
 export interface NotifyZonePayload {
   zone_name?: string | null;
   force?: boolean;
