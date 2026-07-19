@@ -25,7 +25,7 @@ export default function AccountSettings() {
   useEffect(() => {
     const fetchAccountStatus = async () => {
       try {
-        const res = await fetch("/api/settings", {
+        const res = await fetch("/api/auth/status", {
           headers: getLocalApiHeaders(),
         });
         if (res.ok) {
@@ -95,7 +95,6 @@ export default function AccountSettings() {
 
   const handleAccountStatusChange = async (enable = false) => {
     if (!enable) {
-      // Disabling account
       setIsLoading(true);
       setStatusMessage("");
       try {
@@ -115,7 +114,6 @@ export default function AccountSettings() {
         setIsLoading(false);
       }
     } else {
-      // Enabling account, open modal
       setNewAccountUsername("");
       setNewAccountPassword("");
       setNewAccountConfirmPassword("");

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 
 export default function SetupPage() {
@@ -54,28 +55,12 @@ export default function SetupPage() {
   const testConnection = async () => {
     setError("");
     setSuccessMessage("");
-    if (
-      !bindizrUrl.startsWith("http://") &&
-      !bindizrUrl.startsWith("https://")
-    ) {
-      setError("Please enter a valid URL starting with http:// or https://");
-      return;
-    }
-    try {
-      const res = await fetch("/api/public/bindizr/test", {
-        method: "POST",
-        headers: getLocalApiHeaders({ auth: false }),
-        body: JSON.stringify({ bindizrUrl, secretKey }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSuccessMessage("Connection successful!");
-        setIsConnectionTested(true);
-      } else {
-        setError(data.message || "Connection failed.");
-      }
-    } catch (err) {
-      setError("Failed to connect to the server.");
+    const result = await testBindizrConnection(bindizrUrl, secretKey);
+    if (result.ok) {
+      setSuccessMessage(result.message);
+      setIsConnectionTested(true);
+    } else {
+      setError(result.message);
     }
   };
 

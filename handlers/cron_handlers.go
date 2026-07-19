@@ -41,19 +41,20 @@ func InitCron() {
 func runCronJob() {
 	log.Println("Running cron job...")
 	db.AddCronLog("Running cron job...")
-	// NOTE: The original logic called postDnsConfig and reloadDns from api.ts.
-	// This logic needs to be implemented in Go. For now, we'll just log.
-	// Implement the actual DNS config/reload logic here.
+	// TODO: implement the actual DNS config/reload logic.
 	db.AddCronLog("Cron job completed successfully.")
+}
+
+func unscheduleCronJobs() {
+	for _, entry := range c.Entries() {
+		c.Remove(entry.ID)
+	}
 }
 
 func scheduleCronJob(interval int) {
 	if c != nil {
-		for _, entry := range c.Entries() {
-			c.Remove(entry.ID)
-		}
-		spec := fmt.Sprintf("@every %ds", interval)
-		c.AddFunc(spec, runCronJob)
+		unscheduleCronJobs()
+		c.AddFunc(fmt.Sprintf("@every %ds", interval), runCronJob)
 		log.Printf("Scheduled cron job with interval: %d seconds", interval)
 	}
 }
@@ -123,11 +124,9 @@ func handlePostCron(w http.ResponseWriter, r *http.Request) {
 
 	if settings.Enabled {
 		scheduleCronJob(settings.Interval)
-		go runCronJob() // Run immediately in a new goroutine
+		go runCronJob()
 	} else {
-		for _, entry := range c.Entries() {
-			c.Remove(entry.ID)
-		}
+		unscheduleCronJobs()
 		log.Println("Cron job disabled and unscheduled")
 	}
 

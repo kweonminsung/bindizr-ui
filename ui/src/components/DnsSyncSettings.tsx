@@ -26,7 +26,7 @@ export default function DnsSyncSettings() {
       if (response.ok) {
         const data = await response.json();
         if (pageNum === 1) {
-          setCronEnabled(data.settings.enabled === 1);
+          setCronEnabled(Boolean(data.settings.enabled));
           setCronInterval(data.settings.interval);
           setLogs(data.logs);
         } else {
@@ -61,7 +61,7 @@ export default function DnsSyncSettings() {
       });
       if (response.ok) {
         setCronEnabled(newCronEnabled);
-        fetchSettings(); // Refresh logs
+        fetchSettings();
       } else {
         alert("Failed to update settings");
       }

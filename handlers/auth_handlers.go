@@ -55,6 +55,40 @@ func AuthStatusHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type authError struct {
+	status  int
+	message string
+}
+
+// authenticate validates the request's Bearer token and returns its claims.
+func authenticate(r *http.Request) (jwt.MapClaims, *authError) {
+	authHeader := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return nil, &authError{http.StatusUnauthorized, "Authorization header required"}
+	}
+
+	secret, err := db.GetNextAuthSecret()
+	if err != nil {
+		return nil, &authError{http.StatusInternalServerError, err.Error()}
+	}
+
+	token, err := jwt.Parse(authHeader[len("Bearer "):], func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, &authError{http.StatusUnauthorized, "Invalid token"}
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, &authError{http.StatusUnauthorized, "Invalid token claims"}
+	}
+	return claims, nil
+}
+
 // AuthMeHandler returns current user info if authenticated
 func AuthMeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -62,7 +96,6 @@ func AuthMeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if account is enabled
 	accountEnabled, err := db.IsAccountEnabled()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -70,41 +103,14 @@ func AuthMeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !accountEnabled {
-		// If account is disabled, return success (no auth required)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "no_auth_required"})
 		return
 	}
 
-	// Get token from Authorization header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		http.Error(w, "Authorization header required", http.StatusUnauthorized)
-		return
-	}
-
-	tokenString := authHeader[len("Bearer "):]
-	secret, err := db.GetNextAuthSecret()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secret), nil
-	})
-
-	if err != nil || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+	claims, authErr := authenticate(r)
+	if authErr != nil {
+		http.Error(w, authErr.message, authErr.status)
 		return
 	}
 
@@ -114,12 +120,8 @@ func AuthMeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := UserResponse{
-		Username: username,
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(UserResponse{Username: username})
 }
 
 // AuthLogoutHandler handles user logout
@@ -129,8 +131,7 @@ func AuthLogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For JWT-based auth, logout is typically handled on the client side
-	// by removing the token. We just return success here.
+	// JWT logout is handled client-side by discarding the token.
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "logged_out"})
 }
@@ -186,48 +187,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Check if accounts are enabled
 		accountEnabled, err := db.IsAccountEnabled()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// If accounts are disabled, skip authentication
-		if !accountEnabled {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Accounts are enabled, proceed with normal authentication
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
-			return
-		}
-
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
-			return
-		}
-
-		tokenString := authHeader[len("Bearer "):]
-		secret, err := db.GetNextAuthSecret()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		if accountEnabled {
+			if _, authErr := authenticate(r); authErr != nil {
+				http.Error(w, authErr.message, authErr.status)
+				return
 			}
-			return []byte(secret), nil
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
 		}
 
 		next.ServeHTTP(w, r)

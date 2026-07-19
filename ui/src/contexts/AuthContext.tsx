@@ -36,7 +36,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      // Check if setup is complete and account is enabled
       const statusResponse = await fetch("/api/auth/status");
       if (statusResponse.ok) {
         const status = await statusResponse.json();
@@ -44,7 +43,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAccountEnabled(status.accountEnabled);
 
         if (status.setupComplete && status.accountEnabled) {
-          // Check if user is authenticated
           const token = localStorage.getItem("auth_token");
           if (token) {
             const authResponse = await fetch("/api/auth/me", {
@@ -52,14 +50,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
             setIsAuthenticated(authResponse.ok);
             if (!authResponse.ok) {
-              // Token is invalid, remove it
               localStorage.removeItem("auth_token");
             }
           } else {
             setIsAuthenticated(false);
           }
         } else {
-          setIsAuthenticated(true); // No auth required
+          setIsAuthenticated(true);
         }
       }
     } catch (error) {

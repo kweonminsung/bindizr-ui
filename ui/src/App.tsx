@@ -4,8 +4,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Middleware from "@/components/Middleware";
 import Sidebar from "@/components/Sidebar";
 import MenuIcon from "./components/icons/MenuIcon";
-
-// Import page components
 import LoginPage from "@/pages/LoginPage";
 import ZonesPage from "@/pages/ZonesPage";
 import RecordsPage from "@/pages/RecordsPage";

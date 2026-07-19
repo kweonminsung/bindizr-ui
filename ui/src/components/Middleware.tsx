@@ -19,37 +19,20 @@ const Middleware: React.FC<MiddlewareProps> = ({ children }) => {
     );
   }
 
-  // Setup routing logic
   if (!setupComplete) {
-    // Only allow access to setup page
     if (location.pathname !== "/setup") {
       return <Navigate to="/setup" replace />;
     }
-  } else {
-    // Setup is complete, don't allow access to setup page
-    if (location.pathname === "/setup") {
-      return <Navigate to="/" replace />;
-    }
+  } else if (location.pathname === "/setup") {
+    return <Navigate to="/" replace />;
   }
 
-  // Authentication routing logic
-  if (accountEnabled) {
-    if (!isAuthenticated) {
-      // User not authenticated, only allow access to login page
-      if (location.pathname !== "/login") {
-        return <Navigate to="/login" replace />;
-      }
-    } else {
-      // User is authenticated, don't allow access to login page
-      if (location.pathname === "/login") {
-        return <Navigate to="/" replace />;
-      }
+  if (accountEnabled && !isAuthenticated) {
+    if (location.pathname !== "/login") {
+      return <Navigate to="/login" replace />;
     }
-  } else {
-    // Accounts are disabled, don't allow access to login page
-    if (location.pathname === "/login") {
-      return <Navigate to="/" replace />;
-    }
+  } else if (location.pathname === "/login") {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
