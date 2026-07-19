@@ -19,7 +19,7 @@ A modern web interface for managing DNS zones and records with [Bindizr](https:/
 ## Run with Docker
 
 ```bash
-$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-beta.4
+$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-beta.5
 ```
 
 Or with Docker Compose:

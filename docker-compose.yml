@@ -1,6 +1,6 @@
 services:
   bindizr-ui:
-    image: kweonminsung/bindizr-ui:0.1.0-beta.4
+    image: kweonminsung/bindizr-ui:0.1.0-beta.5
     ports:
       - "9000:9000"
     environment:
