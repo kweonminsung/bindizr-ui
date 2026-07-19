@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createZone, updateZone } from "@/lib/api";
+import { createZone, importZoneFile, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
@@ -40,6 +40,7 @@ const toFormString = (value: unknown, fallback: string) =>
 
 export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
+  const [zoneFileContent, setZoneFileContent] = useState("");
 
   useEffect(() => {
     if (zone) {
@@ -91,6 +92,28 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
         await updateZone(zone.name, payload);
       } else {
         await createZone(payload);
+
+        const content = zoneFileContent.trim();
+        if (content) {
+          try {
+            const result = await importZoneFile(payload.name, {
+              content,
+              mode: "append",
+            });
+            if (result.errors.length > 0) {
+              alert(
+                `Zone created, but no records were imported:\n${result.errors.join("\n")}`,
+              );
+            }
+          } catch (error) {
+            alert(
+              `Zone created, but importing the zone file failed: ${getErrorMessage(
+                error,
+                "unknown error",
+              )}`,
+            );
+          }
+        }
       }
       onSuccess();
     } catch (error) {
@@ -267,6 +290,28 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
           </div>
         </div>
       </div>
+
+      {!zone && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+            Zone File (optional)
+          </h3>
+          <div>
+            <textarea
+              id="zone_file_content"
+              name="zone_file_content"
+              value={zoneFileContent}
+              onChange={(e) => setZoneFileContent(e.target.value)}
+              rows={6}
+              placeholder={"www IN A 192.0.2.1\nmail IN A 192.0.2.2"}
+              className="w-full font-mono text-sm"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Paste BIND zone file text to import records into the new zone.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onSuccess} className="btn-secondary">
