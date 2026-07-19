@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-beta.4">
-        <img src="https://img.shields.io/badge/Compatible-0.1.0--beta.4-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-beta.5">
+        <img src="https://img.shields.io/badge/Compatible-0.1.0--beta.5-success" />
     </a>
 </p>
 
