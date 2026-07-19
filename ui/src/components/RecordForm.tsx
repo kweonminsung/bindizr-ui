@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { createRecord, updateRecord } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";

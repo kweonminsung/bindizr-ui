@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import Modal from "./Modal";
 
@@ -32,7 +33,7 @@ export default function BindizrSettings() {
   }, []);
 
   const handleOpenModal = () => {
-    fetchSettings(); // Re-fetch settings when opening modal to ensure fresh data
+    fetchSettings();
     setError("");
     setSuccessMessage("");
     setIsConnectionTested(false);
@@ -42,28 +43,12 @@ export default function BindizrSettings() {
   const testConnection = async () => {
     setError("");
     setSuccessMessage("");
-    if (
-      !bindizrUrl.startsWith("http://") &&
-      !bindizrUrl.startsWith("https://")
-    ) {
-      setError("Please enter a valid URL starting with http:// or https://");
-      return;
-    }
-    try {
-      const res = await fetch("/api/public/bindizr/test", {
-        method: "POST",
-        headers: getLocalApiHeaders({ auth: false }),
-        body: JSON.stringify({ bindizrUrl, secretKey }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSuccessMessage("Connection successful!");
-        setIsConnectionTested(true);
-      } else {
-        setError(data.message || "Connection failed.");
-      }
-    } catch (err) {
-      setError("Failed to connect to the server.");
+    const result = await testBindizrConnection(bindizrUrl, secretKey);
+    if (result.ok) {
+      setSuccessMessage(result.message);
+      setIsConnectionTested(true);
+    } else {
+      setError(result.message);
     }
   };
 

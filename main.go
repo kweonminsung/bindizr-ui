@@ -26,25 +26,13 @@ const (
 	DEFAULT_UI_PORT = "9001"
 )
 
-// getPort returns the port from environment variable or default
-func getPort() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = DEFAULT_PORT
+func envOr(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
-	return port
+	return fallback
 }
 
-// getUiPort returns the ui port from environment variable or default
-func getUiPort() string {
-	port := os.Getenv("UI_PORT")
-	if port == "" {
-		port = DEFAULT_UI_PORT
-	}
-	return port
-}
-
-// isDevelopment checks if we're in development mode
 func isDevelopment() bool {
 	env := os.Getenv("GO_ENV")
 	return env == "development" || env == "dev"
@@ -52,26 +40,20 @@ func isDevelopment() bool {
 
 func main() {
 	db.InitDB()
-	handlers.InitCron()
 
 	mux := http.NewServeMux()
 
-	// API routes
 	mux.HandleFunc("/api/public/bindizr/test", handlers.PublicBindizrTestHandler)
 	mux.HandleFunc("/api/public/settings", handlers.PublicSettingsHandler)
-	mux.HandleFunc("/api/settings", handlers.SettingsHandler)
 	mux.HandleFunc("/api/account", handlers.AuthMiddleware(handlers.AccountHandler))
 	mux.HandleFunc("/api/bindizr/settings", handlers.AuthMiddleware(handlers.BindizrSettingsHandler))
 	mux.HandleFunc("/api/bindizr/proxy/", handlers.AuthMiddleware(handlers.BindizrProxyHandler))
-	mux.HandleFunc("/api/cron", handlers.AuthMiddleware(handlers.CronHandler))
 	mux.HandleFunc("/api/auth/login", handlers.LoginHandler)
 	mux.HandleFunc("/api/auth/status", handlers.AuthStatusHandler)
 	mux.HandleFunc("/api/auth/me", handlers.AuthMeHandler)
-	mux.HandleFunc("/api/auth/logout", handlers.AuthLogoutHandler)
 
-	// Configure static file serving based on environment
 	if isDevelopment() {
-		uiPort := getUiPort()
+		uiPort := envOr("UI_PORT", DEFAULT_UI_PORT)
 		fmt.Printf("Development mode: Proxying to localhost:%s\n", uiPort)
 		devServerURL, err := url.Parse("http://localhost:" + uiPort)
 		if err != nil {
@@ -79,10 +61,9 @@ func main() {
 		}
 		proxy := httputil.NewSingleHostReverseProxy(devServerURL)
 
-		// Proxy all non-API routes to the dev server
+		// Proxy all non-API routes to the Vite dev server
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/api/") {
-				// This should not happen if API routes are registered first, but as a safeguard
 				http.NotFound(w, r)
 				return
 			}
@@ -90,7 +71,6 @@ func main() {
 		})
 	} else {
 		fmt.Println("Production mode: Using embedded ui/dist files")
-		// Production: serve embedded files
 		distSubFS, err := fs.Sub(distFS, "ui/dist")
 		if err != nil {
 			log.Fatal("Failed to create sub filesystem:", err)
@@ -98,7 +78,7 @@ func main() {
 
 		mux.Handle("/assets/", http.FileServer(http.FS(distSubFS)))
 
-		// Static file serving - serve embedded index.html for all non-API routes
+		// Serve embedded index.html for all non-asset routes (SPA fallback)
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			indexFile, err := distSubFS.Open("index.html")
 			if err != nil {
@@ -112,12 +92,10 @@ func main() {
 		})
 	}
 
-	port := getPort()
+	port := envOr("PORT", DEFAULT_PORT)
 	fmt.Printf("Starting server on port %s...\n", port)
 
-	// Apply logging middleware to all requests
 	loggedMux := middleware.LoggingMiddleware(mux)
-
 	if err := http.ListenAndServe(":"+port, loggedMux); err != nil {
 		log.Fatal(err)
 	}

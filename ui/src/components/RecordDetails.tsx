@@ -1,5 +1,3 @@
-"use client";
-
 import { Record } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 

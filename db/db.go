@@ -23,11 +23,6 @@ func InitDB() {
 		key TEXT PRIMARY KEY,
 		value TEXT
 	);
-	CREATE TABLE IF NOT EXISTS cron_logs (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-		message TEXT NOT NULL
-	);
 	`
 	_, err = DB.Exec(createTables)
 	if err != nil {
@@ -97,39 +92,4 @@ func IsAccountEnabled() (bool, error) {
 		return false, err
 	}
 	return username != "" && password != "", nil
-}
-
-type CronLog struct {
-	ID        int    `json:"id"`
-	Timestamp string `json:"timestamp"`
-	Message   string `json:"message"`
-}
-
-func AddCronLog(message string) error {
-	_, err := DB.Exec("INSERT INTO cron_logs (message) VALUES (?)", message)
-	return err
-}
-
-func GetCronLogs(limit, offset int) ([]CronLog, error) {
-	rows, err := DB.Query("SELECT id, timestamp, message FROM cron_logs ORDER BY timestamp DESC LIMIT ? OFFSET ?", limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	logs := make([]CronLog, 0)
-	for rows.Next() {
-		var log CronLog
-		if err := rows.Scan(&log.ID, &log.Timestamp, &log.Message); err != nil {
-			return nil, err
-		}
-		logs = append(logs, log)
-	}
-	return logs, nil
-}
-
-func GetTotalCronLogs() (int, error) {
-	var count int
-	err := DB.QueryRow("SELECT COUNT(*) FROM cron_logs").Scan(&count)
-	return count, err
 }

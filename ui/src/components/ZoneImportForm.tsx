@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { importZoneFile } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
