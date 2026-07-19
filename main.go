@@ -40,7 +40,6 @@ func isDevelopment() bool {
 
 func main() {
 	db.InitDB()
-	handlers.InitCron()
 
 	mux := http.NewServeMux()
 
@@ -49,11 +48,9 @@ func main() {
 	mux.HandleFunc("/api/account", handlers.AuthMiddleware(handlers.AccountHandler))
 	mux.HandleFunc("/api/bindizr/settings", handlers.AuthMiddleware(handlers.BindizrSettingsHandler))
 	mux.HandleFunc("/api/bindizr/proxy/", handlers.AuthMiddleware(handlers.BindizrProxyHandler))
-	mux.HandleFunc("/api/cron", handlers.AuthMiddleware(handlers.CronHandler))
 	mux.HandleFunc("/api/auth/login", handlers.LoginHandler)
 	mux.HandleFunc("/api/auth/status", handlers.AuthStatusHandler)
 	mux.HandleFunc("/api/auth/me", handlers.AuthMeHandler)
-	mux.HandleFunc("/api/auth/logout", handlers.AuthLogoutHandler)
 
 	if isDevelopment() {
 		uiPort := envOr("UI_PORT", DEFAULT_UI_PORT)

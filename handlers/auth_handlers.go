@@ -124,18 +124,6 @@ func AuthMeHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(UserResponse{Username: username})
 }
 
-// AuthLogoutHandler handles user logout
-func AuthLogoutHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// JWT logout is handled client-side by discarding the token.
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "logged_out"})
-}
-
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

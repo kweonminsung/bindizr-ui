@@ -93,22 +93,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = async () => {
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (token) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: getLocalApiHeaders(),
-        });
-      }
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      localStorage.removeItem("auth_token");
-      setIsAuthenticated(false);
-    }
+  const logout = () => {
+    localStorage.removeItem("auth_token");
+    setIsAuthenticated(false);
   };
+
   return (
     <AuthContext.Provider
       value={{
