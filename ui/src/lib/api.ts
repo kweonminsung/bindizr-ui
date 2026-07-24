@@ -253,6 +253,14 @@ export async function importZoneFile(
   return (await response.json()) as ImportZoneResult;
 }
 
+export async function exportZone(zoneName: string): Promise<string> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/export`,
+    "Failed to export zone",
+  );
+  return response.text();
+}
+
 export async function createRecordsBulk(
   zoneName: string,
   records: BulkRecordItem[],

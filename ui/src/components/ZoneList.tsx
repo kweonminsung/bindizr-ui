@@ -14,6 +14,7 @@ import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
+import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
 
 interface ZoneListProps {
@@ -48,6 +49,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [importingZone, setImportingZone] = useState<Zone | null>(null);
+  const [exportingZone, setExportingZone] = useState<Zone | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
@@ -290,6 +292,12 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                       Import
                     </button>
                     <button
+                      onClick={() => setExportingZone(zone)}
+                      className="font-medium text-teal-600 hover:underline"
+                    >
+                      Export
+                    </button>
+                    <button
                       onClick={() => handleDelete(zone)}
                       className="font-medium text-red-600 hover:underline"
                     >
@@ -322,6 +330,11 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             zone={importingZone}
             onApplied={() => setRefreshKey((prev) => prev + 1)}
           />
+        </Modal>
+      )}
+      {exportingZone && (
+        <Modal isOpen wide onClose={() => setExportingZone(null)}>
+          <ZoneExport zone={exportingZone} />
         </Modal>
       )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
