@@ -13,6 +13,7 @@ import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 import ZoneImportForm from "./ZoneImportForm";
+import ZoneTsigPolicies from "./ZoneTsigPolicies";
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
@@ -26,6 +27,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [importingZone, setImportingZone] = useState<Zone | null>(null);
+  const [tsigZone, setTsigZone] = useState<Zone | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
@@ -222,6 +224,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                       Import
                     </button>
                     <button
+                      onClick={() => setTsigZone(zone)}
+                      className="font-medium text-indigo-600 hover:underline"
+                    >
+                      TSIG
+                    </button>
+                    <button
                       onClick={() => handleNotify(zone)}
                       disabled={notifyingZoneName === zone.name}
                       className="font-medium text-amber-600 hover:underline disabled:text-gray-400 disabled:no-underline"
@@ -254,6 +262,11 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
             zone={importingZone}
             onApplied={() => setRefreshKey((prev) => prev + 1)}
           />
+        </Modal>
+      )}
+      {tsigZone && (
+        <Modal isOpen onClose={() => setTsigZone(null)}>
+          <ZoneTsigPolicies zone={tsigZone} />
         </Modal>
       )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
