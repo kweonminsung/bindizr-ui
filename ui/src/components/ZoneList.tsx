@@ -9,6 +9,8 @@ import {
   updatePageSearchParam,
 } from "@/lib/pageQuery";
 import { Zone } from "@/lib/types";
+import { toFilterNumber } from "@/lib/form";
+import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
@@ -20,6 +22,27 @@ interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
   onCreateZone: () => void;
 }
+
+interface ZoneFilters {
+  name: string;
+  primary_ns: string;
+  admin_email: string;
+  min_ttl: string;
+  max_ttl: string;
+  serial: string;
+}
+
+const defaultFilters: ZoneFilters = {
+  name: "",
+  primary_ns: "",
+  admin_email: "",
+  min_ttl: "",
+  max_ttl: "",
+  serial: "",
+};
+
+const countActiveFilters = (filters: ZoneFilters) =>
+  Object.values(filters).filter((value) => value.trim() !== "").length;
 
 export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
@@ -35,11 +58,13 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const currentPage = getPageFromSearchParams(searchParams);
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [notifyingZoneName, setNotifyingZoneName] = useState<string | null>(
     null,
   );
+  const activeFilterCount = countActiveFilters(filters);
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -47,6 +72,11 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
 
   const handlePageSizeChange = (pageSize: number) => {
     setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
+  };
+
+  const handleFilterChange = (key: keyof ZoneFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    handlePageChange(1);
   };
 
   useEffect(() => {
@@ -58,6 +88,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
       try {
         const data = await getZonesPage({
           search: searchQuery,
+          name: filters.name,
+          primary_ns: filters.primary_ns,
+          admin_email: filters.admin_email,
+          min_ttl: toFilterNumber(filters.min_ttl),
+          max_ttl: toFilterNumber(filters.max_ttl),
+          serial: toFilterNumber(filters.serial),
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
         });
@@ -81,7 +117,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [currentPage, refreshKey, searchQuery, zonesPerPage]);
+  }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
 
   const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
@@ -128,6 +164,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     loading &&
     zones.length === 0 &&
     searchQuery === "" &&
+    activeFilterCount === 0 &&
     currentPage === 1
   ) {
     return <p className="text-center text-gray-500">Loading zones...</p>;
@@ -156,6 +193,53 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           Create Zone
         </button>
       </div>
+      <FilterPanel
+        activeCount={activeFilterCount}
+        onReset={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+      >
+        <FilterField
+          id="filter_zone_name"
+          label="Name"
+          value={filters.name}
+          onChange={(value) => handleFilterChange("name", value)}
+        />
+        <FilterField
+          id="filter_zone_primary_ns"
+          label="Primary NS"
+          value={filters.primary_ns}
+          onChange={(value) => handleFilterChange("primary_ns", value)}
+        />
+        <FilterField
+          id="filter_zone_admin_email"
+          label="Admin Email"
+          value={filters.admin_email}
+          onChange={(value) => handleFilterChange("admin_email", value)}
+        />
+        <FilterField
+          id="filter_zone_min_ttl"
+          label="Min TTL"
+          type="number"
+          value={filters.min_ttl}
+          onChange={(value) => handleFilterChange("min_ttl", value)}
+        />
+        <FilterField
+          id="filter_zone_max_ttl"
+          label="Max TTL"
+          type="number"
+          value={filters.max_ttl}
+          onChange={(value) => handleFilterChange("max_ttl", value)}
+        />
+        <FilterField
+          id="filter_zone_serial"
+          label="Serial"
+          type="number"
+          value={filters.serial}
+          onChange={(value) => handleFilterChange("serial", value)}
+        />
+      </FilterPanel>
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
