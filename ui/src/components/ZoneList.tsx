@@ -17,7 +17,6 @@ import ZoneDetails from "./ZoneDetails";
 import ZoneImportForm from "./ZoneImportForm";
 
 interface ZoneListProps {
-  onEditZone: (zone: Zone) => void;
   onCreateZone: () => void;
 }
 
@@ -42,7 +41,7 @@ const defaultFilters: ZoneFilters = {
 const countActiveFilters = (filters: ZoneFilters) =>
   Object.values(filters).filter((value) => value.trim() !== "").length;
 
-export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
+export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
@@ -307,11 +306,13 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         <Modal isOpen={isDetailModalOpen} wide onClose={handleCloseDetails}>
           <ZoneDetails
             zone={selectedZone}
-            onEdit={(zone) => {
-              handleCloseDetails();
-              onEditZone(zone);
+            onZoneChanged={(updatedZone) => {
+              // A rename makes the name-based sync below miss, so adopt it here.
+              if (updatedZone) {
+                setSelectedZone(updatedZone);
+              }
+              setRefreshKey((prev) => prev + 1);
             }}
-            onZoneChanged={() => setRefreshKey((prev) => prev + 1)}
           />
         </Modal>
       )}

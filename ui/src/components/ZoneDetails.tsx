@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Zone } from "@/lib/types";
+import ZoneForm from "./ZoneForm";
 import ZoneSnapshots from "./ZoneSnapshots";
 import ZoneSyncTab from "./ZoneSyncTab";
 import ZoneTsigPolicies from "./ZoneTsigPolicies";
 
 interface ZoneDetailsProps {
   zone: Zone;
-  onEdit: (zone: Zone) => void;
-  onZoneChanged: () => void;
+  onZoneChanged: (zone?: Zone) => void;
 }
 
 const TABS = [
@@ -19,12 +19,14 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-export default function ZoneDetails({
-  zone,
-  onEdit,
-  onZoneChanged,
-}: ZoneDetailsProps) {
+export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
   const [activeTab, setActiveTab] = useState<TabId>("zone");
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleTabChange = (tab: TabId) => {
+    setIsEditing(false);
+    setActiveTab(tab);
+  };
 
   return (
     <div className="space-y-4">
@@ -37,7 +39,7 @@ export default function ZoneDetails({
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             aria-current={activeTab === tab.id ? "page" : undefined}
             className={`whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === tab.id
@@ -51,7 +53,18 @@ export default function ZoneDetails({
       </div>
 
       <div className="max-h-[65vh] overflow-y-auto">
-        {activeTab === "zone" && (
+        {activeTab === "zone" && isEditing && (
+          <ZoneForm
+            zone={zone}
+            onSuccess={(updatedZone) => {
+              setIsEditing(false);
+              onZoneChanged(updatedZone);
+            }}
+            onCancel={() => setIsEditing(false)}
+          />
+        )}
+
+        {activeTab === "zone" && !isEditing && (
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
@@ -96,7 +109,7 @@ export default function ZoneDetails({
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => onEdit(zone)}
+                onClick={() => setIsEditing(true)}
                 className="btn-primary"
               >
                 Edit Zone
