@@ -13,6 +13,7 @@ import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 import ZoneImportForm from "./ZoneImportForm";
+import ZoneSnapshots from "./ZoneSnapshots";
 import ZoneTsigPolicies from "./ZoneTsigPolicies";
 
 interface ZoneListProps {
@@ -28,6 +29,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [importingZone, setImportingZone] = useState<Zone | null>(null);
   const [tsigZone, setTsigZone] = useState<Zone | null>(null);
+  const [historyZone, setHistoryZone] = useState<Zone | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
@@ -224,6 +226,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                       Import
                     </button>
                     <button
+                      onClick={() => setHistoryZone(zone)}
+                      className="font-medium text-slate-600 hover:underline"
+                    >
+                      History
+                    </button>
+                    <button
                       onClick={() => setTsigZone(zone)}
                       className="font-medium text-indigo-600 hover:underline"
                     >
@@ -267,6 +275,14 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
       {tsigZone && (
         <Modal isOpen onClose={() => setTsigZone(null)}>
           <ZoneTsigPolicies zone={tsigZone} />
+        </Modal>
+      )}
+      {historyZone && (
+        <Modal isOpen wide onClose={() => setHistoryZone(null)}>
+          <ZoneSnapshots
+            zone={historyZone}
+            onRolledBack={() => setRefreshKey((prev) => prev + 1)}
+          />
         </Modal>
       )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
