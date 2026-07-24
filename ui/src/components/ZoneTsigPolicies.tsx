@@ -157,7 +157,7 @@ export default function ZoneTsigPolicies({ zone }: ZoneTsigPoliciesProps) {
         {!loading && selectableKeys.length === 0 ? (
           <p className="text-sm text-gray-500">
             No policy-based TSIG keys available.{" "}
-            <Link to="/tsig-keys" className="text-blue-600 hover:underline">
+            <Link to="/dns/tsig-keys" className="text-blue-600 hover:underline">
               Create one first
             </Link>
             .

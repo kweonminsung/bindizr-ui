@@ -1,6 +1,6 @@
 import NotifyControls from "@/components/NotifyControls";
 
-export default function DnsSettingsPage() {
+export default function NotifyPage() {
   return (
     <div>
       <NotifyControls />

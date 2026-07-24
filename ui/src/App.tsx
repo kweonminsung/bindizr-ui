@@ -10,13 +10,13 @@ import RecordsPage from "@/pages/RecordsPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SetupPage from "@/pages/SetupPage";
 import GeneralSettingsPage from "@/pages/GeneralSettingsPage";
-import DnsSettingsPage from "@/pages/DnsSettingsPage";
+import NotifyPage from "@/pages/NotifyPage";
 
 function App() {
   const location = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const showSidebar = ["/records", "/zones", "/tsig-keys", "/settings"].some(
-    (path) => location.pathname.startsWith(path),
+  const showSidebar = ["/records", "/zones", "/dns", "/settings"].some((path) =>
+    location.pathname.startsWith(path),
   );
 
   return (
@@ -45,7 +45,12 @@ function App() {
               <Route path="/" element={<Navigate to="/zones" replace />} />
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/records" element={<RecordsPage />} />
-              <Route path="/tsig-keys" element={<TsigKeysPage />} />
+              <Route
+                path="/dns"
+                element={<Navigate to="/dns/tsig-keys" replace />}
+              />
+              <Route path="/dns/tsig-keys" element={<TsigKeysPage />} />
+              <Route path="/dns/notify" element={<NotifyPage />} />
               <Route
                 path="/settings"
                 element={<Navigate to="/settings/general" replace />}
@@ -54,7 +59,10 @@ function App() {
                 path="/settings/general"
                 element={<GeneralSettingsPage />}
               />
-              <Route path="/settings/dns" element={<DnsSettingsPage />} />
+              <Route
+                path="/settings/dns"
+                element={<Navigate to="/dns/notify" replace />}
+              />
             </Routes>
           </main>
         </div>
