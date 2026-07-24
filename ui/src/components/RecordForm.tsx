@@ -3,7 +3,13 @@ import { createRecord, updateRecord } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
-import { Record, RECORD_TYPES, RecordType, Zone } from "@/lib/types";
+import {
+  PRIORITY_RECORD_TYPES,
+  Record,
+  RECORD_TYPES,
+  RecordType,
+  Zone,
+} from "@/lib/types";
 
 interface RecordFormProps {
   zoneName?: string;
@@ -63,6 +69,8 @@ export default function RecordForm({
     });
   }, [record, zoneName, zones]);
 
+  const supportsPriority = PRIORITY_RECORD_TYPES.includes(formData.record_type);
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -72,6 +80,11 @@ export default function RecordForm({
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      // Drop a priority left over from MX/SRV when switching to a type without one.
+      ...(name === "record_type" &&
+      !PRIORITY_RECORD_TYPES.includes(value as RecordType)
+        ? { priority: "" }
+        : {}),
     }));
   };
 
@@ -95,7 +108,9 @@ export default function RecordForm({
         record_type: formData.record_type,
         value,
         ttl: toOptionalNumber(formData.ttl, "TTL"),
-        priority: toOptionalNumber(formData.priority, "Priority"),
+        priority: supportsPriority
+          ? toOptionalNumber(formData.priority, "Priority")
+          : null,
       };
 
       if (record) {
@@ -174,7 +189,7 @@ export default function RecordForm({
             className="w-full"
           />
         </div>
-        <div>
+        <div className={supportsPriority ? undefined : "md:col-span-2"}>
           <label
             htmlFor="ttl"
             className="block text-sm font-medium text-gray-600 mb-1"
@@ -190,22 +205,24 @@ export default function RecordForm({
             className="w-full"
           />
         </div>
-        <div>
-          <label
-            htmlFor="priority"
-            className="block text-sm font-medium text-gray-600 mb-1"
-          >
-            Priority
-          </label>
-          <input
-            type="number"
-            id="priority"
-            name="priority"
-            value={formData.priority}
-            onChange={handleChange}
-            className="w-full"
-          />
-        </div>
+        {supportsPriority && (
+          <div>
+            <label
+              htmlFor="priority"
+              className="block text-sm font-medium text-gray-600 mb-1"
+            >
+              Priority
+            </label>
+            <input
+              type="number"
+              id="priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleChange}
+              className="w-full"
+            />
+          </div>
+        )}
         {!zoneName && !record && (
           <div className="md:col-span-2">
             <label

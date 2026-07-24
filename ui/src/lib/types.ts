@@ -39,6 +39,9 @@ export const RECORD_TYPES = [
 
 export type RecordType = (typeof RECORD_TYPES)[number];
 
+/** Only MX and SRV carry a priority. */
+export const PRIORITY_RECORD_TYPES: readonly RecordType[] = ["MX", "SRV"];
+
 export interface Record {
   id: number;
   name: string;
