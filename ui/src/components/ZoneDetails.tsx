@@ -1,4 +1,5 @@
 import { Zone } from "@/lib/types";
+import ZoneStatusPanel from "./ZoneStatusPanel";
 
 interface ZoneDetailsProps {
   zone: Zone;
@@ -49,6 +50,8 @@ export default function ZoneDetails({ zone }: ZoneDetailsProps) {
           </div>
         </div>
       </div>
+
+      <ZoneStatusPanel zoneName={zone.name} />
     </div>
   );
 }
