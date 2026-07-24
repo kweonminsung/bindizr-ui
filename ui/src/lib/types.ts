@@ -187,6 +187,35 @@ export interface SnapshotDetail {
   records: SnapshotRecord[];
 }
 
+export const SNAPSHOT_DIFF_CHANGES = ["added", "removed", "changed"] as const;
+
+export type SnapshotDiffChange = (typeof SNAPSHOT_DIFF_CHANGES)[number];
+
+/** One RRset (owner name + type) whose records differ between two serials. */
+export interface SnapshotDiffEntry {
+  change: SnapshotDiffChange;
+  name: string;
+  record_type: string;
+  /** Rdata at the `from` serial; empty for `added`. */
+  from_rdata: string[];
+  /** Rdata at the `to` serial; empty for `removed`. */
+  to_rdata: string[];
+  ttl?: number | null;
+}
+
+export interface SnapshotDiffSummary {
+  added: number;
+  removed: number;
+  changed: number;
+}
+
+export interface SnapshotDiff {
+  from_serial: number;
+  to_serial: number;
+  entries: SnapshotDiffEntry[];
+  summary: SnapshotDiffSummary;
+}
+
 export interface RollbackZonePayload {
   serial: number;
   dry_run?: boolean;

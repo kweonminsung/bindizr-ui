@@ -15,6 +15,7 @@ import {
   RollbackZonePayload,
   RollbackZoneResult,
   SnapshotDetail,
+  SnapshotDiff,
   TsigKey,
   UpdateRecordPayload,
   Zone,
@@ -293,6 +294,22 @@ export async function getZoneSnapshot(
     "Failed to fetch zone snapshot",
   );
   return (await response.json()) as SnapshotDetail;
+}
+
+export async function diffZoneSnapshots(
+  zoneName: string,
+  from: number,
+  to?: number,
+): Promise<SnapshotDiff> {
+  const params = new URLSearchParams();
+  appendQueryParam(params, "from", from);
+  appendQueryParam(params, "to", to);
+
+  const response = await apiFetch(
+    withQuery(`/zones/${encodeURIComponent(zoneName)}/snapshots/diff`, params),
+    "Failed to diff snapshots",
+  );
+  return (await response.json()) as SnapshotDiff;
 }
 
 export async function rollbackZone(

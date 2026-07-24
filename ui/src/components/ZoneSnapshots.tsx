@@ -9,6 +9,7 @@ import {
   ZoneSnapshot,
 } from "@/lib/types";
 import PaginationControls from "./PaginationControls";
+import ZoneSnapshotDiff from "./ZoneSnapshotDiff";
 
 interface ZoneSnapshotsProps {
   zone: Zone;
@@ -29,6 +30,7 @@ export default function ZoneSnapshots({
 
   const [detail, setDetail] = useState<SnapshotDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [diffFrom, setDiffFrom] = useState<number | null>(null);
 
   const [preview, setPreview] = useState<RollbackZoneResult | null>(null);
   const [rollbackPending, setRollbackPending] = useState(false);
@@ -119,6 +121,16 @@ export default function ZoneSnapshots({
     `${result.summary.records_added} added, ${result.summary.records_deleted} deleted, ${result.summary.records_unchanged} unchanged, SOA ${
       result.summary.soa_changed ? "changed" : "unchanged"
     }`;
+
+  if (diffFrom !== null) {
+    return (
+      <ZoneSnapshotDiff
+        zone={zone}
+        from={diffFrom}
+        onBack={() => setDiffFrom(null)}
+      />
+    );
+  }
 
   if (detail) {
     const { snapshot, records } = detail;
@@ -337,14 +349,29 @@ export default function ZoneSnapshots({
                     {snapshot.primary_ns}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleSelect(snapshot.serial)}
-                      disabled={detailLoading}
-                      className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                    >
-                      {detailLoading ? "Loading..." : "Inspect"}
-                    </button>
+                    <div className="flex justify-end items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => setDiffFrom(snapshot.serial)}
+                        disabled={snapshot.serial === zone.serial}
+                        title={
+                          snapshot.serial === zone.serial
+                            ? "This is the current serial"
+                            : "Diff against the current serial"
+                        }
+                        className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                      >
+                        Diff
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelect(snapshot.serial)}
+                        disabled={detailLoading}
+                        className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                      >
+                        {detailLoading ? "Loading..." : "Inspect"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
