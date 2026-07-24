@@ -7,6 +7,7 @@ import MenuIcon from "./components/icons/MenuIcon";
 import LoginPage from "@/pages/LoginPage";
 import ZonesPage from "@/pages/ZonesPage";
 import RecordsPage from "@/pages/RecordsPage";
+import TsigKeysPage from "@/pages/TsigKeysPage";
 import SetupPage from "@/pages/SetupPage";
 import GeneralSettingsPage from "@/pages/GeneralSettingsPage";
 import DnsSettingsPage from "@/pages/DnsSettingsPage";
@@ -14,8 +15,8 @@ import DnsSettingsPage from "@/pages/DnsSettingsPage";
 function App() {
   const location = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const showSidebar = ["/records", "/zones", "/settings"].some((path) =>
-    location.pathname.startsWith(path),
+  const showSidebar = ["/records", "/zones", "/tsig-keys", "/settings"].some(
+    (path) => location.pathname.startsWith(path),
   );
 
   return (
@@ -44,6 +45,7 @@ function App() {
               <Route path="/" element={<Navigate to="/zones" replace />} />
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/records" element={<RecordsPage />} />
+              <Route path="/tsig-keys" element={<TsigKeysPage />} />
               <Route
                 path="/settings"
                 element={<Navigate to="/settings/general" replace />}

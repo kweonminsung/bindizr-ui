@@ -68,6 +68,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </Link>
             </li>
             <li>
+              <Link
+                to="/tsig-keys"
+                className={linkClasses("/tsig-keys")}
+                onClick={onClose}
+              >
+                TSIG Keys
+              </Link>
+            </li>
+            <li>
               <button
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                 className={`w-full text-left px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out flex justify-between items-center ${
