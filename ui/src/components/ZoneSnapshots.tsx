@@ -124,7 +124,7 @@ export default function ZoneSnapshots({
     const { snapshot, records } = detail;
 
     return (
-      <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+      <div className="space-y-6">
         <div>
           <button
             type="button"
@@ -133,9 +133,9 @@ export default function ZoneSnapshots({
           >
             ← Back to history
           </button>
-          <h2 className="text-2xl font-bold text-gray-800 mt-2">
+          <h3 className="text-xl font-bold text-gray-800 mt-2">
             Serial {snapshot.serial}
-          </h2>
+          </h3>
           <p className="text-sm text-gray-500">
             {formatDateTime(snapshot.created_at)}
           </p>
@@ -280,12 +280,13 @@ export default function ZoneSnapshots({
   }
 
   return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">Snapshot History</h2>
+        <h3 className="text-lg font-semibold text-gray-700">
+          Snapshot History
+        </h3>
         <p className="text-sm text-gray-500">
-          Every mutation of <span className="font-medium">{zone.name}</span>
-          {" records a snapshot. Current serial: "}
+          Every mutation records a snapshot. Current serial:{" "}
           {zone.serial ?? "-"}
         </p>
       </div>

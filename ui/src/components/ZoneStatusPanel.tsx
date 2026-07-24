@@ -5,6 +5,8 @@ import { SecondaryStatus, ZoneStatus } from "@/lib/types";
 
 interface ZoneStatusPanelProps {
   zoneName: string;
+  /** Bumped by the parent to re-probe, e.g. right after a NOTIFY. */
+  refreshToken?: number;
 }
 
 const STATUS_STYLES: Record<SecondaryStatus, string> = {
@@ -21,7 +23,10 @@ const STATUS_LABELS: Record<SecondaryStatus, string> = {
   unreachable: "Unreachable",
 };
 
-export default function ZoneStatusPanel({ zoneName }: ZoneStatusPanelProps) {
+export default function ZoneStatusPanel({
+  zoneName,
+  refreshToken = 0,
+}: ZoneStatusPanelProps) {
   const [status, setStatus] = useState<ZoneStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +59,7 @@ export default function ZoneStatusPanel({ zoneName }: ZoneStatusPanelProps) {
     return () => {
       active = false;
     };
-  }, [zoneName, refreshKey]);
+  }, [zoneName, refreshKey, refreshToken]);
 
   return (
     <div className="space-y-3">

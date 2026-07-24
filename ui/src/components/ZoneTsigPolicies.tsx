@@ -103,12 +103,11 @@ export default function ZoneTsigPolicies({ zone }: ZoneTsigPoliciesProps) {
   };
 
   return (
-    <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">TSIG Policies</h2>
+        <h3 className="text-lg font-semibold text-gray-700">TSIG Policies</h3>
         <p className="text-sm text-gray-500">
-          Which keys may update which records of{" "}
-          <span className="font-medium">{zone.name}</span> via nsupdate.
+          Which keys may update which records of this zone via nsupdate.
         </p>
       </div>
 

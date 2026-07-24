@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
+import { getZonesPage, deleteZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -15,8 +15,6 @@ import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 import ZoneImportForm from "./ZoneImportForm";
-import ZoneSnapshots from "./ZoneSnapshots";
-import ZoneTsigPolicies from "./ZoneTsigPolicies";
 
 interface ZoneListProps {
   onEditZone: (zone: Zone) => void;
@@ -51,8 +49,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [importingZone, setImportingZone] = useState<Zone | null>(null);
-  const [tsigZone, setTsigZone] = useState<Zone | null>(null);
-  const [historyZone, setHistoryZone] = useState<Zone | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
@@ -61,9 +57,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [notifyingZoneName, setNotifyingZoneName] = useState<string | null>(
-    null,
-  );
   const activeFilterCount = countActiveFilters(filters);
 
   const handlePageChange = (page: number) => {
@@ -100,6 +93,12 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         if (active) {
           setZones(data.items);
           setTotalZones(data.pagination.total);
+          // Keep an open details modal in sync, e.g. the serial after a rollback.
+          setSelectedZone((prev) =>
+            prev
+              ? (data.items.find((zone) => zone.name === prev.name) ?? prev)
+              : prev,
+          );
         }
       } catch (error) {
         if (active) {
@@ -137,18 +136,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
   const handleShowDetails = (zone: Zone) => {
     setSelectedZone(zone);
     setIsDetailModalOpen(true);
-  };
-
-  const handleNotify = async (zone: Zone) => {
-    setNotifyingZoneName(zone.name);
-    try {
-      const message = await notifyZones(zone.name);
-      alert(message);
-    } catch (error) {
-      alert(getErrorMessage(error, "Failed to send DNS NOTIFY"));
-    } finally {
-      setNotifyingZoneName(null);
-    }
   };
 
   const handleCloseDetails = () => {
@@ -298,37 +285,10 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                       Details
                     </button>
                     <button
-                      onClick={() => onEditZone(zone)}
-                      className="font-medium text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
                       onClick={() => setImportingZone(zone)}
                       className="font-medium text-purple-600 hover:underline"
                     >
                       Import
-                    </button>
-                    <button
-                      onClick={() => setHistoryZone(zone)}
-                      className="font-medium text-slate-600 hover:underline"
-                    >
-                      History
-                    </button>
-                    <button
-                      onClick={() => setTsigZone(zone)}
-                      className="font-medium text-indigo-600 hover:underline"
-                    >
-                      TSIG
-                    </button>
-                    <button
-                      onClick={() => handleNotify(zone)}
-                      disabled={notifyingZoneName === zone.name}
-                      className="font-medium text-amber-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                    >
-                      {notifyingZoneName === zone.name
-                        ? "Notifying..."
-                        : "Notify"}
                     </button>
                     <button
                       onClick={() => handleDelete(zone)}
@@ -344,8 +304,15 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         </table>
       </div>
       {selectedZone && (
-        <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
-          <ZoneDetails zone={selectedZone} />
+        <Modal isOpen={isDetailModalOpen} wide onClose={handleCloseDetails}>
+          <ZoneDetails
+            zone={selectedZone}
+            onEdit={(zone) => {
+              handleCloseDetails();
+              onEditZone(zone);
+            }}
+            onZoneChanged={() => setRefreshKey((prev) => prev + 1)}
+          />
         </Modal>
       )}
       {importingZone && (
@@ -353,19 +320,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           <ZoneImportForm
             zone={importingZone}
             onApplied={() => setRefreshKey((prev) => prev + 1)}
-          />
-        </Modal>
-      )}
-      {tsigZone && (
-        <Modal isOpen onClose={() => setTsigZone(null)}>
-          <ZoneTsigPolicies zone={tsigZone} />
-        </Modal>
-      )}
-      {historyZone && (
-        <Modal isOpen wide onClose={() => setHistoryZone(null)}>
-          <ZoneSnapshots
-            zone={historyZone}
-            onRolledBack={() => setRefreshKey((prev) => prev + 1)}
           />
         </Modal>
       )}
