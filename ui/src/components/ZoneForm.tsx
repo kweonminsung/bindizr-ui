@@ -6,7 +6,8 @@ import { Zone, ZonePayload } from "@/lib/types";
 
 interface ZoneFormProps {
   zone: Zone | null;
-  onSuccess: () => void;
+  onSuccess: (zone: Zone) => void;
+  onCancel: () => void;
 }
 
 interface ZoneFormData {
@@ -36,7 +37,7 @@ const defaultFormData: ZoneFormData = {
 const toFormString = (value: unknown, fallback: string) =>
   value === null || value === undefined ? fallback : String(value);
 
-export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
+export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
 
@@ -86,10 +87,12 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
         minimum_ttl: toOptionalNumber(formData.minimum_ttl, "Minimum TTL"),
       };
 
+      let savedZone: Zone;
+
       if (zone) {
-        await updateZone(zone.name, payload);
+        savedZone = await updateZone(zone.name, payload);
       } else {
-        await createZone(payload);
+        savedZone = await createZone(payload);
 
         const content = zoneFileContent.trim();
         if (content) {
@@ -113,7 +116,7 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
           }
         }
       }
-      onSuccess();
+      onSuccess(savedZone);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to save zone"));
     }
@@ -312,7 +315,7 @@ export default function ZoneForm({ zone, onSuccess }: ZoneFormProps) {
       )}
 
       <div className="flex justify-end space-x-2 pt-4">
-        <button type="button" onClick={onSuccess} className="btn-secondary">
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
         <button type="submit" className="btn-primary">

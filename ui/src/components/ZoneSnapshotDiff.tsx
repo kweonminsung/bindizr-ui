@@ -1,0 +1,151 @@
+import { useEffect, useState } from "react";
+import { diffZoneSnapshots } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
+import { SnapshotDiff, SnapshotDiffChange, Zone } from "@/lib/types";
+
+interface ZoneSnapshotDiffProps {
+  zone: Zone;
+  from: number;
+  /** Omitted compares against the current serial. */
+  to?: number;
+  onBack: () => void;
+}
+
+const CHANGE_STYLES: Record<SnapshotDiffChange, string> = {
+  added: "bg-green-50 border-green-200",
+  removed: "bg-red-50 border-red-200",
+  changed: "bg-amber-50 border-amber-200",
+};
+
+const CHANGE_SIGNS: Record<SnapshotDiffChange, string> = {
+  added: "+",
+  removed: "−",
+  changed: "~",
+};
+
+const CHANGE_SIGN_STYLES: Record<SnapshotDiffChange, string> = {
+  added: "text-green-700",
+  removed: "text-red-700",
+  changed: "text-amber-700",
+};
+
+export default function ZoneSnapshotDiff({
+  zone,
+  from,
+  to,
+  onBack,
+}: ZoneSnapshotDiffProps) {
+  const [diff, setDiff] = useState<SnapshotDiff | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchDiff() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await diffZoneSnapshots(zone.name, from, to);
+        if (active) {
+          setDiff(data);
+        }
+      } catch (fetchError) {
+        if (active) {
+          setError(getErrorMessage(fetchError, "Failed to diff snapshots"));
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchDiff();
+
+    return () => {
+      active = false;
+    };
+  }, [zone.name, from, to]);
+
+  // The response resolves an omitted `to` to the current serial.
+  const fromSerial = diff?.from_serial ?? from;
+  const toSerial = diff?.to_serial ?? to;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-sm font-medium text-blue-600 hover:underline"
+        >
+          ← Back to history
+        </button>
+        <h3 className="text-xl font-bold text-gray-800 mt-2">
+          Serial {fromSerial} → {toSerial ?? "current"}
+        </h3>
+        {diff && (
+          <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
+            <span className="rounded-full bg-green-100 px-2 py-1 text-green-700">
+              +{diff.summary.added} added
+            </span>
+            <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">
+              −{diff.summary.removed} removed
+            </span>
+            <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">
+              ~{diff.summary.changed} changed
+            </span>
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-gray-500">Computing diff...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
+      ) : !diff || diff.entries.length === 0 ? (
+        <p className="text-gray-500">
+          No record differences between these serials.
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {diff.entries.map((entry, index) => (
+            <li
+              key={`${entry.name}-${entry.record_type}-${index}`}
+              className={`flex items-baseline gap-2 rounded-md border px-2 py-1 text-sm ${CHANGE_STYLES[entry.change]}`}
+            >
+              <span
+                className={`font-mono font-bold ${CHANGE_SIGN_STYLES[entry.change]}`}
+              >
+                {CHANGE_SIGNS[entry.change]}
+              </span>
+              <span className="font-medium text-gray-900 break-all">
+                {entry.name}
+              </span>
+              <span className="text-gray-500">{entry.record_type}</span>
+              {entry.ttl != null && (
+                <span className="text-gray-400">TTL {entry.ttl}</span>
+              )}
+              <span className="min-w-0 flex-1 text-right font-mono break-all">
+                {entry.change !== "added" && (
+                  <span className="text-red-700">
+                    {entry.from_rdata.join(", ")}
+                  </span>
+                )}
+                {entry.change === "changed" && (
+                  <span className="text-gray-400"> → </span>
+                )}
+                {entry.change !== "removed" && (
+                  <span className="text-green-700">
+                    {entry.to_rdata.join(", ")}
+                  </span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

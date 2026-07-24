@@ -7,25 +7,82 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+interface NavLink {
+  to: string;
+  label: string;
+}
+
+const DNS_LINKS: NavLink[] = [
+  { to: "/dns/tsig-keys", label: "TSIG Keys" },
+  { to: "/dns/notify", label: "Notify" },
+];
+
+const SETTINGS_LINKS: NavLink[] = [
+  { to: "/settings/general", label: "General" },
+];
+
+const linkClasses = (pathname: string, path: string) => {
+  const isActive = pathname.startsWith(path);
+  return `block px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
+    isActive ? "bg-white text-(--primary)" : ""
+  }`;
+};
+
+const subLinkClasses = (pathname: string, path: string) => {
+  const isActive = pathname.startsWith(path);
+  return `block pl-8 pr-6 py-3 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
+    isActive ? "bg-white text-(--primary)" : ""
+  }`;
+};
+
+interface NavGroupProps {
+  label: string;
+  basePath: string;
+  links: NavLink[];
+  onNavigate: () => void;
+}
+
+function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
+  const { pathname } = useLocation();
+  const [isExpanded, setIsExpanded] = useState(pathname.startsWith(basePath));
+
+  return (
+    <li>
+      <button
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-expanded={isExpanded}
+        className={`w-full text-left px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out flex justify-between items-center ${
+          pathname.startsWith(basePath) ? "bg-white text-(--primary)" : ""
+        }`}
+      >
+        {label}
+        <ChevronDownIcon
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isExpanded ? "transform rotate-180" : ""
+          }`}
+        />
+      </button>
+      {isExpanded && (
+        <ul className="bg-gray-700">
+          {links.map((link) => (
+            <li key={link.to}>
+              <Link
+                to={link.to}
+                className={subLinkClasses(pathname, link.to)}
+                onClick={onNavigate}
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const location = useLocation();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  const linkClasses = (path: string, exact = false) => {
-    const isActive = exact
-      ? location.pathname === path
-      : location.pathname.startsWith(path);
-    return `block px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
-      isActive ? "bg-white text-(--primary)" : ""
-    }`;
-  };
-
-  const subLinkClasses = (path: string) => {
-    const isActive = location.pathname.startsWith(path);
-    return `block pl-8 pr-6 py-3 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
-      isActive ? "bg-white text-(--primary)" : ""
-    }`;
-  };
+  const { pathname } = useLocation();
 
   return (
     <>
@@ -52,7 +109,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <li>
               <Link
                 to="/zones"
-                className={linkClasses("/zones")}
+                className={linkClasses(pathname, "/zones")}
                 onClick={onClose}
               >
                 Zones
@@ -61,51 +118,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <li>
               <Link
                 to="/records"
-                className={linkClasses("/records")}
+                className={linkClasses(pathname, "/records")}
                 onClick={onClose}
               >
                 Records
               </Link>
             </li>
-            <li>
-              <button
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`w-full text-left px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out flex justify-between items-center ${
-                  location.pathname.startsWith("/settings")
-                    ? "bg-white text-(--primary)"
-                    : ""
-                }`}
-              >
-                Settings
-                <ChevronDownIcon
-                  className={`w-4 h-4 transition-transform duration-200 ${
-                    isSettingsOpen ? "transform rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {isSettingsOpen && (
-                <ul className="bg-gray-700">
-                  <li>
-                    <Link
-                      to="/settings/general"
-                      className={subLinkClasses("/settings/general")}
-                      onClick={onClose}
-                    >
-                      General
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/settings/dns"
-                      className={subLinkClasses("/settings/dns")}
-                      onClick={onClose}
-                    >
-                      DNS
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </li>
+            <NavGroup
+              label="DNS"
+              basePath="/dns"
+              links={DNS_LINKS}
+              onNavigate={onClose}
+            />
+            <NavGroup
+              label="Settings"
+              basePath="/settings"
+              links={SETTINGS_LINKS}
+              onNavigate={onClose}
+            />
           </ul>
         </nav>
         <footer className="text-center text-xs text-gray-200 py-4">
