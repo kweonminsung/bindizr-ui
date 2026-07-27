@@ -1,7 +1,13 @@
-import { RecordValue } from "./types";
+import { RecordDiffValue, RecordValue } from "./types";
 
 export function formatRecordValue(value: RecordValue) {
   return Array.isArray(value) ? value.join("") : value;
+}
+
+/** Zone-file rdata of a diff value: MX and SRV put the priority first. */
+export function formatRecordRdata({ value, priority }: RecordDiffValue) {
+  const formatted = formatRecordValue(value);
+  return priority != null ? `${priority} ${formatted}` : formatted;
 }
 
 export function recordValueToInput(value: RecordValue) {

@@ -10,33 +10,57 @@ import {
 } from "@/lib/pageQuery";
 import { Record, RECORD_TYPES, RecordType } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
+import { toFilterNumber } from "@/lib/form";
+import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
 
 interface RecordListProps {
   zoneName?: string;
-  onEditRecord: (record: Record) => void;
   onCreateRecord: () => void;
 }
 
+interface RecordFilters {
+  name: string;
+  value: string;
+  min_ttl: string;
+  max_ttl: string;
+  min_priority: string;
+  max_priority: string;
+}
+
+const defaultFilters: RecordFilters = {
+  name: "",
+  value: "",
+  min_ttl: "",
+  max_ttl: "",
+  min_priority: "",
+  max_priority: "",
+};
+
+const countActiveFilters = (filters: RecordFilters) =>
+  Object.values(filters).filter((value) => value.trim() !== "").length;
+
 export default function RecordList({
   zoneName,
-  onEditRecord,
   onCreateRecord,
 }: RecordListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailEditing, setDetailEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<RecordType | "">("");
+  const [filters, setFilters] = useState<RecordFilters>(defaultFilters);
   const [totalRecords, setTotalRecords] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const activeFilterCount = countActiveFilters(filters);
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -44,6 +68,11 @@ export default function RecordList({
 
   const handlePageSizeChange = (pageSize: number) => {
     setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
+  };
+
+  const handleFilterChange = (key: keyof RecordFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    handlePageChange(1);
   };
 
   useEffect(() => {
@@ -57,6 +86,12 @@ export default function RecordList({
           zone_name: zoneName,
           search: searchQuery,
           record_type: selectedType,
+          name: filters.name,
+          value: filters.value,
+          min_ttl: toFilterNumber(filters.min_ttl),
+          max_ttl: toFilterNumber(filters.max_ttl),
+          min_priority: toFilterNumber(filters.min_priority),
+          max_priority: toFilterNumber(filters.max_priority),
           limit: recordsPerPage,
           offset: (currentPage - 1) * recordsPerPage,
         });
@@ -82,6 +117,7 @@ export default function RecordList({
     };
   }, [
     currentPage,
+    filters,
     recordsPerPage,
     refreshKey,
     searchQuery,
@@ -104,8 +140,9 @@ export default function RecordList({
     }
   };
 
-  const handleShowDetails = (record: Record) => {
+  const handleShowDetails = (record: Record, editing = false) => {
     setSelectedRecord(record);
+    setDetailEditing(editing);
     setIsDetailModalOpen(true);
   };
 
@@ -119,12 +156,10 @@ export default function RecordList({
     records.length === 0 &&
     searchQuery === "" &&
     selectedType === "" &&
+    activeFilterCount === 0 &&
     currentPage === 1
   ) {
     return <p className="text-center text-gray-500">Loading records...</p>;
-  }
-  if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
   }
 
   const indexOfFirstRecord = (currentPage - 1) * recordsPerPage;
@@ -167,7 +202,62 @@ export default function RecordList({
           Create Record
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <FilterPanel
+        activeCount={activeFilterCount}
+        onReset={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+      >
+        <FilterField
+          id="filter_record_name"
+          label="Name"
+          value={filters.name}
+          onChange={(value) => handleFilterChange("name", value)}
+        />
+        <FilterField
+          id="filter_record_value"
+          label="Value contains"
+          value={filters.value}
+          onChange={(value) => handleFilterChange("value", value)}
+        />
+        <FilterField
+          id="filter_record_min_ttl"
+          label="Min TTL"
+          type="number"
+          value={filters.min_ttl}
+          onChange={(value) => handleFilterChange("min_ttl", value)}
+        />
+        <FilterField
+          id="filter_record_max_ttl"
+          label="Max TTL"
+          type="number"
+          value={filters.max_ttl}
+          onChange={(value) => handleFilterChange("max_ttl", value)}
+        />
+        <FilterField
+          id="filter_record_min_priority"
+          label="Min Priority"
+          type="number"
+          value={filters.min_priority}
+          onChange={(value) => handleFilterChange("min_priority", value)}
+        />
+        <FilterField
+          id="filter_record_max_priority"
+          label="Max Priority"
+          type="number"
+          value={filters.max_priority}
+          onChange={(value) => handleFilterChange("max_priority", value)}
+        />
+      </FilterPanel>
+      {/* Not an early return: a rejected filter must stay correctable. */}
+      {error && (
+        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+          {records.length > 0 && " — showing the last results that loaded."}
+        </p>
+      )}
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
@@ -218,7 +308,7 @@ export default function RecordList({
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
-                      onClick={() => onEditRecord(record)}
+                      onClick={() => handleShowDetails(record, true)}
                       className="font-medium text-blue-600 hover:underline"
                     >
                       Edit
@@ -238,7 +328,14 @@ export default function RecordList({
       </div>
       {selectedRecord && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
-          <RecordDetails record={selectedRecord} />
+          <RecordDetails
+            record={selectedRecord}
+            defaultEditing={detailEditing}
+            onRecordChanged={(updatedRecord) => {
+              setSelectedRecord(updatedRecord);
+              setRefreshKey((prev) => prev + 1);
+            }}
+          />
         </Modal>
       )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">

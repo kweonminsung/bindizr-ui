@@ -18,6 +18,18 @@ export const toRequiredNumber = (value: string, fieldName = "Value") => {
   return parseFiniteNumber(trimmed, fieldName);
 };
 
+/** Ignored while empty or half-typed; the fields these filter on are integers. */
+export const toFilterNumber = (value: string) => {
+  const trimmed = value.trim();
+
+  if (trimmed === "") {
+    return undefined;
+  }
+
+  const parsed = Number(trimmed);
+  return Number.isInteger(parsed) ? parsed : undefined;
+};
+
 export const toOptionalNumber = (value: string, fieldName = "Value") => {
   const trimmed = value.trim();
 

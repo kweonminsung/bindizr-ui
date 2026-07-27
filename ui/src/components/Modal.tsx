@@ -3,10 +3,16 @@ import React from "react";
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
+  wide?: boolean;
   children: React.ReactNode;
 }
 
-export default function Modal({ isOpen, onClose, children }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  wide = false,
+  children,
+}: ModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -16,7 +22,9 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
     >
       <div className="fixed inset-0 bg-black opacity-50 cursor-pointer"></div>
       <div
-        className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg relative border border-gray-200"
+        className={`bg-white p-6 rounded-lg shadow-2xl w-full relative border border-gray-200 ${
+          wide ? "max-w-3xl" : "max-w-lg"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <button

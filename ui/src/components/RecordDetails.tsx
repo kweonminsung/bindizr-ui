@@ -1,11 +1,34 @@
+import { useState } from "react";
 import { Record } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
+import RecordForm from "./RecordForm";
 
 interface RecordDetailsProps {
   record: Record;
+  onRecordChanged: (record: Record) => void;
+  defaultEditing?: boolean;
 }
 
-export default function RecordDetails({ record }: RecordDetailsProps) {
+export default function RecordDetails({
+  record,
+  onRecordChanged,
+  defaultEditing = false,
+}: RecordDetailsProps) {
+  const [isEditing, setIsEditing] = useState(defaultEditing);
+
+  if (isEditing) {
+    return (
+      <RecordForm
+        record={record}
+        onSuccess={(updatedRecord) => {
+          setIsEditing(false);
+          onRecordChanged(updatedRecord);
+        }}
+        onCancel={() => setIsEditing(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">Record Details</h2>
@@ -43,6 +66,16 @@ export default function RecordDetails({ record }: RecordDetailsProps) {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          className="btn-primary"
+        >
+          Edit Record
+        </button>
       </div>
     </div>
   );

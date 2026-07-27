@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getZonesPage, deleteZone, notifyZones } from "@/lib/api";
+import { getZonesPage, deleteZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -9,33 +9,56 @@ import {
   updatePageSearchParam,
 } from "@/lib/pageQuery";
 import { Zone } from "@/lib/types";
+import { toFilterNumber } from "@/lib/form";
+import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
+import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
 
 interface ZoneListProps {
-  onEditZone: (zone: Zone) => void;
   onCreateZone: () => void;
 }
 
-export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
+interface ZoneFilters {
+  name: string;
+  primary_ns: string;
+  admin_email: string;
+  min_ttl: string;
+  max_ttl: string;
+  serial: string;
+}
+
+const defaultFilters: ZoneFilters = {
+  name: "",
+  primary_ns: "",
+  admin_email: "",
+  min_ttl: "",
+  max_ttl: "",
+  serial: "",
+};
+
+const countActiveFilters = (filters: ZoneFilters) =>
+  Object.values(filters).filter((value) => value.trim() !== "").length;
+
+export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [importingZone, setImportingZone] = useState<Zone | null>(null);
+  const [exportingZone, setExportingZone] = useState<Zone | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [notifyingZoneName, setNotifyingZoneName] = useState<string | null>(
-    null,
-  );
+  const activeFilterCount = countActiveFilters(filters);
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -43,6 +66,11 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
 
   const handlePageSizeChange = (pageSize: number) => {
     setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
+  };
+
+  const handleFilterChange = (key: keyof ZoneFilters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    handlePageChange(1);
   };
 
   useEffect(() => {
@@ -54,12 +82,24 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
       try {
         const data = await getZonesPage({
           search: searchQuery,
+          name: filters.name,
+          primary_ns: filters.primary_ns,
+          admin_email: filters.admin_email,
+          min_ttl: toFilterNumber(filters.min_ttl),
+          max_ttl: toFilterNumber(filters.max_ttl),
+          serial: toFilterNumber(filters.serial),
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
         });
         if (active) {
           setZones(data.items);
           setTotalZones(data.pagination.total);
+          // Keep an open details modal in sync, e.g. the serial after a rollback.
+          setSelectedZone((prev) =>
+            prev
+              ? (data.items.find((zone) => zone.name === prev.name) ?? prev)
+              : prev,
+          );
         }
       } catch (error) {
         if (active) {
@@ -77,7 +117,7 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [currentPage, refreshKey, searchQuery, zonesPerPage]);
+  }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
 
   const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
@@ -99,18 +139,6 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     setIsDetailModalOpen(true);
   };
 
-  const handleNotify = async (zone: Zone) => {
-    setNotifyingZoneName(zone.name);
-    try {
-      const message = await notifyZones(zone.name);
-      alert(message);
-    } catch (error) {
-      alert(getErrorMessage(error, "Failed to send DNS NOTIFY"));
-    } finally {
-      setNotifyingZoneName(null);
-    }
-  };
-
   const handleCloseDetails = () => {
     setSelectedZone(null);
     setIsDetailModalOpen(false);
@@ -124,12 +152,10 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
     loading &&
     zones.length === 0 &&
     searchQuery === "" &&
+    activeFilterCount === 0 &&
     currentPage === 1
   ) {
     return <p className="text-center text-gray-500">Loading zones...</p>;
-  }
-  if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
   }
 
   const indexOfFirstZone = (currentPage - 1) * zonesPerPage;
@@ -152,7 +178,61 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
           Create Zone
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <FilterPanel
+        activeCount={activeFilterCount}
+        onReset={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+      >
+        <FilterField
+          id="filter_zone_name"
+          label="Name"
+          value={filters.name}
+          onChange={(value) => handleFilterChange("name", value)}
+        />
+        <FilterField
+          id="filter_zone_primary_ns"
+          label="Primary NS"
+          value={filters.primary_ns}
+          onChange={(value) => handleFilterChange("primary_ns", value)}
+        />
+        <FilterField
+          id="filter_zone_admin_email"
+          label="Admin Email"
+          value={filters.admin_email}
+          onChange={(value) => handleFilterChange("admin_email", value)}
+        />
+        <FilterField
+          id="filter_zone_min_ttl"
+          label="Min TTL"
+          type="number"
+          value={filters.min_ttl}
+          onChange={(value) => handleFilterChange("min_ttl", value)}
+        />
+        <FilterField
+          id="filter_zone_max_ttl"
+          label="Max TTL"
+          type="number"
+          value={filters.max_ttl}
+          onChange={(value) => handleFilterChange("max_ttl", value)}
+        />
+        <FilterField
+          id="filter_zone_serial"
+          label="Serial"
+          type="number"
+          value={filters.serial}
+          onChange={(value) => handleFilterChange("serial", value)}
+        />
+      </FilterPanel>
+      {/* Not an early return: a rejected filter must stay correctable. */}
+      {error && (
+        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+          {zones.length > 0 && " — showing the last results that loaded."}
+        </p>
+      )}
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
@@ -210,25 +290,16 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
                       Details
                     </button>
                     <button
-                      onClick={() => onEditZone(zone)}
-                      className="font-medium text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
                       onClick={() => setImportingZone(zone)}
                       className="font-medium text-purple-600 hover:underline"
                     >
                       Import
                     </button>
                     <button
-                      onClick={() => handleNotify(zone)}
-                      disabled={notifyingZoneName === zone.name}
-                      className="font-medium text-amber-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                      onClick={() => setExportingZone(zone)}
+                      className="font-medium text-teal-600 hover:underline"
                     >
-                      {notifyingZoneName === zone.name
-                        ? "Notifying..."
-                        : "Notify"}
+                      Export
                     </button>
                     <button
                       onClick={() => handleDelete(zone)}
@@ -244,8 +315,15 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
         </table>
       </div>
       {selectedZone && (
-        <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
-          <ZoneDetails zone={selectedZone} />
+        <Modal isOpen={isDetailModalOpen} wide onClose={handleCloseDetails}>
+          <ZoneDetails
+            zone={selectedZone}
+            onZoneChanged={(updatedZone) => {
+              // A rename or a new serial makes the name-based sync above miss.
+              setSelectedZone(updatedZone);
+              setRefreshKey((prev) => prev + 1);
+            }}
+          />
         </Modal>
       )}
       {importingZone && (
@@ -254,6 +332,11 @@ export default function ZoneList({ onEditZone, onCreateZone }: ZoneListProps) {
             zone={importingZone}
             onApplied={() => setRefreshKey((prev) => prev + 1)}
           />
+        </Modal>
+      )}
+      {exportingZone && (
+        <Modal isOpen wide onClose={() => setExportingZone(null)}>
+          <ZoneExport zone={exportingZone} />
         </Modal>
       )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">

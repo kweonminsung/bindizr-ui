@@ -3,13 +3,21 @@ import { createRecord, updateRecord } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
-import { Record, RECORD_TYPES, RecordType, Zone } from "@/lib/types";
+import {
+  PRIORITY_RECORD_TYPES,
+  Record,
+  RECORD_TYPES,
+  RecordType,
+  Zone,
+} from "@/lib/types";
 
 interface RecordFormProps {
   zoneName?: string;
   record: Record | null;
-  onSuccess: () => void;
-  zones: Zone[];
+  onSuccess: (record: Record) => void;
+  onCancel: () => void;
+  /** Zone picker options, only needed when creating without a fixed zone. */
+  zones?: Zone[];
 }
 
 interface RecordFormData {
@@ -34,12 +42,19 @@ export default function RecordForm({
   zoneName,
   record,
   onSuccess,
-  zones,
+  onCancel,
+  zones = [],
 }: RecordFormProps) {
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
     zone_name: zoneName ?? "",
   });
+
+  // A string dep: an unstable `zones` would re-run the effect every render.
+  const recordZoneName =
+    record?.zone_name ??
+    zones.find((zone) => zone.id === record?.zone_id)?.name ??
+    "";
 
   useEffect(() => {
     if (record) {
@@ -49,10 +64,7 @@ export default function RecordForm({
         value: recordValueToInput(record.value),
         ttl: record.ttl?.toString() ?? "",
         priority: record.priority?.toString() ?? "",
-        zone_name:
-          record.zone_name ??
-          zones.find((zone) => zone.id === record.zone_id)?.name ??
-          "",
+        zone_name: recordZoneName,
       });
       return;
     }
@@ -61,7 +73,9 @@ export default function RecordForm({
       ...defaultFormData,
       zone_name: zoneName ?? "",
     });
-  }, [record, zoneName, zones]);
+  }, [record, zoneName, recordZoneName]);
+
+  const supportsPriority = PRIORITY_RECORD_TYPES.includes(formData.record_type);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -72,6 +86,11 @@ export default function RecordForm({
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      // Drop a priority left over from MX/SRV when switching to a type without one.
+      ...(name === "record_type" &&
+      !PRIORITY_RECORD_TYPES.includes(value as RecordType)
+        ? { priority: "" }
+        : {}),
     }));
   };
 
@@ -95,18 +114,16 @@ export default function RecordForm({
         record_type: formData.record_type,
         value,
         ttl: toOptionalNumber(formData.ttl, "TTL"),
-        priority: toOptionalNumber(formData.priority, "Priority"),
+        priority: supportsPriority
+          ? toOptionalNumber(formData.priority, "Priority")
+          : null,
       };
 
-      if (record) {
-        await updateRecord(record.id, payload);
-      } else {
-        await createRecord({
-          ...payload,
-          zone_name: selectedZoneName,
-        });
-      }
-      onSuccess();
+      const savedRecord = record
+        ? await updateRecord(record.id, payload)
+        : await createRecord({ ...payload, zone_name: selectedZoneName });
+
+      onSuccess(savedRecord);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to save record"));
     }
@@ -174,7 +191,7 @@ export default function RecordForm({
             className="w-full"
           />
         </div>
-        <div>
+        <div className={supportsPriority ? undefined : "md:col-span-2"}>
           <label
             htmlFor="ttl"
             className="block text-sm font-medium text-gray-600 mb-1"
@@ -190,22 +207,24 @@ export default function RecordForm({
             className="w-full"
           />
         </div>
-        <div>
-          <label
-            htmlFor="priority"
-            className="block text-sm font-medium text-gray-600 mb-1"
-          >
-            Priority
-          </label>
-          <input
-            type="number"
-            id="priority"
-            name="priority"
-            value={formData.priority}
-            onChange={handleChange}
-            className="w-full"
-          />
-        </div>
+        {supportsPriority && (
+          <div>
+            <label
+              htmlFor="priority"
+              className="block text-sm font-medium text-gray-600 mb-1"
+            >
+              Priority
+            </label>
+            <input
+              type="number"
+              id="priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleChange}
+              className="w-full"
+            />
+          </div>
+        )}
         {!zoneName && !record && (
           <div className="md:col-span-2">
             <label
@@ -234,7 +253,7 @@ export default function RecordForm({
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
-        <button type="button" onClick={onSuccess} className="btn-secondary">
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
         <button type="submit" className="btn-primary">
