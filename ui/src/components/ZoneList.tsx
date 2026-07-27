@@ -225,7 +225,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("serial", value)}
         />
       </FilterPanel>
-      {/* A banner, not an early return: a rejected filter must stay correctable. */}
+      {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -318,8 +318,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           <ZoneDetails
             zone={selectedZone}
             onZoneChanged={(updatedZone) => {
-              // A rename or a new serial makes the name-based sync below miss,
-              // so adopt what was just saved here.
+              // A rename or a new serial makes the name-based sync above miss.
               setSelectedZone(updatedZone);
               setRefreshKey((prev) => prev + 1);
             }}

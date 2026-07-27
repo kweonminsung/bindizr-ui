@@ -250,7 +250,7 @@ export default function RecordList({
           onChange={(value) => handleFilterChange("max_priority", value)}
         />
       </FilterPanel>
-      {/* A banner, not an early return: a rejected filter must stay correctable. */}
+      {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -331,7 +331,6 @@ export default function RecordList({
             record={selectedRecord}
             defaultEditing={detailEditing}
             onRecordChanged={(updatedRecord) => {
-              // Keep the open details in sync with what was just saved.
               setSelectedRecord(updatedRecord);
               setRefreshKey((prev) => prev + 1);
             }}

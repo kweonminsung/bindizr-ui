@@ -127,8 +127,7 @@ export default function ZoneSnapshotDiff({
           {recordDiff.entries.map((entry, index) => {
             const fromTtl = sideTtl(entry.from);
             const toTtl = sideTtl(entry.to);
-            // A TTL-only change leaves both sides' rdata identical, so the TTL
-            // transition is the only thing that tells the reader what moved.
+            // A TTL-only change leaves both sides' rdata identical.
             const ttlChanged =
               entry.change === "changed" &&
               fromTtl != null &&

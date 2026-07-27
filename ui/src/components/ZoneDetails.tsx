@@ -121,8 +121,8 @@ export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
         {activeTab === "history" && (
           <ZoneSnapshots
             zone={zone}
-            // A rollback advances the serial, which can drop the zone out of the
-            // list's active filters, so hand the new serial over directly.
+            // A rollback advances the serial, which can drop the zone out of an
+            // active list filter.
             onRolledBack={(result) =>
               onZoneChanged({ ...zone, serial: result.new_serial })
             }

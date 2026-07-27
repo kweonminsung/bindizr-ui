@@ -46,8 +46,8 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
   const { pathname } = useLocation();
   const [isExpanded, setIsExpanded] = useState(pathname.startsWith(basePath));
 
-  // The sidebar outlives every route change, so open the group the new route
-  // belongs to. Groups are never closed here, to leave manual toggles alone.
+  // The sidebar outlives every route change. Only opens, so a manual collapse
+  // survives until the route leaves the group.
   useEffect(() => {
     if (pathname.startsWith(basePath)) {
       setIsExpanded(true);
