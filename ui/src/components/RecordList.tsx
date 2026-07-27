@@ -254,9 +254,10 @@ export default function RecordList({
       {error && (
         <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
+          {records.length > 0 && " — showing the last results that loaded."}
         </p>
       )}
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
