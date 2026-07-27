@@ -270,8 +270,8 @@ export default function ZoneSnapshots({
         {rollbackResult && (
           <div className="p-3 rounded-md border border-green-200 bg-green-50 text-sm text-green-800">
             Rolled back to serial {rollbackResult.target_serial}. The zone is
-            now at serial {rollbackResult.new_serial} ({" "}
-            {renderSummary(rollbackResult)} ).
+            now at serial {rollbackResult.new_serial} (
+            {renderSummary(rollbackResult)}).
           </div>
         )}
 

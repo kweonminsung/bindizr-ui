@@ -12,6 +12,8 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Kept apart from `error`, which hides the exported text when it is set.
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -42,12 +44,23 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
     };
   }, [zone.name]);
 
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(content);
+      setCopyError(null);
       setCopied(true);
     } catch {
-      setError("Failed to copy to the clipboard");
+      setCopied(false);
+      setCopyError("Failed to copy to the clipboard");
     }
   };
 
@@ -90,6 +103,8 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
       <p className="text-sm text-gray-500">
         The zone rendered as BIND master-file text.
       </p>
+
+      {copyError && <p className="text-sm text-red-500">{copyError}</p>}
 
       {loading ? (
         <p className="text-gray-500">Exporting...</p>

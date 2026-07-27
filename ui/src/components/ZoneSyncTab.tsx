@@ -8,21 +8,30 @@ interface ZoneSyncTabProps {
   zone: Zone;
 }
 
+interface NotifyResult {
+  text: string;
+  failed: boolean;
+}
+
 export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
   const [force, setForce] = useState(false);
   const [notifying, setNotifying] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [result, setResult] = useState<NotifyResult | null>(null);
   // Re-probe the secondaries once a NOTIFY has gone out.
   const [statusToken, setStatusToken] = useState(0);
 
   const handleNotify = async () => {
     setNotifying(true);
-    setMessage(null);
+    setResult(null);
     try {
-      setMessage(await notifyZones(zone.name, force));
+      const message = await notifyZones(zone.name, force);
+      setResult({ text: message, failed: false });
       setStatusToken((prev) => prev + 1);
     } catch (error) {
-      setMessage(getErrorMessage(error, "Failed to send DNS NOTIFY"));
+      setResult({
+        text: getErrorMessage(error, "Failed to send DNS NOTIFY"),
+        failed: true,
+      });
     } finally {
       setNotifying(false);
     }
@@ -54,9 +63,15 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
             {notifying ? "Sending..." : force ? "Force NOTIFY" : "Send NOTIFY"}
           </button>
         </div>
-        {message && (
-          <p className="p-3 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-700 whitespace-pre-wrap">
-            {message}
+        {result && (
+          <p
+            className={`p-3 rounded-md border text-sm whitespace-pre-wrap ${
+              result.failed
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-gray-200 bg-gray-50 text-gray-700"
+            }`}
+          >
+            {result.text}
           </p>
         )}
       </div>
