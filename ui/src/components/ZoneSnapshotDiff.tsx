@@ -125,10 +125,16 @@ export default function ZoneSnapshotDiff({
       ) : (
         <ul className="space-y-1">
           {recordDiff.entries.map((entry, index) => {
-            const ttl =
-              entry.change === "removed"
-                ? sideTtl(entry.from)
-                : sideTtl(entry.to);
+            const fromTtl = sideTtl(entry.from);
+            const toTtl = sideTtl(entry.to);
+            // A TTL-only change leaves both sides' rdata identical, so the TTL
+            // transition is the only thing that tells the reader what moved.
+            const ttlChanged =
+              entry.change === "changed" &&
+              fromTtl != null &&
+              toTtl != null &&
+              fromTtl !== toTtl;
+            const ttl = entry.change === "removed" ? fromTtl : toTtl;
 
             return (
               <li
@@ -144,8 +150,14 @@ export default function ZoneSnapshotDiff({
                   {entry.name}
                 </span>
                 <span className="text-gray-500">{entry.record_type}</span>
-                {ttl != null && (
-                  <span className="text-gray-400">TTL {ttl}</span>
+                {ttlChanged ? (
+                  <span className="text-gray-400">
+                    TTL {fromTtl} → {toTtl}
+                  </span>
+                ) : (
+                  ttl != null && (
+                    <span className="text-gray-400">TTL {ttl}</span>
+                  )
                 )}
                 <span className="min-w-0 flex-1 text-right font-mono break-all">
                   {entry.change !== "added" && (

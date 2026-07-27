@@ -161,9 +161,6 @@ export default function RecordList({
   ) {
     return <p className="text-center text-gray-500">Loading records...</p>;
   }
-  if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
-  }
 
   const indexOfFirstRecord = (currentPage - 1) * recordsPerPage;
   const indexOfLastRecord = indexOfFirstRecord + records.length;
@@ -253,6 +250,12 @@ export default function RecordList({
           onChange={(value) => handleFilterChange("max_priority", value)}
         />
       </FilterPanel>
+      {/* A banner, not an early return: a rejected filter must stay correctable. */}
+      {error && (
+        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">

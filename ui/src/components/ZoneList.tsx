@@ -157,9 +157,6 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   ) {
     return <p className="text-center text-gray-500">Loading zones...</p>;
   }
-  if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
-  }
 
   const indexOfFirstZone = (currentPage - 1) * zonesPerPage;
   const indexOfLastZone = indexOfFirstZone + zones.length;
@@ -228,6 +225,12 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("serial", value)}
         />
       </FilterPanel>
+      {/* A banner, not an early return: a rejected filter must stay correctable. */}
+      {error && (
+        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
@@ -315,10 +318,9 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           <ZoneDetails
             zone={selectedZone}
             onZoneChanged={(updatedZone) => {
-              // A rename makes the name-based sync below miss, so adopt it here.
-              if (updatedZone) {
-                setSelectedZone(updatedZone);
-              }
+              // A rename or a new serial makes the name-based sync below miss,
+              // so adopt what was just saved here.
+              setSelectedZone(updatedZone);
               setRefreshKey((prev) => prev + 1);
             }}
           />

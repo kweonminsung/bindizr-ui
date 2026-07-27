@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 
 interface SidebarProps {
@@ -45,6 +45,14 @@ interface NavGroupProps {
 function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
   const { pathname } = useLocation();
   const [isExpanded, setIsExpanded] = useState(pathname.startsWith(basePath));
+
+  // The sidebar outlives every route change, so open the group the new route
+  // belongs to. Groups are never closed here, to leave manual toggles alone.
+  useEffect(() => {
+    if (pathname.startsWith(basePath)) {
+      setIsExpanded(true);
+    }
+  }, [pathname, basePath]);
 
   return (
     <li>

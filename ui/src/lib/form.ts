@@ -18,7 +18,11 @@ export const toRequiredNumber = (value: string, fieldName = "Value") => {
   return parseFiniteNumber(trimmed, fieldName);
 };
 
-/** Numeric list filters are ignored while the field is empty or half-typed. */
+/**
+ * Numeric list filters are ignored while the field is empty or half-typed. The
+ * fields they filter on are integers, so a fractional value is dropped rather
+ * than sent for the API to reject.
+ */
 export const toFilterNumber = (value: string) => {
   const trimmed = value.trim();
 
@@ -27,7 +31,7 @@ export const toFilterNumber = (value: string) => {
   }
 
   const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return Number.isInteger(parsed) ? parsed : undefined;
 };
 
 export const toOptionalNumber = (value: string, fieldName = "Value") => {

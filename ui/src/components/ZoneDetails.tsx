@@ -7,7 +7,7 @@ import ZoneTsigPolicies from "./ZoneTsigPolicies";
 
 interface ZoneDetailsProps {
   zone: Zone;
-  onZoneChanged: (zone?: Zone) => void;
+  onZoneChanged: (zone: Zone) => void;
 }
 
 const TABS = [
@@ -119,7 +119,14 @@ export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
         )}
 
         {activeTab === "history" && (
-          <ZoneSnapshots zone={zone} onRolledBack={onZoneChanged} />
+          <ZoneSnapshots
+            zone={zone}
+            // A rollback advances the serial, which can drop the zone out of the
+            // list's active filters, so hand the new serial over directly.
+            onRolledBack={(result) =>
+              onZoneChanged({ ...zone, serial: result.new_serial })
+            }
+          />
         )}
 
         {activeTab === "nsupdate" && <ZoneTsigPolicies zone={zone} />}

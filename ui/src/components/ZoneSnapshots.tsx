@@ -13,7 +13,7 @@ import ZoneSnapshotDiff from "./ZoneSnapshotDiff";
 
 interface ZoneSnapshotsProps {
   zone: Zone;
-  onRolledBack: () => void;
+  onRolledBack: (result: RollbackZoneResult) => void;
 }
 
 export default function ZoneSnapshots({
@@ -109,7 +109,7 @@ export default function ZoneSnapshots({
       setPreview(null);
       setRollbackResult(result);
       setRefreshKey((prev) => prev + 1);
-      onRolledBack();
+      onRolledBack(result);
     } catch (rollbackError) {
       alert(getErrorMessage(rollbackError, "Failed to roll back zone"));
     } finally {
@@ -280,7 +280,12 @@ export default function ZoneSnapshots({
             <button
               type="button"
               onClick={() => handlePreviewRollback(snapshot.serial)}
-              disabled={rollbackPending}
+              disabled={rollbackPending || snapshot.serial === zone.serial}
+              title={
+                snapshot.serial === zone.serial
+                  ? "This is the current serial"
+                  : undefined
+              }
               className="btn-primary"
             >
               {rollbackPending ? "Checking..." : "Roll Back to This Serial"}
