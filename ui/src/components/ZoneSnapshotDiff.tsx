@@ -42,6 +42,10 @@ const formatRdata = (values: RecordDiffValue[]) =>
 const sideTtl = (values: RecordDiffValue[]) =>
   values.find((value) => value.ttl != null)?.ttl ?? null;
 
+/** A record without its own TTL falls back to the zone's. */
+const formatTtl = (ttl: number | null) =>
+  ttl == null ? "inherited" : String(ttl);
+
 export default function ZoneSnapshotDiff({
   zone,
   from,
@@ -127,12 +131,9 @@ export default function ZoneSnapshotDiff({
           {recordDiff.entries.map((entry, index) => {
             const fromTtl = sideTtl(entry.from);
             const toTtl = sideTtl(entry.to);
-            // A TTL-only change leaves both sides' rdata identical.
-            const ttlChanged =
-              entry.change === "changed" &&
-              fromTtl != null &&
-              toTtl != null &&
-              fromTtl !== toTtl;
+            // A TTL-only change leaves both sides' rdata identical. Gaining or
+            // losing an explicit TTL counts, so compare the nullable states.
+            const ttlChanged = entry.change === "changed" && fromTtl !== toTtl;
             const ttl = entry.change === "removed" ? fromTtl : toTtl;
 
             return (
@@ -151,7 +152,7 @@ export default function ZoneSnapshotDiff({
                 <span className="text-gray-500">{entry.record_type}</span>
                 {ttlChanged ? (
                   <span className="text-gray-400">
-                    TTL {fromTtl} → {toTtl}
+                    TTL {formatTtl(fromTtl)} → {formatTtl(toTtl)}
                   </span>
                 ) : (
                   ttl != null && (
