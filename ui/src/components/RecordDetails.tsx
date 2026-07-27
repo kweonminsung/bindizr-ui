@@ -6,7 +6,6 @@ import RecordForm from "./RecordForm";
 interface RecordDetailsProps {
   record: Record;
   onRecordChanged: (record: Record) => void;
-  /** Open straight into the edit form instead of the read-only view. */
   defaultEditing?: boolean;
 }
 

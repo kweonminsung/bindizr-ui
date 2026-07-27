@@ -50,8 +50,7 @@ export default function RecordForm({
     zone_name: zoneName ?? "",
   });
 
-  // Depended on by value below: an unstable `zones` would re-run the effect on
-  // every render, and the effect itself always sets fresh state.
+  // A string dep: an unstable `zones` would re-run the effect every render.
   const recordZoneName =
     record?.zone_name ??
     zones.find((zone) => zone.id === record?.zone_id)?.name ??

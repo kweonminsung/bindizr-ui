@@ -131,8 +131,7 @@ export default function ZoneSnapshotDiff({
           {recordDiff.entries.map((entry, index) => {
             const fromTtl = sideTtl(entry.from);
             const toTtl = sideTtl(entry.to);
-            // A TTL-only change leaves both sides' rdata identical. Gaining or
-            // losing an explicit TTL counts, so compare the nullable states.
+            // A TTL-only change leaves both sides' rdata identical.
             const ttlChanged = entry.change === "changed" && fromTtl !== toTtl;
             const ttl = entry.change === "removed" ? fromTtl : toTtl;
 
