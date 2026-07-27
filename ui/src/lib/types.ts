@@ -75,6 +75,39 @@ export interface ZoneDetail {
   records: Record[];
 }
 
+export const RECORD_DIFF_CHANGES = ["added", "removed", "changed"] as const;
+
+export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
+
+/** One record on one side of a diff; rendering the rdata is left to the client. */
+export interface RecordDiffValue {
+  value: RecordValue;
+  ttl?: number | null;
+  priority?: number | null;
+}
+
+/** One RRset (owner name + type) whose records differ. */
+export interface RecordDiffEntry {
+  change: RecordDiffChange;
+  name: string;
+  record_type: string;
+  /** Empty for `added`. */
+  from: RecordDiffValue[];
+  /** Empty for `removed`. */
+  to: RecordDiffValue[];
+}
+
+export interface RecordDiffSummary {
+  added: number;
+  removed: number;
+  changed: number;
+}
+
+export interface RecordDiff {
+  entries: RecordDiffEntry[];
+  summary: RecordDiffSummary;
+}
+
 export interface BulkRecordItem {
   name: string;
   record_type: RecordType;
@@ -88,6 +121,7 @@ export interface BulkRecordsResult {
   dry_run: boolean;
   inserted: number;
   records: Record[];
+  diff: RecordDiff;
 }
 
 export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
@@ -113,6 +147,7 @@ export interface ImportZoneResult {
   applied: boolean;
   dry_run: boolean;
   summary: ImportSummary;
+  diff: RecordDiff;
   errors: string[];
 }
 
@@ -187,33 +222,10 @@ export interface SnapshotDetail {
   records: SnapshotRecord[];
 }
 
-export const SNAPSHOT_DIFF_CHANGES = ["added", "removed", "changed"] as const;
-
-export type SnapshotDiffChange = (typeof SNAPSHOT_DIFF_CHANGES)[number];
-
-/** One RRset (owner name + type) whose records differ between two serials. */
-export interface SnapshotDiffEntry {
-  change: SnapshotDiffChange;
-  name: string;
-  record_type: string;
-  /** Rdata at the `from` serial; empty for `added`. */
-  from_rdata: string[];
-  /** Rdata at the `to` serial; empty for `removed`. */
-  to_rdata: string[];
-  ttl?: number | null;
-}
-
-export interface SnapshotDiffSummary {
-  added: number;
-  removed: number;
-  changed: number;
-}
-
 export interface SnapshotDiff {
   from_serial: number;
   to_serial: number;
-  entries: SnapshotDiffEntry[];
-  summary: SnapshotDiffSummary;
+  diff: RecordDiff;
 }
 
 export interface RollbackZonePayload {

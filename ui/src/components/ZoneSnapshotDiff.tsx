@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { diffZoneSnapshots } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { SnapshotDiff, SnapshotDiffChange, Zone } from "@/lib/types";
+import { formatRecordRdata } from "@/lib/recordValue";
+import {
+  RecordDiffChange,
+  RecordDiffValue,
+  SnapshotDiff,
+  Zone,
+} from "@/lib/types";
 
 interface ZoneSnapshotDiffProps {
   zone: Zone;
@@ -11,23 +17,30 @@ interface ZoneSnapshotDiffProps {
   onBack: () => void;
 }
 
-const CHANGE_STYLES: Record<SnapshotDiffChange, string> = {
+const CHANGE_STYLES: Record<RecordDiffChange, string> = {
   added: "bg-green-50 border-green-200",
   removed: "bg-red-50 border-red-200",
   changed: "bg-amber-50 border-amber-200",
 };
 
-const CHANGE_SIGNS: Record<SnapshotDiffChange, string> = {
+const CHANGE_SIGNS: Record<RecordDiffChange, string> = {
   added: "+",
   removed: "−",
   changed: "~",
 };
 
-const CHANGE_SIGN_STYLES: Record<SnapshotDiffChange, string> = {
+const CHANGE_SIGN_STYLES: Record<RecordDiffChange, string> = {
   added: "text-green-700",
   removed: "text-red-700",
   changed: "text-amber-700",
 };
+
+const formatRdata = (values: RecordDiffValue[]) =>
+  values.map(formatRecordRdata).join(", ");
+
+/** An RRset shares one TTL, so the first one set stands for the whole side. */
+const sideTtl = (values: RecordDiffValue[]) =>
+  values.find((value) => value.ttl != null)?.ttl ?? null;
 
 export default function ZoneSnapshotDiff({
   zone,
@@ -71,6 +84,7 @@ export default function ZoneSnapshotDiff({
   // The response resolves an omitted `to` to the current serial.
   const fromSerial = diff?.from_serial ?? from;
   const toSerial = diff?.to_serial ?? to;
+  const recordDiff = diff?.diff ?? null;
 
   return (
     <div className="space-y-6">
@@ -85,16 +99,16 @@ export default function ZoneSnapshotDiff({
         <h3 className="text-xl font-bold text-gray-800 mt-2">
           Serial {fromSerial} → {toSerial ?? "current"}
         </h3>
-        {diff && (
+        {recordDiff && (
           <div className="mt-2 flex flex-wrap gap-2 text-xs font-medium">
             <span className="rounded-full bg-green-100 px-2 py-1 text-green-700">
-              +{diff.summary.added} added
+              +{recordDiff.summary.added} added
             </span>
             <span className="rounded-full bg-red-100 px-2 py-1 text-red-700">
-              −{diff.summary.removed} removed
+              −{recordDiff.summary.removed} removed
             </span>
             <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">
-              ~{diff.summary.changed} changed
+              ~{recordDiff.summary.changed} changed
             </span>
           </div>
         )}
@@ -104,46 +118,53 @@ export default function ZoneSnapshotDiff({
         <p className="text-gray-500">Computing diff...</p>
       ) : error ? (
         <p className="text-red-500">{error}</p>
-      ) : !diff || diff.entries.length === 0 ? (
+      ) : !recordDiff || recordDiff.entries.length === 0 ? (
         <p className="text-gray-500">
           No record differences between these serials.
         </p>
       ) : (
         <ul className="space-y-1">
-          {diff.entries.map((entry, index) => (
-            <li
-              key={`${entry.name}-${entry.record_type}-${index}`}
-              className={`flex items-baseline gap-2 rounded-md border px-2 py-1 text-sm ${CHANGE_STYLES[entry.change]}`}
-            >
-              <span
-                className={`font-mono font-bold ${CHANGE_SIGN_STYLES[entry.change]}`}
+          {recordDiff.entries.map((entry, index) => {
+            const ttl =
+              entry.change === "removed"
+                ? sideTtl(entry.from)
+                : sideTtl(entry.to);
+
+            return (
+              <li
+                key={`${entry.name}-${entry.record_type}-${index}`}
+                className={`flex items-baseline gap-2 rounded-md border px-2 py-1 text-sm ${CHANGE_STYLES[entry.change]}`}
               >
-                {CHANGE_SIGNS[entry.change]}
-              </span>
-              <span className="font-medium text-gray-900 break-all">
-                {entry.name}
-              </span>
-              <span className="text-gray-500">{entry.record_type}</span>
-              {entry.ttl != null && (
-                <span className="text-gray-400">TTL {entry.ttl}</span>
-              )}
-              <span className="min-w-0 flex-1 text-right font-mono break-all">
-                {entry.change !== "added" && (
-                  <span className="text-red-700">
-                    {entry.from_rdata.join(", ")}
-                  </span>
+                <span
+                  className={`font-mono font-bold ${CHANGE_SIGN_STYLES[entry.change]}`}
+                >
+                  {CHANGE_SIGNS[entry.change]}
+                </span>
+                <span className="font-medium text-gray-900 break-all">
+                  {entry.name}
+                </span>
+                <span className="text-gray-500">{entry.record_type}</span>
+                {ttl != null && (
+                  <span className="text-gray-400">TTL {ttl}</span>
                 )}
-                {entry.change === "changed" && (
-                  <span className="text-gray-400"> → </span>
-                )}
-                {entry.change !== "removed" && (
-                  <span className="text-green-700">
-                    {entry.to_rdata.join(", ")}
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
+                <span className="min-w-0 flex-1 text-right font-mono break-all">
+                  {entry.change !== "added" && (
+                    <span className="text-red-700">
+                      {formatRdata(entry.from)}
+                    </span>
+                  )}
+                  {entry.change === "changed" && (
+                    <span className="text-gray-400"> → </span>
+                  )}
+                  {entry.change !== "removed" && (
+                    <span className="text-green-700">
+                      {formatRdata(entry.to)}
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
