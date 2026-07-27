@@ -3,14 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import RecordList from "@/components/RecordList";
 import RecordForm from "@/components/RecordForm";
 import Modal from "@/components/Modal";
-import { Record, Zone } from "@/lib/types";
+import { Zone } from "@/lib/types";
 import { getZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 
 export default function RecordsPage() {
   const [searchParams] = useSearchParams();
   const zoneName = searchParams.get("zoneName")?.trim() || undefined;
-  const [editingRecord, setEditingRecord] = useState<Record | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [zones, setZones] = useState<Zone[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -30,19 +29,8 @@ export default function RecordsPage() {
     fetchZones();
   }, []);
 
-  const handleEditRecord = (record: Record) => {
-    setEditingRecord(record);
-    setIsModalOpen(true);
-  };
-
-  const handleOpenModal = () => {
-    setEditingRecord(null);
-    setIsModalOpen(true);
-  };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingRecord(null);
   };
 
   const handleSuccess = () => {
@@ -54,14 +42,14 @@ export default function RecordsPage() {
     <div>
       <RecordList
         key={refreshKey}
-        onEditRecord={handleEditRecord}
-        onCreateRecord={handleOpenModal}
+        onCreateRecord={() => setIsModalOpen(true)}
         zoneName={zoneName}
       />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm
-          record={editingRecord}
+          record={null}
           onSuccess={handleSuccess}
+          onCancel={handleCloseModal}
           zoneName={zoneName}
           zones={zones}
         />

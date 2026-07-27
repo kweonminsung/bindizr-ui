@@ -18,7 +18,6 @@ import RecordDetails from "./RecordDetails";
 
 interface RecordListProps {
   zoneName?: string;
-  onEditRecord: (record: Record) => void;
   onCreateRecord: () => void;
 }
 
@@ -45,13 +44,13 @@ const countActiveFilters = (filters: RecordFilters) =>
 
 export default function RecordList({
   zoneName,
-  onEditRecord,
   onCreateRecord,
 }: RecordListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<Record[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailEditing, setDetailEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
@@ -141,8 +140,9 @@ export default function RecordList({
     }
   };
 
-  const handleShowDetails = (record: Record) => {
+  const handleShowDetails = (record: Record, editing = false) => {
     setSelectedRecord(record);
+    setDetailEditing(editing);
     setIsDetailModalOpen(true);
   };
 
@@ -304,7 +304,7 @@ export default function RecordList({
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
-                      onClick={() => onEditRecord(record)}
+                      onClick={() => handleShowDetails(record, true)}
                       className="font-medium text-blue-600 hover:underline"
                     >
                       Edit
@@ -324,7 +324,15 @@ export default function RecordList({
       </div>
       {selectedRecord && (
         <Modal isOpen={isDetailModalOpen} onClose={handleCloseDetails}>
-          <RecordDetails record={selectedRecord} />
+          <RecordDetails
+            record={selectedRecord}
+            defaultEditing={detailEditing}
+            onRecordChanged={(updatedRecord) => {
+              // Keep the open details in sync with what was just saved.
+              setSelectedRecord(updatedRecord);
+              setRefreshKey((prev) => prev + 1);
+            }}
+          />
         </Modal>
       )}
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">

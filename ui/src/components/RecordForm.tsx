@@ -14,8 +14,10 @@ import {
 interface RecordFormProps {
   zoneName?: string;
   record: Record | null;
-  onSuccess: () => void;
-  zones: Zone[];
+  onSuccess: (record: Record) => void;
+  onCancel: () => void;
+  /** Zone picker options, only needed when creating without a fixed zone. */
+  zones?: Zone[];
 }
 
 interface RecordFormData {
@@ -40,7 +42,8 @@ export default function RecordForm({
   zoneName,
   record,
   onSuccess,
-  zones,
+  onCancel,
+  zones = [],
 }: RecordFormProps) {
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
@@ -113,15 +116,11 @@ export default function RecordForm({
           : null,
       };
 
-      if (record) {
-        await updateRecord(record.id, payload);
-      } else {
-        await createRecord({
-          ...payload,
-          zone_name: selectedZoneName,
-        });
-      }
-      onSuccess();
+      const savedRecord = record
+        ? await updateRecord(record.id, payload)
+        : await createRecord({ ...payload, zone_name: selectedZoneName });
+
+      onSuccess(savedRecord);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to save record"));
     }
@@ -251,7 +250,7 @@ export default function RecordForm({
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
-        <button type="button" onClick={onSuccess} className="btn-secondary">
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
         <button type="submit" className="btn-primary">
