@@ -1,27 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getDnssecStatus } from "@/lib/api";
 import { Zone } from "@/lib/types";
+import ZoneDnssecTab from "./ZoneDnssecTab";
 import ZoneForm from "./ZoneForm";
-import ZoneSnapshots from "./ZoneSnapshots";
 import ZoneSyncTab from "./ZoneSyncTab";
 import ZoneTsigPolicies from "./ZoneTsigPolicies";
+import ZoneVersions from "./ZoneVersions";
 
 interface ZoneDetailsProps {
   zone: Zone;
   onZoneChanged: (zone: Zone) => void;
+  onDnssecChanged?: (zoneName: string, enabled: boolean) => void;
 }
 
 const TABS = [
   { id: "zone", label: "Zone" },
   { id: "history", label: "History" },
+  { id: "dnssec", label: "DNSSEC" },
   { id: "nsupdate", label: "nsupdate" },
   { id: "sync", label: "Sync" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
+export default function ZoneDetails({
+  zone,
+  onZoneChanged,
+  onDnssecChanged,
+}: ZoneDetailsProps) {
   const [activeTab, setActiveTab] = useState<TabId>("zone");
   const [isEditing, setIsEditing] = useState(false);
+  const [dnssecEnabled, setDnssecEnabled] = useState(false);
+
+  const updateDnssecEnabled = (enabled: boolean) => {
+    setDnssecEnabled(enabled);
+    onDnssecChanged?.(zone.name, enabled);
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    setDnssecEnabled(false);
+    getDnssecStatus(zone.name)
+      .then((status) => {
+        if (active) {
+          setDnssecEnabled(status.enabled);
+        }
+      })
+      // The badge is decorative; the DNSSEC tab surfaces errors.
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [zone.name]);
 
   const handleTabChange = (tab: TabId) => {
     setIsEditing(false);
@@ -30,9 +62,16 @@ export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800 break-all">
-        {zone.name}
-      </h2>
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-2xl font-bold text-gray-800 break-all">
+          {zone.name}
+        </h2>
+        {dnssecEnabled && (
+          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+            DNSSEC
+          </span>
+        )}
+      </div>
 
       <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
         {TABS.map((tab) => (
@@ -69,20 +108,16 @@ export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
             <div className="space-y-3">
               <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Admin Email</p>
-                <p className="text-lg text-gray-900 break-all">
-                  {zone.admin_email}
-                </p>
+                <p className="text-lg text-gray-900 break-all">{zone.rname}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Primary NS</p>
-                <p className="text-lg text-gray-900 break-all">
-                  {zone.primary_ns}
-                </p>
+                <p className="text-lg text-gray-900 break-all">{zone.mname}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-                  <p className="text-sm text-gray-500">TTL</p>
-                  <p className="text-lg text-gray-900">{zone.ttl}</p>
+                  <p className="text-sm text-gray-500">Default TTL</p>
+                  <p className="text-lg text-gray-900">{zone.default_ttl}</p>
                 </div>
                 <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Serial</p>
@@ -119,13 +154,17 @@ export default function ZoneDetails({ zone, onZoneChanged }: ZoneDetailsProps) {
         )}
 
         {activeTab === "history" && (
-          <ZoneSnapshots
+          <ZoneVersions
             zone={zone}
             // A rollback advances the serial, dropping the zone out of a filter.
             onRolledBack={(result) =>
               onZoneChanged({ ...zone, serial: result.new_serial })
             }
           />
+        )}
+
+        {activeTab === "dnssec" && (
+          <ZoneDnssecTab zone={zone} onEnabledChanged={updateDnssecEnabled} />
         )}
 
         {activeTab === "nsupdate" && <ZoneTsigPolicies zone={zone} />}

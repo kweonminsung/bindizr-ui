@@ -44,6 +44,7 @@ export default function RecordsPage() {
         key={refreshKey}
         onCreateRecord={() => setIsModalOpen(true)}
         zoneName={zoneName}
+        zones={zones}
       />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm

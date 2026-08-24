@@ -4,6 +4,10 @@ import {
   CreateRecordPayload,
   CreateTsigKeyPayload,
   CreateZoneTsigPolicyPayload,
+  DnssecDsRecord,
+  DnssecRolloverRole,
+  DnssecStatus,
+  EnableDnssecPayload,
   ImportZonePayload,
   ImportZoneResult,
   ListResult,
@@ -14,17 +18,17 @@ import {
   RecordListQuery,
   RollbackZonePayload,
   RollbackZoneResult,
-  SnapshotDetail,
-  SnapshotDiff,
   TsigKey,
   UpdateRecordPayload,
+  VersionDetail,
+  VersionDiff,
   Zone,
   ZoneDetail,
   ZoneListQuery,
   ZonePayload,
-  ZoneSnapshot,
   ZoneStatus,
   ZoneTsigPolicy,
+  ZoneVersion,
 } from "./types";
 import { ApiError } from "./errors";
 import { getLocalApiHeaders } from "./localApi";
@@ -108,8 +112,8 @@ async function getZoneListResult(
   appendQueryParam(params, "search", queryParams.search?.trim());
   appendQueryParam(params, "name", queryParams.name?.trim());
   appendQueryParam(params, "id", queryParams.id);
-  appendQueryParam(params, "primary_ns", queryParams.primary_ns?.trim());
-  appendQueryParam(params, "admin_email", queryParams.admin_email?.trim());
+  appendQueryParam(params, "mname", queryParams.mname?.trim());
+  appendQueryParam(params, "rname", queryParams.rname?.trim());
   appendQueryParam(params, "ttl", queryParams.ttl);
   appendQueryParam(params, "min_ttl", queryParams.min_ttl);
   appendQueryParam(params, "max_ttl", queryParams.max_ttl);
@@ -253,9 +257,15 @@ export async function importZoneFile(
   return (await response.json()) as ImportZoneResult;
 }
 
-export async function exportZone(zoneName: string): Promise<string> {
+export async function exportZone(
+  zoneName: string,
+  signed = false,
+): Promise<string> {
+  const params = new URLSearchParams();
+  appendQueryParam(params, "signed", signed || undefined);
+
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/export`,
+    withQuery(`/zones/${encodeURIComponent(zoneName)}/export`, params),
     "Failed to export zone",
   );
   return response.text();
@@ -277,47 +287,47 @@ export async function createRecordsBulk(
   return (await response.json()) as BulkRecordsResult;
 }
 
-export async function getZoneSnapshotsPage(
+export async function getZoneVersionsPage(
   zoneName: string,
   queryParams: PageQuery = {},
-): Promise<ListResult<ZoneSnapshot>> {
+): Promise<ListResult<ZoneVersion>> {
   const params = pageParams({
     ...queryParams,
     limit: queryParams.limit ?? 10,
   });
 
   const response = await apiFetch(
-    withQuery(`/zones/${encodeURIComponent(zoneName)}/snapshots`, params),
-    "Failed to fetch zone snapshots",
+    withQuery(`/zones/${encodeURIComponent(zoneName)}/versions`, params),
+    "Failed to fetch zone versions",
   );
-  return toListResult((await response.json()) as ListResponse<ZoneSnapshot>);
+  return toListResult((await response.json()) as ListResponse<ZoneVersion>);
 }
 
-export async function getZoneSnapshot(
+export async function getZoneVersion(
   zoneName: string,
   serial: number,
-): Promise<SnapshotDetail> {
+): Promise<VersionDetail> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/snapshots/${serial}`,
-    "Failed to fetch zone snapshot",
+    `/zones/${encodeURIComponent(zoneName)}/versions/${serial}`,
+    "Failed to fetch zone version",
   );
-  return (await response.json()) as SnapshotDetail;
+  return (await response.json()) as VersionDetail;
 }
 
-export async function diffZoneSnapshots(
+export async function diffZoneVersions(
   zoneName: string,
   from: number,
   to?: number,
-): Promise<SnapshotDiff> {
+): Promise<VersionDiff> {
   const params = new URLSearchParams();
   appendQueryParam(params, "from", from);
   appendQueryParam(params, "to", to);
 
   const response = await apiFetch(
-    withQuery(`/zones/${encodeURIComponent(zoneName)}/snapshots/diff`, params),
-    "Failed to diff snapshots",
+    withQuery(`/zones/${encodeURIComponent(zoneName)}/versions/diff`, params),
+    "Failed to diff versions",
   );
-  return (await response.json()) as SnapshotDiff;
+  return (await response.json()) as VersionDiff;
 }
 
 export async function rollbackZone(
@@ -412,20 +422,100 @@ export async function deleteZoneTsigPolicy(
 
 export async function notifyZones(
   zoneName?: string | null,
-  force = false,
+  bumpSerial = false,
 ): Promise<string> {
   const body: NotifyZonePayload = {
-    force,
+    bump_serial: bumpSerial,
     zone_name: zoneName ?? null,
   };
 
   const response = await apiFetch(
-    `/notify/zones`,
+    `/zones/notify`,
     "Failed to send DNS notify",
     {
       method: "POST",
       body: JSON.stringify(body),
     },
+  );
+  return (await response.json()).message as string;
+}
+
+export async function getDnssecStatus(zoneName: string): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec`,
+    "Failed to fetch DNSSEC status",
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function enableDnssec(
+  zoneName: string,
+  payload: EnableDnssecPayload = {},
+): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec`,
+    "Failed to enable DNSSEC",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function disableDnssec(zoneName: string): Promise<string> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec`,
+    "Failed to disable DNSSEC",
+    {
+      method: "DELETE",
+      body: JSON.stringify({ confirm_insecure: true }),
+    },
+  );
+  return (await response.json()).message as string;
+}
+
+export async function getDnssecDsRecords(
+  zoneName: string,
+): Promise<DnssecDsRecord[]> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/ds`,
+    "Failed to fetch DS records",
+  );
+  return (await response.json()).ds_records as DnssecDsRecord[];
+}
+
+export async function startDnssecRollover(
+  zoneName: string,
+  role?: DnssecRolloverRole,
+): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/rollover`,
+    "Failed to start key rollover",
+    {
+      method: "POST",
+      body: JSON.stringify({ role: role ?? null }),
+    },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function confirmDnssecDsSeen(
+  zoneName: string,
+): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/rollover/ds-seen`,
+    "Failed to confirm DS seen",
+    { method: "POST" },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function signDnssecZone(zoneName: string): Promise<string> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/sign`,
+    "Failed to re-sign zone",
+    { method: "POST" },
   );
   return (await response.json()).message as string;
 }

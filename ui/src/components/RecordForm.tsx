@@ -38,6 +38,22 @@ const defaultFormData: RecordFormData = {
   zone_name: "",
 };
 
+// MX and SRV omit the priority: it has its own field.
+const VALUE_PLACEHOLDERS: { [type in RecordType]?: string } = {
+  A: "192.0.2.1",
+  AAAA: "2001:db8::1",
+  CAA: '0 issue "letsencrypt.org"',
+  CNAME: "target.example.com.",
+  DS: "<key tag> <algorithm> <digest type> <digest>",
+  MX: "mail.example.com.",
+  TXT: "v=spf1 include:example.com -all",
+  NS: "ns1.example.com.",
+  SRV: "<weight> <port> <target>",
+  PTR: "host.example.com.",
+  SSHFP: "<algorithm> <fingerprint type> <fingerprint>",
+  TLSA: "<usage> <selector> <matching type> <certificate data>",
+};
+
 export default function RecordForm({
   zoneName,
   record,
@@ -188,6 +204,7 @@ export default function RecordForm({
             onChange={handleChange}
             required
             rows={3}
+            placeholder={VALUE_PLACEHOLDERS[formData.record_type]}
             className="w-full"
           />
         </div>

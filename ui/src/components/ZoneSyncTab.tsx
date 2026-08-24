@@ -14,7 +14,7 @@ interface NotifyResult {
 }
 
 export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
-  const [force, setForce] = useState(false);
+  const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [result, setResult] = useState<NotifyResult | null>(null);
   // Re-probe the secondaries once a NOTIFY has gone out.
@@ -24,7 +24,7 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
     setNotifying(true);
     setResult(null);
     try {
-      const message = await notifyZones(zone.name, force);
+      const message = await notifyZones(zone.name, bumpSerial);
       setResult({ text: message, failed: false });
       setStatusToken((prev) => prev + 1);
     } catch (error) {
@@ -49,10 +49,12 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
           <label className="flex items-center space-x-2 text-sm text-gray-600">
             <input
               type="checkbox"
-              checked={force}
-              onChange={(e) => setForce(e.target.checked)}
+              checked={bumpSerial}
+              onChange={(e) => setBumpSerial(e.target.checked)}
             />
-            <span>Force (notify even when secondaries look in sync)</span>
+            <span>
+              Bump serial first (secondaries transfer even when nothing changed)
+            </span>
           </label>
           <button
             type="button"
@@ -60,7 +62,11 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
             disabled={notifying}
             className="btn-primary"
           >
-            {notifying ? "Sending..." : force ? "Force NOTIFY" : "Send NOTIFY"}
+            {notifying
+              ? "Sending..."
+              : bumpSerial
+                ? "Bump & NOTIFY"
+                : "Send NOTIFY"}
           </button>
         </div>
         {result && (

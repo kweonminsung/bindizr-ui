@@ -9,6 +9,7 @@ interface ZoneExportProps {
 
 export default function ZoneExport({ zone }: ZoneExportProps) {
   const [content, setContent] = useState("");
+  const [signed, setSigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -22,7 +23,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
       setLoading(true);
       setError(null);
       try {
-        const text = await exportZone(zone.name);
+        const text = await exportZone(zone.name, signed);
         if (active) {
           setContent(text);
         }
@@ -42,7 +43,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
     return () => {
       active = false;
     };
-  }, [zone.name]);
+  }, [zone.name, signed]);
 
   useEffect(() => {
     if (!copied) {
@@ -69,7 +70,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${zone.name}.zone`;
+    anchor.download = `${zone.name}${signed ? ".signed" : ""}.zone`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -103,6 +104,20 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
       <p className="text-sm text-gray-500">
         The zone rendered as BIND master-file text.
       </p>
+
+      <label
+        title="Append the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY); an inspection artifact, not an import input"
+        className="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer"
+      >
+        <input
+          type="checkbox"
+          checked={signed}
+          onChange={(e) => setSigned(e.target.checked)}
+        />
+        <span className="border-b border-dotted border-gray-400 cursor-help">
+          Signed view
+        </span>
+      </label>
 
       {copyError && <p className="text-sm text-red-500">{copyError}</p>}
 

@@ -4,11 +4,11 @@ import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 
-type NotifyMode = "normal" | "force";
+type NotifyMode = "normal" | "bump_serial";
 
 const NOTIFY_MODE_LABELS: Record<NotifyMode, string> = {
   normal: "Send NOTIFY",
-  force: "Force NOTIFY",
+  bump_serial: "Bump serial & NOTIFY",
 };
 
 export default function NotifyControls() {
@@ -38,8 +38,7 @@ export default function NotifyControls() {
     setLoading(true);
     setMessage(null);
     try {
-      const force = notifyMode === "force";
-      setMessage(await notifyZones(zoneName, force));
+      setMessage(await notifyZones(zoneName, notifyMode === "bump_serial"));
     } catch (error) {
       setMessage(getErrorMessage(error, "Failed to send DNS NOTIFY"));
     } finally {
@@ -93,7 +92,7 @@ export default function NotifyControls() {
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-                {(["normal", "force"] as NotifyMode[]).map((mode) => (
+                {(["normal", "bump_serial"] as NotifyMode[]).map((mode) => (
                   <button
                     key={mode}
                     type="button"

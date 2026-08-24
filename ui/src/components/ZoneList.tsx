@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getZonesPage, deleteZone } from "@/lib/api";
+import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -23,8 +23,8 @@ interface ZoneListProps {
 
 interface ZoneFilters {
   name: string;
-  primary_ns: string;
-  admin_email: string;
+  mname: string;
+  rname: string;
   min_ttl: string;
   max_ttl: string;
   serial: string;
@@ -32,8 +32,8 @@ interface ZoneFilters {
 
 const defaultFilters: ZoneFilters = {
   name: "",
-  primary_ns: "",
-  admin_email: "",
+  mname: "",
+  rname: "",
   min_ttl: "",
   max_ttl: "",
   serial: "",
@@ -58,6 +58,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  // Names of the listed zones that are DNSSEC-signed, for the name badge.
+  const [dnssecZones, setDnssecZones] = useState<Set<string>>(new Set());
   const activeFilterCount = countActiveFilters(filters);
 
   const handlePageChange = (page: number) => {
@@ -83,8 +85,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
         const data = await getZonesPage({
           search: searchQuery,
           name: filters.name,
-          primary_ns: filters.primary_ns,
-          admin_email: filters.admin_email,
+          mname: filters.mname,
+          rname: filters.rname,
           min_ttl: toFilterNumber(filters.min_ttl),
           max_ttl: toFilterNumber(filters.max_ttl),
           serial: toFilterNumber(filters.serial),
@@ -118,6 +120,38 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       active = false;
     };
   }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
+
+  // The list API has no DNSSEC flag, so probe each listed zone; the previous
+  // badges stay up while the probes run to avoid flicker.
+  useEffect(() => {
+    if (zones.length === 0) {
+      return;
+    }
+
+    let active = true;
+
+    (async () => {
+      const results = await Promise.allSettled(
+        zones.map(async (zone) => ({
+          name: zone.name,
+          enabled: (await getDnssecStatus(zone.name)).enabled,
+        })),
+      );
+      if (active) {
+        const enabled = new Set<string>();
+        for (const result of results) {
+          if (result.status === "fulfilled" && result.value.enabled) {
+            enabled.add(result.value.name);
+          }
+        }
+        setDnssecZones(enabled);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [zones]);
 
   const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
@@ -192,16 +226,16 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("name", value)}
         />
         <FilterField
-          id="filter_zone_primary_ns"
+          id="filter_zone_mname"
           label="Primary NS"
-          value={filters.primary_ns}
-          onChange={(value) => handleFilterChange("primary_ns", value)}
+          value={filters.mname}
+          onChange={(value) => handleFilterChange("mname", value)}
         />
         <FilterField
-          id="filter_zone_admin_email"
+          id="filter_zone_rname"
           label="Admin Email"
-          value={filters.admin_email}
-          onChange={(value) => handleFilterChange("admin_email", value)}
+          value={filters.rname}
+          onChange={(value) => handleFilterChange("rname", value)}
         />
         <FilterField
           id="filter_zone_min_ttl"
@@ -266,28 +300,33 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             {zones.map((zone) => (
               <tr key={zone.id} className="transition-colors hover:bg-gray-50">
                 <td
-                  onClick={() =>
-                    navigate(
-                      `/records?zoneName=${encodeURIComponent(zone.name)}`,
-                    )
-                  }
+                  onClick={() => handleShowDetails(zone)}
                   className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
                 >
                   {zone.name}
+                  {dnssecZones.has(zone.name) && (
+                    <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      DNSSEC
+                    </span>
+                  )}
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {zone.primary_ns}
+                  {zone.mname}
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {zone.admin_email}
+                  {zone.rname}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
-                      onClick={() => handleShowDetails(zone)}
+                      onClick={() =>
+                        navigate(
+                          `/records?zoneName=${encodeURIComponent(zone.name)}`,
+                        )
+                      }
                       className="font-medium text-green-600 hover:underline"
                     >
-                      Details
+                      Records
                     </button>
                     <button
                       onClick={() => setImportingZone(zone)}
@@ -323,6 +362,22 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
               setSelectedZone(updatedZone);
               setRefreshKey((prev) => prev + 1);
             }}
+            onDnssecChanged={(zoneName, enabled) =>
+              setDnssecZones((prev) => {
+                // Bail out unless membership changes, or the identity-based
+                // effect in the DNSSEC tab re-renders this list forever.
+                if (prev.has(zoneName) === enabled) {
+                  return prev;
+                }
+                const next = new Set(prev);
+                if (enabled) {
+                  next.add(zoneName);
+                } else {
+                  next.delete(zoneName);
+                }
+                return next;
+              })
+            }
           />
         </Modal>
       )}

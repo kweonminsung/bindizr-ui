@@ -12,9 +12,9 @@ interface ZoneFormProps {
 
 interface ZoneFormData {
   name: string;
-  primary_ns: string;
-  admin_email: string;
-  ttl: string;
+  mname: string;
+  rname: string;
+  default_ttl: string;
   serial: string;
   refresh: string;
   retry: string;
@@ -24,9 +24,9 @@ interface ZoneFormData {
 
 const defaultFormData: ZoneFormData = {
   name: "",
-  primary_ns: "",
-  admin_email: "",
-  ttl: "3600",
+  mname: "",
+  rname: "",
+  default_ttl: "3600",
   serial: "",
   refresh: "7200",
   retry: "3600",
@@ -45,12 +45,12 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
     if (zone) {
       setFormData({
         name: toFormString(zone.name, defaultFormData.name),
-        primary_ns: toFormString(zone.primary_ns, defaultFormData.primary_ns),
-        admin_email: toFormString(
-          zone.admin_email,
-          defaultFormData.admin_email,
+        mname: toFormString(zone.mname, defaultFormData.mname),
+        rname: toFormString(zone.rname, defaultFormData.rname),
+        default_ttl: toFormString(
+          zone.default_ttl,
+          defaultFormData.default_ttl,
         ),
-        ttl: toFormString(zone.ttl, defaultFormData.ttl),
         serial: toFormString(zone.serial, defaultFormData.serial),
         refresh: toFormString(zone.refresh, defaultFormData.refresh),
         retry: toFormString(zone.retry, defaultFormData.retry),
@@ -77,9 +77,9 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
     try {
       const payload: ZonePayload = {
         name: formData.name,
-        primary_ns: formData.primary_ns,
-        admin_email: formData.admin_email,
-        ttl: toRequiredNumber(formData.ttl, "TTL"),
+        mname: formData.mname,
+        rname: formData.rname,
+        default_ttl: toRequiredNumber(formData.default_ttl, "Default TTL"),
         serial: toOptionalNumber(formData.serial, "Serial"),
         refresh: toOptionalNumber(formData.refresh, "Refresh"),
         retry: toOptionalNumber(formData.retry, "Retry"),
@@ -152,16 +152,16 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           </div>
           <div>
             <label
-              htmlFor="admin_email"
+              htmlFor="rname"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
               Admin Email
             </label>
             <input
               type="email"
-              id="admin_email"
-              name="admin_email"
-              value={formData.admin_email}
+              id="rname"
+              name="rname"
+              value={formData.rname}
               onChange={handleChange}
               required
               className="w-full"
@@ -169,16 +169,16 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           </div>
           <div className="md:col-span-2">
             <label
-              htmlFor="primary_ns"
+              htmlFor="mname"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
               Primary NS
             </label>
             <input
               type="text"
-              id="primary_ns"
-              name="primary_ns"
-              value={formData.primary_ns}
+              id="mname"
+              name="mname"
+              value={formData.mname}
               onChange={handleChange}
               required
               className="w-full"
@@ -194,16 +194,16 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <label
-              htmlFor="ttl"
+              htmlFor="default_ttl"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              TTL
+              Default TTL
             </label>
             <input
               type="number"
-              id="ttl"
-              name="ttl"
-              value={formData.ttl}
+              id="default_ttl"
+              name="default_ttl"
+              value={formData.default_ttl}
               onChange={handleChange}
               required
               className="w-full"
