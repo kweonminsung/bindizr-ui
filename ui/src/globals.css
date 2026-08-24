@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #1d202a;
+  /* shadcn/ui zinc-900 primary: hsl(240 5.9% 10%) */
+  --primary: #18181b;
 }
 
 body {
@@ -26,7 +27,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(0, 180, 168, 0.5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 button {

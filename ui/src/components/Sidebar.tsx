@@ -106,8 +106,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <header className="py-4 mb-8">
           <Link to="/zones" onClick={onClose}>
-            <h1 className="text-center text-2xl cursor-pointer">
-              <span className="font-bold">DNS</span> Dashboard
+            <h1 className="flex items-center justify-center gap-2 text-2xl cursor-pointer">
+              <img src="/bindizr.png" alt="" className="h-8 w-8" />
+              <span>
+                <span className="font-bold">Bindizr</span> UI
+              </span>
             </h1>
           </Link>
         </header>
@@ -147,14 +150,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
         <footer className="text-center text-xs text-gray-200 py-4">
           <p>v{__APP_VERSION__}</p>
-          <p>
-            Powered by{" "}
+          <p>Powered by Bindizr</p>
+          <p className="mt-1 space-x-2">
+            <a
+              target="_blank"
+              href="https://kweonminsung.github.io/bindizr"
+              rel="noopener noreferrer"
+              className="hover:underline"
+            >
+              Docs
+            </a>
+            <span>·</span>
             <a
               target="_blank"
               href="https://github.com/kweonminsung/bindizr"
               rel="noopener noreferrer"
+              className="hover:underline"
             >
-              Bindizr
+              GitHub
             </a>
           </p>
         </footer>
