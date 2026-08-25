@@ -485,10 +485,7 @@ export async function disableDnssec(zoneName: string): Promise<string> {
   const response = await apiFetch(
     `/zones/${encodeURIComponent(zoneName)}/dnssec`,
     "Failed to disable DNSSEC",
-    {
-      method: "DELETE",
-      body: JSON.stringify({ confirm_insecure: true }),
-    },
+    { method: "DELETE" },
   );
   return (await response.json()).message as string;
 }

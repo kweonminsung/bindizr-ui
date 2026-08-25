@@ -23,14 +23,14 @@ const SETTINGS_LINKS: NavLink[] = [
 
 const linkClasses = (pathname: string, path: string) => {
   const isActive = pathname.startsWith(path);
-  return `block px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
+  return `block px-5 py-3 text-sm hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
     isActive ? "bg-white text-(--primary)" : ""
   }`;
 };
 
 const subLinkClasses = (pathname: string, path: string) => {
   const isActive = pathname.startsWith(path);
-  return `block pl-8 pr-6 py-3 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
+  return `block pl-8 pr-5 py-2.5 text-sm hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
     isActive ? "bg-white text-(--primary)" : ""
   }`;
 };
@@ -58,7 +58,7 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
       <button
         onClick={() => setIsExpanded((expanded) => !expanded)}
         aria-expanded={isExpanded}
-        className={`w-full text-left px-6 py-4 hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out flex justify-between items-center ${
+        className={`w-full text-left px-5 py-3 text-sm hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out flex justify-between items-center ${
           pathname.startsWith(basePath) ? "bg-white text-(--primary)" : ""
         }`}
       >
@@ -100,18 +100,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         onClick={onClose}
       ></div>
       <aside
-        className={`fixed top-0 left-0 w-64 bg-(--primary) h-full z-40 transform ${
+        className={`fixed top-0 left-0 w-56 bg-(--primary) h-full z-40 transform ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-56 md:h-screen flex flex-col text-white shadow-lg`}
+        } transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-44 md:h-screen flex flex-col text-white shadow-lg`}
       >
         <header className="py-4 mb-8">
-          <Link to="/zones" onClick={onClose}>
-            <h1 className="flex items-center justify-center gap-2 text-2xl cursor-pointer">
-              <img src="/bindizr.png" alt="" className="h-8 w-8" />
-              <span>
-                <span className="font-bold">Bindizr</span> UI
-              </span>
-            </h1>
+          <Link to="/zones" onClick={onClose} className="flex justify-center">
+            <img src="/bindizr.png" alt="Bindizr" className="h-10 w-10" />
           </Link>
         </header>
         <nav className="flex-grow">
