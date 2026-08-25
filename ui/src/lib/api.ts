@@ -18,6 +18,7 @@ import {
   RecordListQuery,
   RollbackZonePayload,
   RollbackZoneResult,
+  SignedRecord,
   TsigKey,
   UpdateRecordPayload,
   VersionDetail,
@@ -141,9 +142,7 @@ export async function getZonesPage(
   });
 }
 
-export async function getRecordsPage(
-  queryParams: RecordListQuery = {},
-): Promise<ListResult<Record>> {
+const recordListParams = (queryParams: RecordListQuery) => {
   const params = pageParams({ ...queryParams, limit: queryParams.limit ?? 10 });
   appendQueryParam(params, "zone_name", queryParams.zone_name);
   appendQueryParam(params, "search", queryParams.search?.trim());
@@ -156,12 +155,31 @@ export async function getRecordsPage(
   appendQueryParam(params, "priority", queryParams.priority);
   appendQueryParam(params, "min_priority", queryParams.min_priority);
   appendQueryParam(params, "max_priority", queryParams.max_priority);
+  return params;
+};
 
+export async function getRecordsPage(
+  queryParams: RecordListQuery = {},
+): Promise<ListResult<Record>> {
   const response = await apiFetch(
-    withQuery("/records", params),
+    withQuery("/records", recordListParams(queryParams)),
     "Failed to fetch records",
   );
   return toListResult((await response.json()) as ListResponse<Record>);
+}
+
+/** The signed listing: user records plus derived DNSSEC rows, one pagination. */
+export async function getSignedRecordsPage(
+  queryParams: RecordListQuery = {},
+): Promise<ListResult<SignedRecord>> {
+  const params = recordListParams(queryParams);
+  appendQueryParam(params, "signed", true);
+
+  const response = await apiFetch(
+    withQuery("/records", params),
+    "Failed to fetch signed records",
+  );
+  return toListResult((await response.json()) as ListResponse<SignedRecord>);
 }
 
 export async function getRecord(id: number): Promise<Record> {

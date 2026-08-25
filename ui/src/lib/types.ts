@@ -81,6 +81,31 @@ export interface ZoneDetail {
   records: Record[];
 }
 
+/** Types only the signer emits; they mark the derived rows. */
+export const DERIVED_RECORD_TYPES = [
+  "DNSKEY",
+  "RRSIG",
+  "NSEC",
+  "NSEC3",
+  "NSEC3PARAM",
+  "CDS",
+  "CDNSKEY",
+] as const;
+
+/** A row of the signed listing: user records plus derived DNSSEC rows. */
+export interface SignedRecord {
+  /** Absent on derived DNSSEC rows. */
+  id?: number | null;
+  name: string;
+  /** A RecordType, or a derived DNSSEC type on derived rows. */
+  record_type: string;
+  value: RecordValue;
+  zone_id: number;
+  zone_name?: string | null;
+  ttl?: number | null;
+  priority?: number | null;
+}
+
 export const RECORD_DIFF_CHANGES = ["added", "removed", "changed"] as const;
 
 export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
@@ -367,7 +392,8 @@ export interface RecordListQuery extends PageQuery {
   zone_name?: string;
   search?: string;
   name?: string;
-  record_type?: RecordType | "";
+  /** A RecordType; signed listings also accept a derived DNSSEC type. */
+  record_type?: string;
   value?: string;
   ttl?: number;
   min_ttl?: number;
