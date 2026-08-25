@@ -267,7 +267,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
         </p>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
-        <table className="min-w-full text-left text-sm">
+        {/* Fixed layout: column widths must not follow the page content. */}
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th
@@ -290,7 +291,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="sm:w-72 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Actions
               </th>
@@ -301,7 +302,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
               <tr key={zone.id} className="transition-colors hover:bg-gray-50">
                 <td
                   onClick={() => handleShowDetails(zone)}
-                  className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
+                  className="truncate px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
                 >
                   {zone.name}
                   {dnssecZones.has(zone.name) && (
@@ -310,10 +311,10 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     </span>
                   )}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {zone.mname}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {zone.rname}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">

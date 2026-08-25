@@ -360,7 +360,8 @@ export default function RecordList({
         </p>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
-        <table className="min-w-full text-left text-sm">
+        {/* Fixed layout: column widths must not follow the page content. */}
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th
@@ -371,7 +372,7 @@ export default function RecordList({
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Type
               </th>
@@ -383,7 +384,7 @@ export default function RecordList({
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-40 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Actions
               </th>
@@ -397,7 +398,7 @@ export default function RecordList({
               >
                 <td
                   onClick={() => handleShowDetails(record)}
-                  className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
+                  className="truncate px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
                 >
                   {record.name}
                   {record.id == null && (
@@ -410,7 +411,7 @@ export default function RecordList({
                   {record.record_type}
                 </td>
                 <td
-                  className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500 truncate max-w-xs"
+                  className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
                   title={formatRecordValue(record.value)}
                 >
                   {formatRecordValue(record.value)}
