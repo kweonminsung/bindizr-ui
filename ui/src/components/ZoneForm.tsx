@@ -147,6 +147,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.name}
               onChange={handleChange}
               required
+              placeholder="example.com"
               className="w-full"
             />
           </div>
@@ -164,6 +165,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.rname}
               onChange={handleChange}
               required
+              placeholder="admin@example.com"
               className="w-full"
             />
           </div>
@@ -181,6 +183,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.mname}
               onChange={handleChange}
               required
+              placeholder="ns1.example.com."
               className="w-full"
             />
           </div>
@@ -286,6 +289,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               name="serial"
               value={formData.serial}
               onChange={handleChange}
+              placeholder="Automatic"
               className="w-full"
             />
           </div>
