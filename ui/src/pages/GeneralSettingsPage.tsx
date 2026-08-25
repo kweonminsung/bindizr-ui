@@ -3,7 +3,7 @@ import BindizrSettings from "@/components/BindizrSettings";
 
 export default function GeneralSettingsPage() {
   return (
-    <div>
+    <div className="space-y-6">
       <BindizrSettings />
       <AccountSettings />
     </div>

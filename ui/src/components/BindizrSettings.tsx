@@ -3,14 +3,18 @@ import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import Modal from "./Modal";
 
+interface SettingsResult {
+  text: string;
+  failed: boolean;
+}
+
 export default function BindizrSettings() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bindizrUrl, setBindizrUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConnectionTested, setIsConnectionTested] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [error, setError] = useState("");
+  const [result, setResult] = useState<SettingsResult | null>(null);
 
   const fetchSettings = async () => {
     try {
@@ -24,40 +28,36 @@ export default function BindizrSettings() {
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
-      setError("Failed to load settings.");
+      setResult({ text: "Failed to load settings.", failed: true });
     }
   };
 
   useEffect(() => {
     fetchSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenModal = () => {
     fetchSettings();
-    setError("");
-    setSuccessMessage("");
+    setResult(null);
     setIsConnectionTested(false);
     setIsModalOpen(true);
   };
 
   const testConnection = async () => {
-    setError("");
-    setSuccessMessage("");
-    const result = await testBindizrConnection(bindizrUrl, secretKey);
-    if (result.ok) {
-      setSuccessMessage(result.message);
+    setResult(null);
+    const testResult = await testBindizrConnection(bindizrUrl, secretKey);
+    setResult({ text: testResult.message, failed: !testResult.ok });
+    if (testResult.ok) {
       setIsConnectionTested(true);
-    } else {
-      setError(result.message);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
+    setResult(null);
     if (!isConnectionTested) {
-      setError("Please test the connection first.");
+      setResult({ text: "Please test the connection first.", failed: true });
       return;
     }
     setIsLoading(true);
@@ -71,47 +71,53 @@ export default function BindizrSettings() {
 
       const data = await res.json();
       if (res.ok) {
-        setSuccessMessage("Settings updated successfully!");
+        setResult({ text: "Settings updated successfully.", failed: false });
         setTimeout(() => {
           setIsModalOpen(false);
         }, 1000);
       } else {
-        setError(data.message || "Failed to update settings.");
+        setResult({
+          text: data.message || "Failed to update settings.",
+          failed: true,
+        });
       }
     } catch (error) {
       console.error("Failed to update settings:", error);
-      setError("An error occurred while updating settings.");
+      setResult({
+        text: "An error occurred while updating settings.",
+        failed: true,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="mb-6">
-      <h2 className="text-2xl font-bold text-(--primary) mb-4">
-        Bindizr Settings
-      </h2>
-      <div className="rounded-md">
-        <div className="flex flex-col">
-          <p className="mb-4">
-            Configure the connection to your Bindizr server
-          </p>
-          <button
-            onClick={handleOpenModal}
-            className="btn-primary w-full sm:w-auto sm:self-start"
-          >
-            Edit Bindizr Settings
-          </button>
-        </div>
+    <div className="bg-white rounded-lg shadow p-4 space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+          Bindizr Settings
+        </h2>
+        <p className="text-sm text-gray-500 mt-2">
+          Configure the connection to the Bindizr server.
+        </p>
       </div>
+      <button
+        onClick={handleOpenModal}
+        className="btn-primary w-full sm:w-auto"
+      >
+        Edit Bindizr Settings
+      </button>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <h3 className="text-xl font-bold mb-4">Edit Bindizr Settings</h3>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            Edit Bindizr Settings
+          </h2>
+          <div>
             <label
               htmlFor="bindizrUrl"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               Bindizr URL
             </label>
@@ -123,14 +129,15 @@ export default function BindizrSettings() {
                 setBindizrUrl(e.target.value);
                 setIsConnectionTested(false);
               }}
-              className="w-full rounded"
+              placeholder="http://localhost:3000"
+              className="w-full"
               required
             />
           </div>
-          <div className="mb-6">
+          <div>
             <label
               htmlFor="secretKey"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               Secret Key (Optional)
             </label>
@@ -142,24 +149,33 @@ export default function BindizrSettings() {
                 setSecretKey(e.target.value);
                 setIsConnectionTested(false);
               }}
-              className="w-full rounded"
+              className="w-full"
             />
           </div>
-          <div className="space-y-4">
+
+          {result && (
+            <p
+              className={`p-3 rounded-md border text-sm ${
+                result.failed
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-green-200 bg-green-50 text-green-800"
+              }`}
+            >
+              {result.text}
+            </p>
+          )}
+
+          <div className="flex justify-end space-x-2 pt-4">
             <button
               type="button"
               onClick={testConnection}
-              className="w-full btn-primary"
+              className="btn-secondary"
             >
               Test Connection
             </button>
-            {error && <p className="text-center text-red-500">{error}</p>}
-            {successMessage && (
-              <p className="text-center text-green-500">{successMessage}</p>
-            )}
             <button
               type="submit"
-              className="w-full btn-primary"
+              className="btn-primary"
               disabled={isLoading || !isConnectionTested}
             >
               {isLoading ? "Saving..." : "Save"}
