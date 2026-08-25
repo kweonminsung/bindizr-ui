@@ -70,7 +70,7 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
         />
       </button>
       {isExpanded && (
-        <ul className="bg-gray-700">
+        <ul className="bg-zinc-700">
           {links.map((link) => (
             <li key={link.to}>
               <Link
