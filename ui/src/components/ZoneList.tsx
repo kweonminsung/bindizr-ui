@@ -206,7 +206,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             setSearchQuery(e.target.value);
             handlePageChange(1);
           }}
-          className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0"
+          className="w-full sm:w-auto mb-4 sm:mb-0"
         />
         <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
           Create Zone
@@ -299,11 +299,12 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {zones.map((zone) => (
-              <tr key={zone.id} className="transition-colors hover:bg-gray-50">
-                <td
-                  onClick={() => handleShowDetails(zone)}
-                  className="truncate px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
-                >
+              <tr
+                key={zone.id}
+                onClick={() => handleShowDetails(zone)}
+                className="cursor-pointer transition-colors hover:bg-gray-50"
+              >
+                <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {zone.name}
                   {dnssecZones.has(zone.name) && (
                     <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
@@ -320,29 +321,39 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.stopPropagation();
                         navigate(
                           `/records?zoneName=${encodeURIComponent(zone.name)}`,
-                        )
-                      }
+                        );
+                      }}
                       className="font-medium text-green-600 hover:underline"
                     >
                       Records
                     </button>
                     <button
-                      onClick={() => setImportingZone(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setImportingZone(zone);
+                      }}
                       className="font-medium text-purple-600 hover:underline"
                     >
                       Import
                     </button>
                     <button
-                      onClick={() => setExportingZone(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExportingZone(zone);
+                      }}
                       className="font-medium text-teal-600 hover:underline"
                     >
                       Export
                     </button>
                     <button
-                      onClick={() => handleDelete(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(zone);
+                      }}
                       className="font-medium text-red-600 hover:underline"
                     >
                       Delete

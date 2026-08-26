@@ -225,13 +225,13 @@ export default function RecordList({
               setSearchQuery(e.target.value);
               handlePageChange(1);
             }}
-            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0 sm:mr-4"
+            className="w-full sm:w-auto mb-4 sm:mb-0 sm:mr-4"
           />
           <select
             value={zoneName ?? ""}
             onChange={(e) => handleUrlFilterChange("zoneName", e.target.value)}
             aria-label="Filter by zone"
-            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0 sm:mr-4"
+            className="w-full sm:w-auto mb-4 sm:mb-0 sm:mr-4"
           >
             <option value="">All Zones</option>
             {/* Keep a deep-linked zone selectable while zones load. */}
@@ -394,12 +394,10 @@ export default function RecordList({
             {records.map((record, index) => (
               <tr
                 key={record.id ?? `derived-${index}`}
-                className="transition-colors hover:bg-gray-50"
+                onClick={() => handleShowDetails(record)}
+                className="cursor-pointer transition-colors hover:bg-gray-50"
               >
-                <td
-                  onClick={() => handleShowDetails(record)}
-                  className="truncate px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
-                >
+                <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {record.name}
                   {record.id == null && (
                     <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
@@ -420,15 +418,21 @@ export default function RecordList({
                   {record.id != null ? (
                     <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <button
-                        onClick={() => handleShowDetails(record, true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShowDetails(record, true);
+                        }}
                         className="font-medium text-blue-600 hover:underline"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() =>
-                          record.id != null && handleDelete(record.id)
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (record.id != null) {
+                            handleDelete(record.id);
+                          }
+                        }}
                         className="font-medium text-red-600 hover:underline"
                       >
                         Delete
