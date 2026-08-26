@@ -153,32 +153,32 @@ export default function ZoneVersions({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200 col-span-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200 col-span-2">
             <p className="text-sm text-gray-500">Primary NS</p>
             <p className="text-gray-900 break-all">{version.mname}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200 col-span-2">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200 col-span-2">
             <p className="text-sm text-gray-500">Admin Email</p>
             <p className="text-gray-900 break-all">{version.rname}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Default TTL</p>
             <p className="text-gray-900">{version.default_ttl}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Refresh</p>
             <p className="text-gray-900">{version.refresh}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Retry</p>
             <p className="text-gray-900">{version.retry}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Expire</p>
             <p className="text-gray-900">{version.expire}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Minimum TTL</p>
             <p className="text-gray-900">{version.minimum_ttl}</p>
           </div>
@@ -188,23 +188,23 @@ export default function ZoneVersions({
           <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
             Records at this serial ({records.length})
           </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-md border border-gray-200">
+            <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Value
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     TTL
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Priority
                   </th>
                 </tr>
@@ -312,20 +312,20 @@ export default function ZoneVersions({
       ) : versions.length === 0 ? (
         <p className="text-gray-500">No versions for this zone yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-md border border-gray-200">
+          <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Serial
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
-                <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Primary NS
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>

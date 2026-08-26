@@ -68,35 +68,35 @@ export default function TsigKeyDetails({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">
         {isNew ? "TSIG Key Created" : "TSIG Key Details"}
       </h2>
 
-      <div className="space-y-3">
-        <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+      <div className="space-y-2">
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Name</p>
-          <p className="text-lg text-gray-900 break-all">{detail.name}</p>
+          <p className="text-base text-gray-900 break-all">{detail.name}</p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Algorithm</p>
-            <p className="text-lg text-gray-900">{detail.algorithm}</p>
+            <p className="text-base text-gray-900">{detail.algorithm}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Scope</p>
-            <p className="text-lg text-gray-900">
+            <p className="text-base text-gray-900">
               {detail.global ? "Global (all zones)" : "Policy-based"}
             </p>
           </div>
         </div>
-        <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Created</p>
-          <p className="text-lg text-gray-900">
+          <p className="text-base text-gray-900">
             {formatDateTime(detail.created_at)}
           </p>
         </div>
-        <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">Secret</p>
             {detail.secret && (

@@ -33,7 +33,7 @@ export default function RecordDetails({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800 mb-4">
         Record Details
         {isDerived && (
@@ -50,39 +50,39 @@ export default function RecordDetails({
         </p>
       )}
 
-      <div className="space-y-3">
-        <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+      <div className="space-y-2">
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Name</p>
-          <p className="text-lg text-gray-900 break-all">{record.name}</p>
+          <p className="text-base text-gray-900 break-all">{record.name}</p>
         </div>
-        <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Value</p>
           <p
             className={`text-gray-900 break-all ${
-              isDerived ? "font-mono text-sm" : "text-lg"
+              isDerived ? "font-mono text-sm" : "text-base"
             }`}
           >
             {formatRecordValue(record.value)}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Type</p>
-            <p className="text-lg text-gray-900">{record.record_type}</p>
+            <p className="text-base text-gray-900">{record.record_type}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">TTL</p>
-            <p className="text-lg text-gray-900">{record.ttl}</p>
+            <p className="text-base text-gray-900">{record.ttl}</p>
           </div>
           {record.priority != null && (
-            <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
               <p className="text-sm text-gray-500">Priority</p>
-              <p className="text-lg text-gray-900">{record.priority}</p>
+              <p className="text-base text-gray-900">{record.priority}</p>
             </div>
           )}
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Zone</p>
-            <p className="text-lg text-gray-900">
+            <p className="text-base text-gray-900">
               {record.zone_name ?? record.zone_id}
             </p>
           </div>

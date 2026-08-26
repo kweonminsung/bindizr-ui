@@ -118,36 +118,63 @@ export default function ZoneTsigPolicies({ zone }: ZoneTsigPoliciesProps) {
       ) : policies.length === 0 ? (
         <p className="text-gray-500">No TSIG policies for this zone yet.</p>
       ) : (
-        <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
-          {policies.map((policy) => (
-            <li
-              key={policy.id}
-              className="flex items-start justify-between gap-4 p-3"
-            >
-              <div className="min-w-0">
-                <p className="font-medium text-gray-900 break-all">
-                  {policy.tsig_key}
-                </p>
-                <p className="text-sm text-gray-600 break-all">
-                  <span className="font-mono">
+        <div className="overflow-x-auto rounded-md border border-gray-200">
+          <table className="w-full table-fixed text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Key
+                </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pattern
+                </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Types
+                </th>
+                <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="w-20 px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {policies.map((policy) => (
+                <tr key={policy.id}>
+                  <td
+                    className="truncate px-3 py-2 font-medium text-gray-900"
+                    title={policy.tsig_key}
+                  >
+                    {policy.tsig_key}
+                  </td>
+                  <td
+                    className="truncate px-3 py-2 font-mono text-gray-600"
+                    title={policy.record_name_pattern}
+                  >
                     {policy.record_name_pattern}
-                  </span>{" "}
-                  · <span className="font-mono">{policy.record_types}</span>
-                </p>
-                <p className="text-xs text-gray-400">
-                  {formatDateTime(policy.created_at)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDelete(policy)}
-                className="shrink-0 text-sm font-medium text-red-600 hover:underline"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+                  </td>
+                  <td
+                    className="truncate px-3 py-2 font-mono text-gray-600"
+                    title={policy.record_types}
+                  >
+                    {policy.record_types}
+                  </td>
+                  <td className="hidden sm:table-cell truncate px-3 py-2 text-gray-500">
+                    {formatDateTime(policy.created_at)}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(policy)}
+                      className="font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <form onSubmit={handleCreate} className="space-y-4">

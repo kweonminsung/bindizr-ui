@@ -40,7 +40,7 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-3 py-2 mt-1"
+              className="w-full mt-1"
             />
           </div>
           <div>
@@ -56,14 +56,11 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 mt-1"
+              className="w-full mt-1"
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            className="w-full px-4 py-2 font-medium btn-primary"
-          >
+          <button type="submit" className="w-full btn-primary">
             Login
           </button>
         </form>

@@ -305,14 +305,24 @@ export default function ZoneDnssecTab({
             {status.denial}
           </span>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
-          Signed at serial {status.serial}. Signatures renew automatically
-          {status.earliest_signature_expires_at &&
-            `; the earliest expires ${formatDateTime(
-              status.earliest_signature_expires_at,
-            )}`}
-          . The derived records (DNSKEY, RRSIG, the denial chain) can be
-          inspected via the zone export&apos;s signed view.
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-sm text-gray-500">Signed at Serial</p>
+            <p className="text-base text-gray-900">{status.serial}</p>
+          </div>
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-sm text-gray-500">Earliest Signature Expiry</p>
+            <p className="text-base text-gray-900">
+              {status.earliest_signature_expires_at
+                ? formatDateTime(status.earliest_signature_expires_at)
+                : "-"}
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          Signatures renew automatically. The derived records (DNSKEY, RRSIG,
+          the denial chain) can be inspected via the zone export&apos;s signed
+          view.
         </p>
       </div>
 
@@ -322,23 +332,23 @@ export default function ZoneDnssecTab({
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
           Signing Keys
         </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-md border border-gray-200">
+          <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   State
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Key Tag
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Algorithm
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Since
                 </th>
               </tr>
@@ -502,7 +512,7 @@ export default function ZoneDnssecTab({
               type="button"
               onClick={handleDisable}
               disabled={pending || !confirmInsecure}
-              className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className="btn-danger"
             >
               {pending ? "Disabling..." : "Disable DNSSEC"}
             </button>

@@ -96,7 +96,7 @@ export default function NotifyControls() {
           <button
             onClick={() => handleNotify(selectedZoneName || null)}
             disabled={loading || loadingZones}
-            className="min-w-40 flex-1 rounded-l border-2 border-(--primary) bg-white px-4 py-1 font-semibold text-(--primary) transition-colors hover:bg-(--primary) hover:text-white disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-400 sm:flex-none"
+            className="min-w-40 flex-1 rounded-l border-2 border-(--primary) bg-white px-3 py-1 text-sm font-semibold text-(--primary) transition-colors hover:bg-(--primary) hover:text-white disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-200 disabled:text-gray-400 sm:flex-none"
           >
             {loading ? "Sending..." : NOTIFY_MODE_LABELS[notifyMode]}
           </button>

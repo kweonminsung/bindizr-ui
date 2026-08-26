@@ -105,39 +105,45 @@ export default function ZoneDetails({
 
         {activeTab === "zone" && !isEditing && (
           <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+            <div className="space-y-2">
+              <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Admin Email</p>
-                <p className="text-lg text-gray-900 break-all">{zone.rname}</p>
+                <p className="text-base text-gray-900 break-all">
+                  {zone.rname}
+                </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+              <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Primary NS</p>
-                <p className="text-lg text-gray-900 break-all">{zone.mname}</p>
+                <p className="text-base text-gray-900 break-all">
+                  {zone.mname}
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Default TTL</p>
-                  <p className="text-lg text-gray-900">{zone.default_ttl}</p>
+                  <p className="text-base text-gray-900">{zone.default_ttl}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Serial</p>
-                  <p className="text-lg text-gray-900">{zone.serial ?? "-"}</p>
+                  <p className="text-base text-gray-900">
+                    {zone.serial ?? "-"}
+                  </p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Refresh</p>
-                  <p className="text-lg text-gray-900">{zone.refresh}</p>
+                  <p className="text-base text-gray-900">{zone.refresh}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Retry</p>
-                  <p className="text-lg text-gray-900">{zone.retry}</p>
+                  <p className="text-base text-gray-900">{zone.retry}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Expire</p>
-                  <p className="text-lg text-gray-900">{zone.expire}</p>
+                  <p className="text-base text-gray-900">{zone.expire}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Minimum TTL</p>
-                  <p className="text-lg text-gray-900">{zone.minimum_ttl}</p>
+                  <p className="text-base text-gray-900">{zone.minimum_ttl}</p>
                 </div>
               </div>
             </div>
