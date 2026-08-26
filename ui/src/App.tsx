@@ -9,7 +9,7 @@ import ZonesPage from "@/pages/ZonesPage";
 import RecordsPage from "@/pages/RecordsPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SetupPage from "@/pages/SetupPage";
-import GeneralSettingsPage from "@/pages/GeneralSettingsPage";
+import SettingsPage from "@/pages/SettingsPage";
 import NotifyPage from "@/pages/NotifyPage";
 
 function App() {
@@ -51,13 +51,10 @@ function App() {
               />
               <Route path="/dns/tsig-keys" element={<TsigKeysPage />} />
               <Route path="/dns/notify" element={<NotifyPage />} />
-              <Route
-                path="/settings"
-                element={<Navigate to="/settings/general" replace />}
-              />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route
                 path="/settings/general"
-                element={<GeneralSettingsPage />}
+                element={<Navigate to="/settings" replace />}
               />
               <Route
                 path="/settings/dns"

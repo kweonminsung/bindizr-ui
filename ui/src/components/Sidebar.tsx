@@ -17,10 +17,6 @@ const DNS_LINKS: NavLink[] = [
   { to: "/dns/notify", label: "Notify" },
 ];
 
-const SETTINGS_LINKS: NavLink[] = [
-  { to: "/settings/general", label: "General" },
-];
-
 const linkClasses = (pathname: string, path: string) => {
   const isActive = pathname.startsWith(path);
   return `block px-5 py-3 text-sm hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
@@ -135,12 +131,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               links={DNS_LINKS}
               onNavigate={onClose}
             />
-            <NavGroup
-              label="Settings"
-              basePath="/settings"
-              links={SETTINGS_LINKS}
-              onNavigate={onClose}
-            />
+            <li>
+              <Link
+                to="/settings"
+                className={linkClasses(pathname, "/settings")}
+                onClick={onClose}
+              >
+                Settings
+              </Link>
+            </li>
           </ul>
         </nav>
         <footer className="text-center text-xs text-gray-200 py-4">
