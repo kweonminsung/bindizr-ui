@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { diffZoneSnapshots } from "@/lib/api";
+import { diffZoneVersions } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRecordRdata } from "@/lib/recordValue";
 import {
   RecordDiffChange,
   RecordDiffValue,
-  SnapshotDiff,
+  VersionDiff,
   Zone,
 } from "@/lib/types";
 
-interface ZoneSnapshotDiffProps {
+interface ZoneVersionDiffProps {
   zone: Zone;
   from: number;
   /** Omitted compares against the current serial. */
@@ -46,13 +46,13 @@ const sideTtl = (values: RecordDiffValue[]) =>
 const formatTtl = (ttl: number | null) =>
   ttl == null ? "inherited" : String(ttl);
 
-export default function ZoneSnapshotDiff({
+export default function ZoneVersionDiff({
   zone,
   from,
   to,
   onBack,
-}: ZoneSnapshotDiffProps) {
-  const [diff, setDiff] = useState<SnapshotDiff | null>(null);
+}: ZoneVersionDiffProps) {
+  const [diff, setDiff] = useState<VersionDiff | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,13 +63,13 @@ export default function ZoneSnapshotDiff({
       setLoading(true);
       setError(null);
       try {
-        const data = await diffZoneSnapshots(zone.name, from, to);
+        const data = await diffZoneVersions(zone.name, from, to);
         if (active) {
           setDiff(data);
         }
       } catch (fetchError) {
         if (active) {
-          setError(getErrorMessage(fetchError, "Failed to diff snapshots"));
+          setError(getErrorMessage(fetchError, "Failed to diff versions"));
         }
       } finally {
         if (active) {

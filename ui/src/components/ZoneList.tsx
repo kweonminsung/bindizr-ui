@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getZonesPage, deleteZone } from "@/lib/api";
+import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
+import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -23,8 +24,8 @@ interface ZoneListProps {
 
 interface ZoneFilters {
   name: string;
-  primary_ns: string;
-  admin_email: string;
+  mname: string;
+  rname: string;
   min_ttl: string;
   max_ttl: string;
   serial: string;
@@ -32,12 +33,15 @@ interface ZoneFilters {
 
 const defaultFilters: ZoneFilters = {
   name: "",
-  primary_ns: "",
-  admin_email: "",
+  mname: "",
+  rname: "",
   min_ttl: "",
   max_ttl: "",
   serial: "",
 };
+
+/** Badge probes per batch, so a large page is not one burst. */
+const DNSSEC_PROBE_BATCH = 6;
 
 const countActiveFilters = (filters: ZoneFilters) =>
   Object.values(filters).filter((value) => value.trim() !== "").length;
@@ -58,7 +62,30 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  // Names of the listed zones that are DNSSEC-signed, for the name badge.
+  const [dnssecZones, setDnssecZones] = useState<Set<string>>(new Set());
+  // Probe results by zone name, so paging and filtering re-use them.
+  const dnssecProbes = useRef(new Map<string, boolean>());
   const activeFilterCount = countActiveFilters(filters);
+
+  const handleDnssecChanged = useCallback(
+    (zoneName: string, enabled: boolean) => {
+      dnssecProbes.current.set(zoneName, enabled);
+      setDnssecZones((prev) => {
+        if (prev.has(zoneName) === enabled) {
+          return prev;
+        }
+        const next = new Set(prev);
+        if (enabled) {
+          next.add(zoneName);
+        } else {
+          next.delete(zoneName);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -83,8 +110,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
         const data = await getZonesPage({
           search: searchQuery,
           name: filters.name,
-          primary_ns: filters.primary_ns,
-          admin_email: filters.admin_email,
+          mname: filters.mname,
+          rname: filters.rname,
           min_ttl: toFilterNumber(filters.min_ttl),
           max_ttl: toFilterNumber(filters.max_ttl),
           serial: toFilterNumber(filters.serial),
@@ -118,6 +145,56 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       active = false;
     };
   }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
+
+  // An explicit refresh re-probes; paging and filtering reuse the cache.
+  useEffect(() => {
+    dnssecProbes.current.clear();
+  }, [refreshKey]);
+
+  // The list API has no DNSSEC flag, so probe the zones not seen yet.
+  useEffect(() => {
+    if (zones.length === 0) {
+      return;
+    }
+
+    let active = true;
+    const probes = dnssecProbes.current;
+    const names = zones.map((zone) => zone.name);
+
+    const showBadges = () => {
+      if (active) {
+        setDnssecZones(new Set(names.filter((name) => probes.get(name))));
+      }
+    };
+
+    (async () => {
+      const pending = names.filter((name) => !probes.has(name));
+      showBadges();
+
+      for (let i = 0; i < pending.length; i += DNSSEC_PROBE_BATCH) {
+        if (!active) {
+          return;
+        }
+        const batch = pending.slice(i, i + DNSSEC_PROBE_BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async (name) => ({
+            name,
+            enabled: (await getDnssecStatus(name)).enabled,
+          })),
+        );
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            probes.set(result.value.name, result.value.enabled);
+          }
+        }
+        showBadges();
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [zones]);
 
   const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
@@ -172,7 +249,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             setSearchQuery(e.target.value);
             handlePageChange(1);
           }}
-          className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0"
+          className="w-full sm:w-auto mb-4 sm:mb-0"
         />
         <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
           Create Zone
@@ -192,16 +269,16 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("name", value)}
         />
         <FilterField
-          id="filter_zone_primary_ns"
+          id="filter_zone_mname"
           label="Primary NS"
-          value={filters.primary_ns}
-          onChange={(value) => handleFilterChange("primary_ns", value)}
+          value={filters.mname}
+          onChange={(value) => handleFilterChange("mname", value)}
         />
         <FilterField
-          id="filter_zone_admin_email"
+          id="filter_zone_rname"
           label="Admin Email"
-          value={filters.admin_email}
-          onChange={(value) => handleFilterChange("admin_email", value)}
+          value={filters.rname}
+          onChange={(value) => handleFilterChange("rname", value)}
         />
         <FilterField
           id="filter_zone_min_ttl"
@@ -233,7 +310,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
         </p>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
-        <table className="min-w-full text-left text-sm">
+        {/* Fixed layout: column widths must not follow the page content. */}
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th
@@ -256,7 +334,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="sm:w-72 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Actions
               </th>
@@ -264,45 +342,60 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {zones.map((zone) => (
-              <tr key={zone.id} className="transition-colors hover:bg-gray-50">
-                <td
-                  onClick={() =>
-                    navigate(
-                      `/records?zoneName=${encodeURIComponent(zone.name)}`,
-                    )
-                  }
-                  className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
-                >
+              <tr
+                key={zone.id}
+                {...clickableRowProps(() => handleShowDetails(zone))}
+              >
+                <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {zone.name}
+                  {dnssecZones.has(zone.name) && (
+                    <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      DNSSEC
+                    </span>
+                  )}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {zone.primary_ns}
+                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
+                  {zone.mname}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {zone.admin_email}
+                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
+                  {zone.rname}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <button
-                      onClick={() => handleShowDetails(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(
+                          `/records?zoneName=${encodeURIComponent(zone.name)}`,
+                        );
+                      }}
                       className="font-medium text-green-600 hover:underline"
                     >
-                      Details
+                      Records
                     </button>
                     <button
-                      onClick={() => setImportingZone(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setImportingZone(zone);
+                      }}
                       className="font-medium text-purple-600 hover:underline"
                     >
                       Import
                     </button>
                     <button
-                      onClick={() => setExportingZone(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExportingZone(zone);
+                      }}
                       className="font-medium text-teal-600 hover:underline"
                     >
                       Export
                     </button>
                     <button
-                      onClick={() => handleDelete(zone)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(zone);
+                      }}
                       className="font-medium text-red-600 hover:underline"
                     >
                       Delete
@@ -323,6 +416,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
               setSelectedZone(updatedZone);
               setRefreshKey((prev) => prev + 1);
             }}
+            onDnssecChanged={handleDnssecChanged}
           />
         </Modal>
       )}

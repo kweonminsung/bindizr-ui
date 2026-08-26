@@ -1,9 +1,11 @@
 export interface Zone {
   id: number;
   name: string;
-  primary_ns: string;
-  admin_email: string;
-  ttl: number;
+  /** SOA MNAME: the primary nameserver. */
+  mname: string;
+  /** SOA RNAME: the admin email. */
+  rname: string;
+  default_ttl: number;
   serial?: number | null;
   refresh: number;
   retry: number;
@@ -13,9 +15,9 @@ export interface Zone {
 
 export interface ZonePayload {
   name: string;
-  primary_ns: string;
-  admin_email: string;
-  ttl: number;
+  mname: string;
+  rname: string;
+  default_ttl: number;
   serial?: number | null;
   refresh?: number | null;
   retry?: number | null;
@@ -28,13 +30,17 @@ export type RecordValue = string | string[];
 export const RECORD_TYPES = [
   "A",
   "AAAA",
+  "CAA",
   "CNAME",
+  "DS",
   "MX",
   "TXT",
   "NS",
   "SOA",
   "SRV",
   "PTR",
+  "SSHFP",
+  "TLSA",
 ] as const;
 
 export type RecordType = (typeof RECORD_TYPES)[number];
@@ -73,6 +79,31 @@ export interface UpdateRecordPayload {
 export interface ZoneDetail {
   zone: Zone;
   records: Record[];
+}
+
+/** Types only the signer emits; they mark the derived rows. */
+export const DERIVED_RECORD_TYPES = [
+  "DNSKEY",
+  "RRSIG",
+  "NSEC",
+  "NSEC3",
+  "NSEC3PARAM",
+  "CDS",
+  "CDNSKEY",
+] as const;
+
+/** A row of the signed listing: user records plus derived DNSSEC rows. */
+export interface SignedRecord {
+  /** Absent on derived DNSSEC rows. */
+  id?: number | null;
+  name: string;
+  /** A RecordType, or a derived DNSSEC type on derived rows. */
+  record_type: string;
+  value: RecordValue;
+  zone_id: number;
+  zone_name?: string | null;
+  ttl?: number | null;
+  priority?: number | null;
 }
 
 export const RECORD_DIFF_CHANGES = ["added", "removed", "changed"] as const;
@@ -153,7 +184,8 @@ export interface ImportZoneResult {
 
 export interface NotifyZonePayload {
   zone_name?: string | null;
-  force?: boolean;
+  /** Bump the serial first, so secondaries transfer even when nothing changed. */
+  bump_serial?: boolean;
 }
 
 export const TSIG_ALGORITHMS = [
@@ -196,11 +228,11 @@ export interface CreateZoneTsigPolicyPayload {
   record_types?: string | null;
 }
 
-export interface ZoneSnapshot {
+export interface ZoneVersion {
   serial: number;
-  primary_ns: string;
-  admin_email: string;
-  ttl: number;
+  mname: string;
+  rname: string;
+  default_ttl: number;
   refresh: number;
   retry: number;
   expire: number;
@@ -209,7 +241,7 @@ export interface ZoneSnapshot {
 }
 
 /** Reconstructed from the change history, so it has no id and a plain string value. */
-export interface SnapshotRecord {
+export interface VersionRecord {
   name: string;
   record_type: string;
   value: string;
@@ -217,12 +249,12 @@ export interface SnapshotRecord {
   priority?: number | null;
 }
 
-export interface SnapshotDetail {
-  snapshot: ZoneSnapshot;
-  records: SnapshotRecord[];
+export interface VersionDetail {
+  version: ZoneVersion;
+  records: VersionRecord[];
 }
 
-export interface SnapshotDiff {
+export interface VersionDiff {
   from_serial: number;
   to_serial: number;
   diff: RecordDiff;
@@ -247,6 +279,63 @@ export interface RollbackZoneResult {
   new_serial: number;
   summary: RollbackSummary;
 }
+
+export const DNSSEC_ALGORITHMS = ["ecdsap256sha256", "ed25519"] as const;
+
+export type DnssecAlgorithm = (typeof DNSSEC_ALGORITHMS)[number];
+
+export const DNSSEC_DENIAL_MODES = ["nsec", "nsec3"] as const;
+
+export type DnssecDenialMode = (typeof DNSSEC_DENIAL_MODES)[number];
+
+export type DnssecKeyRole = "csk" | "ksk" | "zsk";
+
+/** Rollover lifecycle: pre-published, signing, or draining out of caches. */
+export type DnssecKeyState = "published" | "active" | "retired";
+
+/** A signing key's public half; the private key never leaves the server. */
+export interface DnssecKey {
+  id: number;
+  role: DnssecKeyRole;
+  state: DnssecKeyState;
+  state_changed_at: string;
+  algorithm: string;
+  key_tag: number;
+  /** Apex DNSKEY RDATA in presentation form: `257 3 <alg> <public key>`. */
+  dnskey: string;
+  created_at: string;
+}
+
+/** A key's DS form for parent-zone registration. */
+export interface DnssecDsRecord {
+  key_tag: number;
+  algorithm: number;
+  digest_type: number;
+  digest: string;
+  /** Full presentation form: `<zone>. IN DS <tag> <alg> 2 <digest>`. */
+  presentation: string;
+}
+
+export interface DnssecStatus {
+  zone_name: string;
+  enabled: boolean;
+  denial: DnssecDenialMode;
+  keys: DnssecKey[];
+  ds_records: DnssecDsRecord[];
+  serial: number;
+  earliest_signature_expires_at?: string | null;
+}
+
+export interface EnableDnssecPayload {
+  algorithm?: DnssecAlgorithm | null;
+  /** Fixed at enable time. */
+  denial?: DnssecDenialMode | null;
+  /** Split KSK/ZSK keys instead of one CSK, so the ZSK rolls without touching the parent DS. */
+  split_keys?: boolean;
+}
+
+/** Which key to roll: required for split-key zones, omitted for CSK zones. */
+export type DnssecRolloverRole = "ksk" | "zsk";
 
 export const SECONDARY_STATUSES = [
   "in_sync",
@@ -291,8 +380,8 @@ export interface ZoneListQuery extends PageQuery {
   search?: string;
   name?: string;
   id?: number;
-  primary_ns?: string;
-  admin_email?: string;
+  mname?: string;
+  rname?: string;
   ttl?: number;
   min_ttl?: number;
   max_ttl?: number;
@@ -303,7 +392,8 @@ export interface RecordListQuery extends PageQuery {
   zone_name?: string;
   search?: string;
   name?: string;
-  record_type?: RecordType | "";
+  /** A RecordType; signed listings also accept a derived DNSSEC type. */
+  record_type?: string;
   value?: string;
   ttl?: number;
   min_ttl?: number;

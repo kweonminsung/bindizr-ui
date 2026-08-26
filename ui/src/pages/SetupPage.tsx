@@ -85,7 +85,7 @@ export default function SetupPage() {
                 setIsConnectionTested(false);
               }}
               required
-              className="w-full px-3 py-2 mt-1"
+              className="w-full mt-1"
             />
           </div>
           <div>
@@ -103,13 +103,13 @@ export default function SetupPage() {
                 setSecretKey(e.target.value);
                 setIsConnectionTested(false);
               }}
-              className="w-full px-3 py-2 mt-1"
+              className="w-full mt-1"
             />
           </div>
           <button
             type="button"
             onClick={testConnection}
-            className="w-full px-4 py-2 font-medium btn-primary"
+            className="w-full btn-primary"
           >
             Test Connection
           </button>
@@ -143,7 +143,7 @@ export default function SetupPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required={createAccount}
-                  className="w-full px-3 py-2 mt-1"
+                  className="w-full mt-1"
                 />
               </div>
               <div>
@@ -159,7 +159,7 @@ export default function SetupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required={createAccount}
-                  className="w-full px-3 py-2 mt-1"
+                  className="w-full mt-1"
                 />
               </div>
               <div>
@@ -175,7 +175,7 @@ export default function SetupPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required={createAccount}
-                  className="w-full px-3 py-2 mt-1"
+                  className="w-full mt-1"
                 />
               </div>
             </>
@@ -186,7 +186,7 @@ export default function SetupPage() {
           )}
           <button
             type="submit"
-            className="w-full px-4 py-2 font-medium btn-primary"
+            className="w-full btn-primary"
             disabled={!isConnectionTested}
           >
             Save Configuration

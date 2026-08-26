@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getRecordsPage, deleteRecord } from "@/lib/api";
+import { getRecordsPage, getSignedRecordsPage, deleteRecord } from "@/lib/api";
+import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -8,7 +9,12 @@ import {
   updatePageSizeSearchParam,
   updatePageSearchParam,
 } from "@/lib/pageQuery";
-import { Record, RECORD_TYPES, RecordType } from "@/lib/types";
+import {
+  DERIVED_RECORD_TYPES,
+  RECORD_TYPES,
+  SignedRecord,
+  Zone,
+} from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import { toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField } from "./FilterPanel";
@@ -18,6 +24,7 @@ import RecordDetails from "./RecordDetails";
 
 interface RecordListProps {
   zoneName?: string;
+  zones?: Zone[];
   onCreateRecord: () => void;
 }
 
@@ -42,13 +49,21 @@ const defaultFilters: RecordFilters = {
 const countActiveFilters = (filters: RecordFilters) =>
   Object.values(filters).filter((value) => value.trim() !== "").length;
 
+const SIGNED_FILTER_TYPES: readonly string[] = [
+  ...RECORD_TYPES,
+  ...DERIVED_RECORD_TYPES,
+];
+
 export default function RecordList({
   zoneName,
+  zones = [],
   onCreateRecord,
 }: RecordListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [records, setRecords] = useState<Record[]>([]);
-  const [selectedRecord, setSelectedRecord] = useState<Record | null>(null);
+  const [records, setRecords] = useState<SignedRecord[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<SignedRecord | null>(
+    null,
+  );
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailEditing, setDetailEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -56,11 +71,30 @@ export default function RecordList({
   const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState<RecordType | "">("");
+  const signedView = searchParams.get("signed") === "true";
+  const typeParam = searchParams.get("type") ?? "";
+  // An unknown ?type= value is treated as no filter.
+  const availableTypes: readonly string[] = signedView
+    ? SIGNED_FILTER_TYPES
+    : RECORD_TYPES;
+  const selectedType = availableTypes.includes(typeParam) ? typeParam : "";
   const [filters, setFilters] = useState<RecordFilters>(defaultFilters);
   const [totalRecords, setTotalRecords] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const activeFilterCount = countActiveFilters(filters);
+  const derivedTypeSelected = DERIVED_RECORD_TYPES.includes(
+    selectedType as (typeof DERIVED_RECORD_TYPES)[number],
+  );
+  // These filters force the user plane, where `signed` adds nothing.
+  const userPlaneOnly =
+    searchQuery.trim() !== "" ||
+    filters.value.trim() !== "" ||
+    filters.min_priority.trim() !== "" ||
+    filters.max_priority.trim() !== "" ||
+    (selectedType !== "" && !derivedTypeSelected);
+  // The user-plane endpoint rejects a derived type outright; the URL keeps it.
+  const requestedType =
+    userPlaneOnly && derivedTypeSelected ? "" : selectedType;
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -75,6 +109,20 @@ export default function RecordList({
     handlePageChange(1);
   };
 
+  // URL-backed filters: deep links stay shareable, the form follows the zone.
+  const handleUrlFilterChange = (
+    key: "zoneName" | "type" | "signed",
+    value: string,
+  ) => {
+    const nextSearchParams = updatePageSearchParam(searchParams, 1);
+    if (value) {
+      nextSearchParams.set(key, value);
+    } else {
+      nextSearchParams.delete(key);
+    }
+    setSearchParams(nextSearchParams);
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -82,10 +130,12 @@ export default function RecordList({
       setLoading(true);
       setError(null);
       try {
-        const data = await getRecordsPage({
+        const fetchPage =
+          signedView && !userPlaneOnly ? getSignedRecordsPage : getRecordsPage;
+        const data = await fetchPage({
           zone_name: zoneName,
           search: searchQuery,
-          record_type: selectedType,
+          record_type: requestedType,
           name: filters.name,
           value: filters.value,
           min_ttl: toFilterNumber(filters.min_ttl),
@@ -120,8 +170,10 @@ export default function RecordList({
     filters,
     recordsPerPage,
     refreshKey,
+    requestedType,
     searchQuery,
-    selectedType,
+    signedView,
+    userPlaneOnly,
     zoneName,
   ]);
 
@@ -140,7 +192,7 @@ export default function RecordList({
     }
   };
 
-  const handleShowDetails = (record: Record, editing = false) => {
+  const handleShowDetails = (record: SignedRecord, editing = false) => {
     setSelectedRecord(record);
     setDetailEditing(editing);
     setIsDetailModalOpen(true);
@@ -177,23 +229,71 @@ export default function RecordList({
               setSearchQuery(e.target.value);
               handlePageChange(1);
             }}
-            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0 sm:mr-4"
+            className="w-full sm:w-auto mb-4 sm:mb-0 sm:mr-4"
           />
           <select
-            value={selectedType}
-            onChange={(e) => {
-              setSelectedType(e.target.value as RecordType | "");
-              handlePageChange(1);
-            }}
-            className="w-full sm:w-auto p-2 border border-gray-300 rounded-md"
+            value={zoneName ?? ""}
+            onChange={(e) => handleUrlFilterChange("zoneName", e.target.value)}
+            aria-label="Filter by zone"
+            className="w-full sm:w-auto mb-4 sm:mb-0 sm:mr-4"
           >
-            <option value="">All Types</option>
-            {RECORD_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
+            <option value="">All Zones</option>
+            {/* Keep a deep-linked zone selectable while zones load. */}
+            {zoneName && !zones.some((zone) => zone.name === zoneName) && (
+              <option value={zoneName}>{zoneName}</option>
+            )}
+            {zones.map((zone) => (
+              <option key={zone.id} value={zone.name}>
+                {zone.name}
               </option>
             ))}
           </select>
+          <select
+            value={requestedType}
+            onChange={(e) => handleUrlFilterChange("type", e.target.value)}
+            aria-label="Filter by record type"
+            // Fixed width: the option list grows with the signed toggle.
+            className="w-full sm:w-40"
+          >
+            <option value="">All Types</option>
+            {signedView ? (
+              <>
+                <optgroup label="Records">
+                  {RECORD_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Derived (DNSSEC)">
+                  {DERIVED_RECORD_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </optgroup>
+              </>
+            ) : (
+              RECORD_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))
+            )}
+          </select>
+          <label
+            title="Include the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY) in the listing — read-only rows"
+            className="flex items-center space-x-2 text-sm mt-4 sm:mt-0 sm:ml-4 text-gray-600 cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              checked={signedView}
+              onChange={(e) =>
+                handleUrlFilterChange("signed", e.target.checked ? "true" : "")
+              }
+            />
+            <span className="whitespace-nowrap">Show DNSSEC records</span>
+          </label>
         </div>
         <button
           onClick={onCreateRecord}
@@ -250,6 +350,14 @@ export default function RecordList({
           onChange={(value) => handleFilterChange("max_priority", value)}
         />
       </FilterPanel>
+      {signedView && userPlaneOnly && (
+        <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+          Derived rows are hidden while searching or filtering by value,
+          priority, or a user record type.
+          {derivedTypeSelected &&
+            ` The ${selectedType} filter is paused until those filters are cleared.`}
+        </p>
+      )}
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -258,7 +366,8 @@ export default function RecordList({
         </p>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
-        <table className="min-w-full text-left text-sm">
+        {/* Fixed layout: column widths must not follow the page content. */}
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th
@@ -269,7 +378,7 @@ export default function RecordList({
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Type
               </th>
@@ -281,45 +390,62 @@ export default function RecordList({
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-40 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {records.map((record) => (
+            {records.map((record, index) => (
               <tr
-                key={record.id}
-                className="transition-colors hover:bg-gray-50"
+                key={record.id ?? `derived-${index}`}
+                {...clickableRowProps(() => handleShowDetails(record))}
               >
-                <td
-                  onClick={() => handleShowDetails(record)}
-                  className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 cursor-pointer hover:text-(--primary)"
-                >
+                <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {record.name}
+                  {record.id == null && (
+                    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                      derived
+                    </span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-gray-500">
                   {record.record_type}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500 truncate max-w-xs">
+                <td
+                  className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
+                  title={formatRecordValue(record.value)}
+                >
                   {formatRecordValue(record.value)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                    <button
-                      onClick={() => handleShowDetails(record, true)}
-                      className="font-medium text-blue-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(record.id)}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {record.id != null ? (
+                    <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShowDetails(record, true);
+                        }}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (record.id != null) {
+                            handleDelete(record.id);
+                          }
+                        }}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">read-only</span>
+                  )}
                 </td>
               </tr>
             ))}

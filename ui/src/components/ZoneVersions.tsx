@@ -1,26 +1,26 @@
 import { useEffect, useState } from "react";
-import { getZoneSnapshot, getZoneSnapshotsPage, rollbackZone } from "@/lib/api";
+import { getZoneVersion, getZoneVersionsPage, rollbackZone } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
   RollbackZoneResult,
-  SnapshotDetail,
+  VersionDetail,
   Zone,
-  ZoneSnapshot,
+  ZoneVersion,
 } from "@/lib/types";
 import PaginationControls from "./PaginationControls";
-import ZoneSnapshotDiff from "./ZoneSnapshotDiff";
+import ZoneVersionDiff from "./ZoneVersionDiff";
 
-interface ZoneSnapshotsProps {
+interface ZoneVersionsProps {
   zone: Zone;
   onRolledBack: (result: RollbackZoneResult) => void;
 }
 
-export default function ZoneSnapshots({
+export default function ZoneVersions({
   zone,
   onRolledBack,
-}: ZoneSnapshotsProps) {
-  const [snapshots, setSnapshots] = useState<ZoneSnapshot[]>([]);
+}: ZoneVersionsProps) {
+  const [versions, setVersions] = useState<ZoneVersion[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -28,7 +28,7 @@ export default function ZoneSnapshots({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [detail, setDetail] = useState<SnapshotDetail | null>(null);
+  const [detail, setDetail] = useState<VersionDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [diffFrom, setDiffFrom] = useState<number | null>(null);
 
@@ -40,21 +40,21 @@ export default function ZoneSnapshots({
   useEffect(() => {
     let active = true;
 
-    async function fetchSnapshots() {
+    async function fetchVersions() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getZoneSnapshotsPage(zone.name, {
+        const data = await getZoneVersionsPage(zone.name, {
           limit: pageSize,
           offset: (page - 1) * pageSize,
         });
         if (active) {
-          setSnapshots(data.items);
+          setVersions(data.items);
           setTotal(data.pagination.total);
         }
       } catch (fetchError) {
         if (active) {
-          setError(getErrorMessage(fetchError, "Failed to fetch snapshots"));
+          setError(getErrorMessage(fetchError, "Failed to fetch versions"));
         }
       } finally {
         if (active) {
@@ -63,7 +63,7 @@ export default function ZoneSnapshots({
       }
     }
 
-    fetchSnapshots();
+    fetchVersions();
 
     return () => {
       active = false;
@@ -75,9 +75,9 @@ export default function ZoneSnapshots({
     setPreview(null);
     setRollbackResult(null);
     try {
-      setDetail(await getZoneSnapshot(zone.name, serial));
+      setDetail(await getZoneVersion(zone.name, serial));
     } catch (fetchError) {
-      alert(getErrorMessage(fetchError, "Failed to fetch snapshot"));
+      alert(getErrorMessage(fetchError, "Failed to fetch version"));
     } finally {
       setDetailLoading(false);
     }
@@ -124,7 +124,7 @@ export default function ZoneSnapshots({
 
   if (diffFrom !== null) {
     return (
-      <ZoneSnapshotDiff
+      <ZoneVersionDiff
         zone={zone}
         from={diffFrom}
         onBack={() => setDiffFrom(null)}
@@ -133,7 +133,7 @@ export default function ZoneSnapshots({
   }
 
   if (detail) {
-    const { snapshot, records } = detail;
+    const { version, records } = detail;
 
     return (
       <div className="space-y-6">
@@ -146,41 +146,41 @@ export default function ZoneSnapshots({
             ← Back to history
           </button>
           <h3 className="text-xl font-bold text-gray-800 mt-2">
-            Serial {snapshot.serial}
+            Serial {version.serial}
           </h3>
           <p className="text-sm text-gray-500">
-            {formatDateTime(snapshot.created_at)}
+            {formatDateTime(version.created_at)}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200 col-span-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200 col-span-2">
             <p className="text-sm text-gray-500">Primary NS</p>
-            <p className="text-gray-900 break-all">{snapshot.primary_ns}</p>
+            <p className="text-gray-900 break-all">{version.mname}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200 col-span-2">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200 col-span-2">
             <p className="text-sm text-gray-500">Admin Email</p>
-            <p className="text-gray-900 break-all">{snapshot.admin_email}</p>
+            <p className="text-gray-900 break-all">{version.rname}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-500">TTL</p>
-            <p className="text-gray-900">{snapshot.ttl}</p>
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-sm text-gray-500">Default TTL</p>
+            <p className="text-gray-900">{version.default_ttl}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Refresh</p>
-            <p className="text-gray-900">{snapshot.refresh}</p>
+            <p className="text-gray-900">{version.refresh}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Retry</p>
-            <p className="text-gray-900">{snapshot.retry}</p>
+            <p className="text-gray-900">{version.retry}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Expire</p>
-            <p className="text-gray-900">{snapshot.expire}</p>
+            <p className="text-gray-900">{version.expire}</p>
           </div>
-          <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Minimum TTL</p>
-            <p className="text-gray-900">{snapshot.minimum_ttl}</p>
+            <p className="text-gray-900">{version.minimum_ttl}</p>
           </div>
         </div>
 
@@ -188,23 +188,23 @@ export default function ZoneSnapshots({
           <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
             Records at this serial ({records.length})
           </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-md border border-gray-200">
+            <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Value
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     TTL
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Priority
                   </th>
                 </tr>
@@ -279,10 +279,10 @@ export default function ZoneSnapshots({
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => handlePreviewRollback(snapshot.serial)}
-              disabled={rollbackPending || snapshot.serial === zone.serial}
+              onClick={() => handlePreviewRollback(version.serial)}
+              disabled={rollbackPending || version.serial === zone.serial}
               title={
-                snapshot.serial === zone.serial
+                version.serial === zone.serial
                   ? "This is the current serial"
                   : undefined
               }
@@ -299,68 +299,65 @@ export default function ZoneSnapshots({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-gray-700">
-          Snapshot History
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-700">Version History</h3>
         <p className="text-sm text-gray-500">
-          Every mutation records a snapshot. Current serial:{" "}
-          {zone.serial ?? "-"}
+          Every mutation records a version. Current serial: {zone.serial ?? "-"}
         </p>
       </div>
 
-      {loading && snapshots.length === 0 ? (
-        <p className="text-gray-500">Loading snapshots...</p>
+      {loading && versions.length === 0 ? (
+        <p className="text-gray-500">Loading versions...</p>
       ) : error ? (
         <p className="text-red-500">{error}</p>
-      ) : snapshots.length === 0 ? (
-        <p className="text-gray-500">No snapshots for this zone yet.</p>
+      ) : versions.length === 0 ? (
+        <p className="text-gray-500">No versions for this zone yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-md border border-gray-200">
+          <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Serial
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
-                <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Primary NS
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {snapshots.map((snapshot) => (
+              {versions.map((version) => (
                 <tr
-                  key={snapshot.serial}
+                  key={version.serial}
                   className="transition-colors hover:bg-gray-50"
                 >
                   <td className="px-3 py-2 font-medium text-gray-900">
-                    {snapshot.serial}
-                    {snapshot.serial === zone.serial && (
+                    {version.serial}
+                    {version.serial === zone.serial && (
                       <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                         current
                       </span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-gray-500">
-                    {formatDateTime(snapshot.created_at)}
+                    {formatDateTime(version.created_at)}
                   </td>
                   <td className="hidden sm:table-cell px-3 py-2 text-gray-500 break-all">
-                    {snapshot.primary_ns}
+                    {version.mname}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end items-center space-x-3">
                       <button
                         type="button"
-                        onClick={() => setDiffFrom(snapshot.serial)}
-                        disabled={snapshot.serial === zone.serial}
+                        onClick={() => setDiffFrom(version.serial)}
+                        disabled={version.serial === zone.serial}
                         title={
-                          snapshot.serial === zone.serial
+                          version.serial === zone.serial
                             ? "This is the current serial"
                             : "Diff against the current serial"
                         }
@@ -370,7 +367,7 @@ export default function ZoneSnapshots({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleSelect(snapshot.serial)}
+                        onClick={() => handleSelect(version.serial)}
                         disabled={detailLoading}
                         className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
                       >

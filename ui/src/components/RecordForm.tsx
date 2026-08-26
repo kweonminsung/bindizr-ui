@@ -38,6 +38,22 @@ const defaultFormData: RecordFormData = {
   zone_name: "",
 };
 
+// MX and SRV omit the priority: it has its own field.
+const VALUE_PLACEHOLDERS: { [type in RecordType]?: string } = {
+  A: "192.0.2.1",
+  AAAA: "2001:db8::1",
+  CAA: '0 issue "letsencrypt.org"',
+  CNAME: "target.example.com.",
+  DS: "34217 13 2 4B9B6B073EDD97FE1A7B19871EE93BE250E49B2D9466E661A22C74C426ACE383",
+  MX: "mail.example.com.",
+  TXT: "v=spf1 include:example.com -all",
+  NS: "ns1.example.com.",
+  SRV: "0 5060 sip.example.com.",
+  PTR: "host.example.com.",
+  SSHFP: "4 2 AA50F8A4E37BCBC6A41031183D245CB6B28F701FBE007A08F225C98B2C3103D8",
+  TLSA: "3 1 1 0C72AC70B745AC19998811B131D662C9AC69DBDBE7CB23E5B514B56664C5D3D6",
+};
+
 export default function RecordForm({
   zoneName,
   record,
@@ -150,6 +166,7 @@ export default function RecordForm({
             value={formData.name}
             onChange={handleChange}
             required
+            placeholder="www"
             className="w-full"
           />
         </div>
@@ -188,6 +205,7 @@ export default function RecordForm({
             onChange={handleChange}
             required
             rows={3}
+            placeholder={VALUE_PLACEHOLDERS[formData.record_type]}
             className="w-full"
           />
         </div>
@@ -221,6 +239,7 @@ export default function RecordForm({
               name="priority"
               value={formData.priority}
               onChange={handleChange}
+              placeholder="10"
               className="w-full"
             />
           </div>

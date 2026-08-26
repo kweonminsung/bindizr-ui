@@ -1,9 +1,9 @@
 import AccountSettings from "@/components/AccountSettings";
 import BindizrSettings from "@/components/BindizrSettings";
 
-export default function GeneralSettingsPage() {
+export default function SettingsPage() {
   return (
-    <div>
+    <div className="space-y-6">
       <BindizrSettings />
       <AccountSettings />
     </div>

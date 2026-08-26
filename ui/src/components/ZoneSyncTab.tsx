@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { notifyZones } from "@/lib/api";
+import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import ZoneStatusPanel from "./ZoneStatusPanel";
 
 interface ZoneSyncTabProps {
   zone: Zone;
+  /** The Zone and History tabs compare against the serial a bump changes. */
+  onZoneChanged?: (zone: Zone) => void;
 }
 
 interface NotifyResult {
@@ -13,8 +15,8 @@ interface NotifyResult {
   failed: boolean;
 }
 
-export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
-  const [force, setForce] = useState(false);
+export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
+  const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [result, setResult] = useState<NotifyResult | null>(null);
   // Re-probe the secondaries once a NOTIFY has gone out.
@@ -24,9 +26,17 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
     setNotifying(true);
     setResult(null);
     try {
-      const message = await notifyZones(zone.name, force);
+      const message = await notifyZones(zone.name, bumpSerial);
       setResult({ text: message, failed: false });
       setStatusToken((prev) => prev + 1);
+      if (bumpSerial && onZoneChanged) {
+        // Best-effort: the NOTIFY already went out either way.
+        try {
+          onZoneChanged((await getZone(zone.name)).zone);
+        } catch {
+          /* the list refetches on close */
+        }
+      }
     } catch (error) {
       setResult({
         text: getErrorMessage(error, "Failed to send DNS NOTIFY"),
@@ -49,10 +59,12 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
           <label className="flex items-center space-x-2 text-sm text-gray-600">
             <input
               type="checkbox"
-              checked={force}
-              onChange={(e) => setForce(e.target.checked)}
+              checked={bumpSerial}
+              onChange={(e) => setBumpSerial(e.target.checked)}
             />
-            <span>Force (notify even when secondaries look in sync)</span>
+            <span>
+              Bump serial first (secondaries transfer even when nothing changed)
+            </span>
           </label>
           <button
             type="button"
@@ -60,7 +72,11 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
             disabled={notifying}
             className="btn-primary"
           >
-            {notifying ? "Sending..." : force ? "Force NOTIFY" : "Send NOTIFY"}
+            {notifying
+              ? "Sending..."
+              : bumpSerial
+                ? "Bump & NOTIFY"
+                : "Send NOTIFY"}
           </button>
         </div>
         {result && (

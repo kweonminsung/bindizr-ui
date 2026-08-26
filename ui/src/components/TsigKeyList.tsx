@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { deleteTsigKey, getTsigKeys } from "@/lib/api";
+import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { TsigKey } from "@/lib/types";
@@ -86,14 +87,15 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
           placeholder="Search TSIG keys..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto p-2 border border-gray-300 rounded-md mb-4 sm:mb-0"
+          className="w-full sm:w-auto mb-4 sm:mb-0"
         />
         <button onClick={onCreateKey} className="btn-primary w-full sm:w-auto">
           Create TSIG Key
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
+        {/* Fixed layout: column widths must not follow the page content. */}
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th
@@ -110,7 +112,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Scope
               </th>
@@ -122,7 +124,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-24 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Actions
               </th>
@@ -132,12 +134,12 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
             {visibleKeys.map((tsigKey) => (
               <tr
                 key={tsigKey.id}
-                className="transition-colors hover:bg-gray-50"
+                {...clickableRowProps(() => setSelectedKey(tsigKey))}
               >
-                <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {tsigKey.name}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {tsigKey.algorithm}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
@@ -151,24 +153,19 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
                     </span>
                   )}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {formatDateTime(tsigKey.created_at)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                    <button
-                      onClick={() => setSelectedKey(tsigKey)}
-                      className="font-medium text-green-600 hover:underline"
-                    >
-                      Details
-                    </button>
-                    <button
-                      onClick={() => handleDelete(tsigKey)}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(tsigKey);
+                    }}
+                    className="font-medium text-red-600 hover:underline"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}

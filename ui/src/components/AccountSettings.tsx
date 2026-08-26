@@ -4,6 +4,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import { useNavigate } from "react-router-dom";
 
+interface SettingsResult {
+  text: string;
+  failed: boolean;
+}
+
+const resultBanner = (result: SettingsResult) => (
+  <p
+    className={`p-3 rounded-md border text-sm ${
+      result.failed
+        ? "border-red-200 bg-red-50 text-red-700"
+        : "border-green-200 bg-green-50 text-green-800"
+    }`}
+  >
+    {result.text}
+  </p>
+);
+
 export default function AccountSettings() {
   const navigate = useNavigate();
 
@@ -19,8 +36,8 @@ export default function AccountSettings() {
     useState("");
   const [isAccountEnabled, setIsAccountEnabled] = useState(accountEnabled);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
+  const [changeResult, setChangeResult] = useState<SettingsResult | null>(null);
+  const [statusResult, setStatusResult] = useState<SettingsResult | null>(null);
 
   useEffect(() => {
     const fetchAccountStatus = async () => {
@@ -58,15 +75,15 @@ export default function AccountSettings() {
   const handleAccountChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword && newPassword !== confirmPassword) {
-      setMessage("New passwords do not match.");
+      setChangeResult({ text: "New passwords do not match.", failed: true });
       return;
     }
     if (!username.trim() && !newPassword) {
-      setMessage("No changes were made.");
+      setChangeResult({ text: "No changes were made.", failed: true });
       return;
     }
     setIsLoading(true);
-    setMessage("");
+    setChangeResult(null);
 
     try {
       const res = await fetch("/api/account", {
@@ -78,7 +95,7 @@ export default function AccountSettings() {
         }),
       });
       const data = await res.json();
-      setMessage(data.message);
+      setChangeResult({ text: data.message, failed: !res.ok });
       if (res.ok) {
         setNewPassword("");
         setConfirmPassword("");
@@ -87,7 +104,11 @@ export default function AccountSettings() {
         }, 1000);
       }
     } catch (error) {
-      setMessage("An error occurred while updating account.");
+      console.error("Failed to update account:", error);
+      setChangeResult({
+        text: "An error occurred while updating the account.",
+        failed: true,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +117,7 @@ export default function AccountSettings() {
   const handleAccountStatusChange = async (enable = false) => {
     if (!enable) {
       setIsLoading(true);
-      setStatusMessage("");
+      setStatusResult(null);
       try {
         const res = await fetch("/api/account", {
           method: "POST",
@@ -104,12 +125,16 @@ export default function AccountSettings() {
           body: JSON.stringify({ isEnabled: false }),
         });
         const data = await res.json();
-        setStatusMessage(data.message);
+        setStatusResult({ text: data.message, failed: !res.ok });
         if (res.ok) {
           setIsAccountEnabled(false);
         }
       } catch (error) {
-        setStatusMessage("An error occurred while disabling the account.");
+        console.error("Failed to disable account:", error);
+        setStatusResult({
+          text: "An error occurred while disabling the account.",
+          failed: true,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -117,7 +142,7 @@ export default function AccountSettings() {
       setNewAccountUsername("");
       setNewAccountPassword("");
       setNewAccountConfirmPassword("");
-      setStatusMessage("");
+      setStatusResult(null);
       setEnableAccountModalOpen(true);
     }
   };
@@ -125,11 +150,11 @@ export default function AccountSettings() {
   const handleEnableAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newAccountPassword !== newAccountConfirmPassword) {
-      setStatusMessage("Passwords do not match.");
+      setStatusResult({ text: "Passwords do not match.", failed: true });
       return;
     }
     setIsLoading(true);
-    setStatusMessage("");
+    setStatusResult(null);
     try {
       const res = await fetch("/api/account", {
         method: "POST",
@@ -141,7 +166,7 @@ export default function AccountSettings() {
         }),
       });
       const data = await res.json();
-      setStatusMessage(data.message);
+      setStatusResult({ text: data.message, failed: !res.ok });
       if (res.ok) {
         setIsAccountEnabled(true);
         setTimeout(() => {
@@ -149,7 +174,11 @@ export default function AccountSettings() {
         }, 1000);
       }
     } catch (error) {
-      setStatusMessage("An error occurred while enabling the account.");
+      console.error("Failed to enable account:", error);
+      setStatusResult({
+        text: "An error occurred while enabling the account.",
+        failed: true,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -161,87 +190,84 @@ export default function AccountSettings() {
   };
 
   const handleOpenModal = () => {
-    setMessage("");
+    setChangeResult(null);
     setNewPassword("");
     setConfirmPassword("");
     setChangeAccountModalOpen(true);
   };
 
   return (
-    <div className="pt-6">
-      <h2 className="text-2xl font-bold text-(--primary) mb-4">
+    <div className="bg-white rounded-lg shadow p-4 space-y-6">
+      <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
         Account Settings
       </h2>
-      <div className="rounded-md">
-        <div className="mb-12">
-          <h3 className="text-xl font-semibold mb-2 text-(--primary)">
-            Change Account
-          </h3>
-          <div className="flex flex-col">
-            <p className="mb-4">Change your username and password</p>
-            <button
-              onClick={handleOpenModal}
-              className="btn-primary w-full sm:w-auto sm:self-start"
-            >
-              Change Account
-            </button>
-          </div>
-        </div>
 
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="text-xl font-semibold mb-2 text-(--primary)">
-            Account Status
-          </h3>
-          <div className="flex flex-col">
-            <p className="mb-4">
-              Account is currently {isAccountEnabled ? "Enabled" : "Disabled"}
-            </p>
-            <button
-              onClick={() => handleAccountStatusChange(!isAccountEnabled)}
-              className={`btn ${
-                isAccountEnabled ? "btn-danger" : "btn-primary"
-              } w-full sm:w-auto sm:self-start`}
-              disabled={isLoading}
-            >
-              {isLoading
-                ? "Updating..."
-                : isAccountEnabled
-                  ? "Disable Account"
-                  : "Enable Account"}
-            </button>
-          </div>
-          {statusMessage && (
-            <p className="mt-4 text-green-500">{statusMessage}</p>
-          )}
+          <h3 className="font-medium text-gray-900">Change Account</h3>
+          <p className="text-sm text-gray-500">
+            Change your username and password.
+          </p>
         </div>
-        {isAccountEnabled && (
-          <div className="mt-12">
-            <h3 className="text-xl font-semibold mb-2 text-(--primary)">
-              Logout
-            </h3>
-            <div className="flex flex-col">
-              <p className="mb-4">Logout from your account.</p>
-              <button
-                onClick={handleLogout}
-                className="btn-primary w-full sm:w-auto sm:self-start"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        )}
+        <button
+          onClick={handleOpenModal}
+          className="btn-primary w-full sm:w-auto"
+        >
+          Change Account
+        </button>
       </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="font-medium text-gray-900">Account Status</h3>
+          <p className="text-sm text-gray-500">
+            The account is currently {isAccountEnabled ? "enabled" : "disabled"}
+            .
+          </p>
+        </div>
+        <button
+          onClick={() => handleAccountStatusChange(!isAccountEnabled)}
+          className={`${
+            isAccountEnabled ? "btn-danger" : "btn-primary"
+          } w-full sm:w-auto`}
+          disabled={isLoading}
+        >
+          {isLoading
+            ? "Updating..."
+            : isAccountEnabled
+              ? "Disable Account"
+              : "Enable Account"}
+        </button>
+      </div>
+      {statusResult && !isEnableAccountModalOpen && resultBanner(statusResult)}
+
+      {isAccountEnabled && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="font-medium text-gray-900">Logout</h3>
+            <p className="text-sm text-gray-500">Log out of your account.</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="btn-primary w-full sm:w-auto"
+          >
+            Logout
+          </button>
+        </div>
+      )}
 
       <Modal
         isOpen={isChangeAccountModalOpen}
         onClose={() => setChangeAccountModalOpen(false)}
       >
-        <h3 className="text-xl font-bold mb-4">Change Account</h3>
-        <form onSubmit={handleAccountChange}>
-          <div className="mb-4">
+        <form onSubmit={handleAccountChange} className="space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            Change Account
+          </h2>
+          <div>
             <label
               htmlFor="username"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               Username
             </label>
@@ -250,14 +276,14 @@ export default function AccountSettings() {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded"
+              className="w-full"
               required
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label
               htmlFor="newPassword"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               New Password (Optional)
             </label>
@@ -266,13 +292,13 @@ export default function AccountSettings() {
               id="newPassword"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded"
+              className="w-full"
             />
           </div>
-          <div className="mb-6">
+          <div>
             <label
               htmlFor="confirmPassword"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               Confirm New Password
             </label>
@@ -281,17 +307,17 @@ export default function AccountSettings() {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded"
+              className="w-full"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full btn-primary"
-            disabled={isLoading}
-          >
-            {isLoading ? "Saving..." : "Save Changes"}
-          </button>
-          {message && <p className="mt-4 text-green-500">{message}</p>}
+
+          {changeResult && resultBanner(changeResult)}
+
+          <div className="flex justify-end pt-4">
+            <button type="submit" className="btn-primary" disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
         </form>
       </Modal>
 
@@ -299,12 +325,14 @@ export default function AccountSettings() {
         isOpen={isEnableAccountModalOpen}
         onClose={() => setEnableAccountModalOpen(false)}
       >
-        <h3 className="text-xl font-bold mb-4">Enable Account</h3>
-        <form onSubmit={handleEnableAccount}>
-          <div className="mb-4">
+        <form onSubmit={handleEnableAccount} className="space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            Enable Account
+          </h2>
+          <div>
             <label
               htmlFor="newAccountUsername"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               New Username
             </label>
@@ -313,14 +341,14 @@ export default function AccountSettings() {
               id="newAccountUsername"
               value={newAccountUsername}
               onChange={(e) => setNewAccountUsername(e.target.value)}
-              className="w-full rounded"
+              className="w-full"
               required
             />
           </div>
-          <div className="mb-4">
+          <div>
             <label
               htmlFor="newAccountPassword"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               New Password
             </label>
@@ -329,14 +357,14 @@ export default function AccountSettings() {
               id="newAccountPassword"
               value={newAccountPassword}
               onChange={(e) => setNewAccountPassword(e.target.value)}
-              className="w-full rounded"
+              className="w-full"
               required
             />
           </div>
-          <div className="mb-6">
+          <div>
             <label
               htmlFor="newAccountConfirmPassword"
-              className="block text-gray-700 font-bold mb-2"
+              className="block text-sm font-medium text-gray-600 mb-1"
             >
               Confirm New Password
             </label>
@@ -345,20 +373,18 @@ export default function AccountSettings() {
               id="newAccountConfirmPassword"
               value={newAccountConfirmPassword}
               onChange={(e) => setNewAccountConfirmPassword(e.target.value)}
-              className="w-full rounded"
+              className="w-full"
               required
             />
           </div>
-          <button
-            type="submit"
-            className="w-full btn-primary"
-            disabled={isLoading}
-          >
-            {isLoading ? "Enabling..." : "Enable Account"}
-          </button>
-          {statusMessage && (
-            <p className="mt-4 text-red-500">{statusMessage}</p>
-          )}
+
+          {statusResult && resultBanner(statusResult)}
+
+          <div className="flex justify-end pt-4">
+            <button type="submit" className="btn-primary" disabled={isLoading}>
+              {isLoading ? "Enabling..." : "Enable Account"}
+            </button>
+          </div>
         </form>
       </Modal>
     </div>
