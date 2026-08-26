@@ -1,13 +1,14 @@
 import { KeyboardEvent } from "react";
 
-/**
- * Makes a table row open its details by pointer or keyboard alike. A bare
- * `onClick` on a `<tr>` is unreachable without a mouse.
- */
+/** A bare `onClick` on a `<tr>` is unreachable without a mouse. */
 export function clickableRowProps(onActivate: () => void) {
   return {
     onClick: onActivate,
     onKeyDown: (event: KeyboardEvent<HTMLTableRowElement>) => {
+      // Preventing the default here would cancel a nested button's activation.
+      if (event.target !== event.currentTarget) {
+        return;
+      }
       if (event.key === "Enter" || event.key === " ") {
         // Space would otherwise scroll the page.
         event.preventDefault();

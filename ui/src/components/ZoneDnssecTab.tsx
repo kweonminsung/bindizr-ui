@@ -157,8 +157,7 @@ export default function ZoneDnssecTab({
       });
     }, "Failed to confirm DS seen");
 
-  // Best-effort: a failed refresh must not report a mutation that succeeded as
-  // failed, which would invite a retry of an already-applied action.
+  // A failed refresh must not report a mutation that already succeeded as failed.
   const refreshStatus = async () => {
     try {
       setStatus(await getDnssecStatus(zone.name));
@@ -166,6 +165,12 @@ export default function ZoneDnssecTab({
       /* the tab re-fetches on the next open */
     }
   };
+
+  // Keys promote and retire on server hold-downs, which nothing pushes to us.
+  const handleRefresh = () =>
+    runAction(async () => {
+      setStatus(await getDnssecStatus(zone.name));
+    }, "Failed to refresh DNSSEC status");
 
   const handleSign = () =>
     runAction(async () => {
@@ -305,9 +310,10 @@ export default function ZoneDnssecTab({
 
   const publishedKeys = status.keys.filter((key) => key.state === "published");
   const rolloverInProgress = publishedKeys.length > 0;
-  // Only SEP keys have a parent DS to confirm; the server rejects ds-seen for a
-  // ZSK-only rollover, which the scheduler promotes after the hold-down.
+  // The server rejects ds-seen for a ZSK-only rollover; those promote on a hold-down.
   const awaitingDsSeen = publishedKeys.some((key) => key.role !== "zsk");
+  // The server refuses a new rollover until every key is active again.
+  const retiringKeys = status.keys.some((key) => key.state === "retired");
   const splitKeyZone = status.keys.some((key) => key.role !== "csk");
 
   return (
@@ -321,6 +327,14 @@ export default function ZoneDnssecTab({
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">
             {status.denial}
           </span>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={pending}
+            className="btn-secondary ml-auto"
+          >
+            Refresh
+          </button>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
@@ -456,6 +470,12 @@ export default function ZoneDnssecTab({
               nothing to confirm.
             </p>
           )
+        ) : retiringKeys ? (
+          <p className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900">
+            The previous key is retired and draining from resolver caches. It is
+            removed once the retire hold-down has elapsed, and the next rollover
+            can start then.
+          </p>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">

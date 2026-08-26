@@ -92,8 +92,7 @@ export default function RecordList({
     filters.min_priority.trim() !== "" ||
     filters.max_priority.trim() !== "" ||
     (selectedType !== "" && !derivedTypeSelected);
-  // The user-plane endpoint rejects a derived type outright, so drop it while
-  // those filters hold us there; clearing them restores the choice.
+  // The user-plane endpoint rejects a derived type outright; the URL keeps it.
   const requestedType =
     userPlaneOnly && derivedTypeSelected ? "" : selectedType;
 

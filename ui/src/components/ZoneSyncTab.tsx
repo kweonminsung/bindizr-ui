@@ -6,7 +6,7 @@ import ZoneStatusPanel from "./ZoneStatusPanel";
 
 interface ZoneSyncTabProps {
   zone: Zone;
-  /** A bumped serial must reach the Zone and History tabs, which compare against it. */
+  /** The Zone and History tabs compare against the serial a bump changes. */
   onZoneChanged?: (zone: Zone) => void;
 }
 

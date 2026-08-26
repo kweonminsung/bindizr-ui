@@ -40,7 +40,7 @@ const defaultFilters: ZoneFilters = {
   serial: "",
 };
 
-/** Zones probed at once for the DNSSEC badge, so a large page is not a burst. */
+/** Badge probes per batch, so a large page is not one burst. */
 const DNSSEC_PROBE_BATCH = 6;
 
 const countActiveFilters = (filters: ZoneFilters) =>
@@ -151,8 +151,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     dnssecProbes.current.clear();
   }, [refreshKey]);
 
-  // The list API has no DNSSEC flag, so probe the zones this page has not seen,
-  // a few at a time. Previous badges stay up while the probes run.
+  // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
     if (zones.length === 0) {
       return;
