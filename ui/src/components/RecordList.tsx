@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getRecordsPage, getSignedRecordsPage, deleteRecord } from "@/lib/api";
+import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -81,16 +82,20 @@ export default function RecordList({
   const [totalRecords, setTotalRecords] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const activeFilterCount = countActiveFilters(filters);
+  const derivedTypeSelected = DERIVED_RECORD_TYPES.includes(
+    selectedType as (typeof DERIVED_RECORD_TYPES)[number],
+  );
   // These filters force the user plane, where `signed` adds nothing.
   const userPlaneOnly =
     searchQuery.trim() !== "" ||
     filters.value.trim() !== "" ||
     filters.min_priority.trim() !== "" ||
     filters.max_priority.trim() !== "" ||
-    (selectedType !== "" &&
-      !DERIVED_RECORD_TYPES.includes(
-        selectedType as (typeof DERIVED_RECORD_TYPES)[number],
-      ));
+    (selectedType !== "" && !derivedTypeSelected);
+  // The user-plane endpoint rejects a derived type outright, so drop it while
+  // those filters hold us there; clearing them restores the choice.
+  const requestedType =
+    userPlaneOnly && derivedTypeSelected ? "" : selectedType;
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -131,7 +136,7 @@ export default function RecordList({
         const data = await fetchPage({
           zone_name: zoneName,
           search: searchQuery,
-          record_type: selectedType,
+          record_type: requestedType,
           name: filters.name,
           value: filters.value,
           min_ttl: toFilterNumber(filters.min_ttl),
@@ -166,8 +171,8 @@ export default function RecordList({
     filters,
     recordsPerPage,
     refreshKey,
+    requestedType,
     searchQuery,
-    selectedType,
     signedView,
     userPlaneOnly,
     zoneName,
@@ -245,11 +250,11 @@ export default function RecordList({
             ))}
           </select>
           <select
-            value={selectedType}
+            value={requestedType}
             onChange={(e) => handleUrlFilterChange("type", e.target.value)}
             aria-label="Filter by record type"
             // Fixed width: the option list grows with the signed toggle.
-            className="w-full sm:w-40 p-2 border border-gray-300 rounded-md"
+            className="w-full sm:w-40"
           >
             <option value="">All Types</option>
             {signedView ? (
@@ -350,6 +355,8 @@ export default function RecordList({
         <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
           Derived rows are hidden while searching or filtering by value,
           priority, or a user record type.
+          {derivedTypeSelected &&
+            ` The ${selectedType} filter is paused until those filters are cleared.`}
         </p>
       )}
       {/* Not an early return: a rejected filter must stay correctable. */}
@@ -394,8 +401,7 @@ export default function RecordList({
             {records.map((record, index) => (
               <tr
                 key={record.id ?? `derived-${index}`}
-                onClick={() => handleShowDetails(record)}
-                className="cursor-pointer transition-colors hover:bg-gray-50"
+                {...clickableRowProps(() => handleShowDetails(record))}
               >
                 <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {record.name}

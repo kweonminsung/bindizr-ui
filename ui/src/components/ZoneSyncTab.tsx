@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { notifyZones } from "@/lib/api";
+import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import ZoneStatusPanel from "./ZoneStatusPanel";
 
 interface ZoneSyncTabProps {
   zone: Zone;
+  /** A bumped serial must reach the Zone and History tabs, which compare against it. */
+  onZoneChanged?: (zone: Zone) => void;
 }
 
 interface NotifyResult {
@@ -13,7 +15,7 @@ interface NotifyResult {
   failed: boolean;
 }
 
-export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
+export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
   const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [result, setResult] = useState<NotifyResult | null>(null);
@@ -27,6 +29,14 @@ export default function ZoneSyncTab({ zone }: ZoneSyncTabProps) {
       const message = await notifyZones(zone.name, bumpSerial);
       setResult({ text: message, failed: false });
       setStatusToken((prev) => prev + 1);
+      if (bumpSerial && onZoneChanged) {
+        // Best-effort: the NOTIFY already went out either way.
+        try {
+          onZoneChanged((await getZone(zone.name)).zone);
+        } catch {
+          /* the list refetches on close */
+        }
+      }
     } catch (error) {
       setResult({
         text: getErrorMessage(error, "Failed to send DNS NOTIFY"),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { deleteTsigKey, getTsigKeys } from "@/lib/api";
+import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { TsigKey } from "@/lib/types";
@@ -133,8 +134,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
             {visibleKeys.map((tsigKey) => (
               <tr
                 key={tsigKey.id}
-                onClick={() => setSelectedKey(tsigKey)}
-                className="cursor-pointer transition-colors hover:bg-gray-50"
+                {...clickableRowProps(() => setSelectedKey(tsigKey))}
               >
                 <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {tsigKey.name}

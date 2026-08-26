@@ -89,11 +89,12 @@ export default function ZoneDnssecTab({
     };
   }, [zone.name]);
 
+  const dnssecEnabled = status?.enabled;
   useEffect(() => {
-    if (status) {
-      onEnabledChanged?.(status.enabled);
+    if (dnssecEnabled !== undefined) {
+      onEnabledChanged?.(dnssecEnabled);
     }
-  }, [status, onEnabledChanged]);
+  }, [dnssecEnabled, onEnabledChanged]);
 
   useEffect(() => {
     if (copiedDs === null) {
@@ -156,19 +157,33 @@ export default function ZoneDnssecTab({
       });
     }, "Failed to confirm DS seen");
 
+  // Best-effort: a failed refresh must not report a mutation that succeeded as
+  // failed, which would invite a retry of an already-applied action.
+  const refreshStatus = async () => {
+    try {
+      setStatus(await getDnssecStatus(zone.name));
+    } catch {
+      /* the tab re-fetches on the next open */
+    }
+  };
+
   const handleSign = () =>
     runAction(async () => {
       const message = await signDnssecZone(zone.name);
-      setStatus(await getDnssecStatus(zone.name));
       setResult({ text: message, failed: false });
+      await refreshStatus();
     }, "Failed to re-sign zone");
 
   const handleDisable = () =>
     runAction(async () => {
       const message = await disableDnssec(zone.name);
-      setStatus(await getDnssecStatus(zone.name));
       setConfirmInsecure(false);
       setResult({ text: message, failed: false });
+      // The keys are gone regardless of whether the refresh below lands.
+      setStatus((prev) =>
+        prev ? { ...prev, enabled: false, keys: [], ds_records: [] } : prev,
+      );
+      await refreshStatus();
     }, "Failed to disable DNSSEC");
 
   const handleCopyDs = async (index: number, presentation: string) => {
@@ -288,9 +303,11 @@ export default function ZoneDnssecTab({
     );
   }
 
-  const rolloverInProgress = status.keys.some(
-    (key) => key.state === "published",
-  );
+  const publishedKeys = status.keys.filter((key) => key.state === "published");
+  const rolloverInProgress = publishedKeys.length > 0;
+  // Only SEP keys have a parent DS to confirm; the server rejects ds-seen for a
+  // ZSK-only rollover, which the scheduler promotes after the hold-down.
+  const awaitingDsSeen = publishedKeys.some((key) => key.role !== "zsk");
   const splitKeyZone = status.keys.some((key) => key.role !== "csk");
 
   return (
@@ -412,24 +429,33 @@ export default function ZoneDnssecTab({
           Key Rollover
         </h3>
         {rolloverInProgress ? (
-          <div className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900 space-y-2">
-            <p>
-              A rollover is in progress: the replacement key is pre-published.
-              Once the new DS record is registered at the parent and its TTL has
-              passed, confirm it below to promote the key. ZSK rollovers involve
-              no DS and are promoted automatically after a hold-down.
-            </p>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleDsSeen}
-                disabled={pending}
-                className="btn-primary"
-              >
-                {pending ? "Confirming..." : "Confirm DS Seen"}
-              </button>
+          awaitingDsSeen ? (
+            <div className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900 space-y-2">
+              <p>
+                A rollover is in progress: the replacement key is pre-published.
+                Register the new DS record below at the parent, wait out its
+                TTL, then confirm here to promote the key. The confirmation is
+                accepted once the publish hold-down has elapsed.
+              </p>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleDsSeen}
+                  disabled={pending}
+                  className="btn-primary"
+                >
+                  {pending ? "Confirming..." : "Confirm DS Seen"}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900">
+              A ZSK rollover is in progress: the replacement key is
+              pre-published and is promoted automatically once the publish
+              hold-down has elapsed. No parent DS is involved, so there is
+              nothing to confirm.
+            </p>
+          )
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">

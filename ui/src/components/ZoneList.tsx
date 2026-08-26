@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
+import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
 import {
   getPageFromSearchParams,
@@ -39,6 +40,9 @@ const defaultFilters: ZoneFilters = {
   serial: "",
 };
 
+/** Zones probed at once for the DNSSEC badge, so a large page is not a burst. */
+const DNSSEC_PROBE_BATCH = 6;
+
 const countActiveFilters = (filters: ZoneFilters) =>
   Object.values(filters).filter((value) => value.trim() !== "").length;
 
@@ -60,7 +64,28 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   // Names of the listed zones that are DNSSEC-signed, for the name badge.
   const [dnssecZones, setDnssecZones] = useState<Set<string>>(new Set());
+  // Probe results by zone name, so paging and filtering re-use them.
+  const dnssecProbes = useRef(new Map<string, boolean>());
   const activeFilterCount = countActiveFilters(filters);
+
+  const handleDnssecChanged = useCallback(
+    (zoneName: string, enabled: boolean) => {
+      dnssecProbes.current.set(zoneName, enabled);
+      setDnssecZones((prev) => {
+        if (prev.has(zoneName) === enabled) {
+          return prev;
+        }
+        const next = new Set(prev);
+        if (enabled) {
+          next.add(zoneName);
+        } else {
+          next.delete(zoneName);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -121,30 +146,49 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     };
   }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
 
-  // The list API has no DNSSEC flag, so probe each listed zone; the previous
-  // badges stay up while the probes run to avoid flicker.
+  // An explicit refresh re-probes; paging and filtering reuse the cache.
+  useEffect(() => {
+    dnssecProbes.current.clear();
+  }, [refreshKey]);
+
+  // The list API has no DNSSEC flag, so probe the zones this page has not seen,
+  // a few at a time. Previous badges stay up while the probes run.
   useEffect(() => {
     if (zones.length === 0) {
       return;
     }
 
     let active = true;
+    const probes = dnssecProbes.current;
+    const names = zones.map((zone) => zone.name);
+
+    const showBadges = () => {
+      if (active) {
+        setDnssecZones(new Set(names.filter((name) => probes.get(name))));
+      }
+    };
 
     (async () => {
-      const results = await Promise.allSettled(
-        zones.map(async (zone) => ({
-          name: zone.name,
-          enabled: (await getDnssecStatus(zone.name)).enabled,
-        })),
-      );
-      if (active) {
-        const enabled = new Set<string>();
+      const pending = names.filter((name) => !probes.has(name));
+      showBadges();
+
+      for (let i = 0; i < pending.length; i += DNSSEC_PROBE_BATCH) {
+        if (!active) {
+          return;
+        }
+        const batch = pending.slice(i, i + DNSSEC_PROBE_BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async (name) => ({
+            name,
+            enabled: (await getDnssecStatus(name)).enabled,
+          })),
+        );
         for (const result of results) {
-          if (result.status === "fulfilled" && result.value.enabled) {
-            enabled.add(result.value.name);
+          if (result.status === "fulfilled") {
+            probes.set(result.value.name, result.value.enabled);
           }
         }
-        setDnssecZones(enabled);
+        showBadges();
       }
     })();
 
@@ -301,8 +345,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             {zones.map((zone) => (
               <tr
                 key={zone.id}
-                onClick={() => handleShowDetails(zone)}
-                className="cursor-pointer transition-colors hover:bg-gray-50"
+                {...clickableRowProps(() => handleShowDetails(zone))}
               >
                 <td className="truncate px-6 py-4 font-medium text-gray-900">
                   {zone.name}
@@ -374,22 +417,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
               setSelectedZone(updatedZone);
               setRefreshKey((prev) => prev + 1);
             }}
-            onDnssecChanged={(zoneName, enabled) =>
-              setDnssecZones((prev) => {
-                // Bail out unless membership changes, or the identity-based
-                // effect in the DNSSEC tab re-renders this list forever.
-                if (prev.has(zoneName) === enabled) {
-                  return prev;
-                }
-                const next = new Set(prev);
-                if (enabled) {
-                  next.add(zoneName);
-                } else {
-                  next.delete(zoneName);
-                }
-                return next;
-              })
-            }
+            onDnssecChanged={handleDnssecChanged}
           />
         </Modal>
       )}

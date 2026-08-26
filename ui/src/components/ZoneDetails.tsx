@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getDnssecStatus } from "@/lib/api";
 import { Zone } from "@/lib/types";
 import ZoneDnssecTab from "./ZoneDnssecTab";
@@ -32,10 +32,14 @@ export default function ZoneDetails({
   const [isEditing, setIsEditing] = useState(false);
   const [dnssecEnabled, setDnssecEnabled] = useState(false);
 
-  const updateDnssecEnabled = (enabled: boolean) => {
-    setDnssecEnabled(enabled);
-    onDnssecChanged?.(zone.name, enabled);
-  };
+  // Stable identity: the DNSSEC tab keys an effect on this callback.
+  const updateDnssecEnabled = useCallback(
+    (enabled: boolean) => {
+      setDnssecEnabled(enabled);
+      onDnssecChanged?.(zone.name, enabled);
+    },
+    [onDnssecChanged, zone.name],
+  );
 
   useEffect(() => {
     let active = true;
@@ -175,7 +179,9 @@ export default function ZoneDetails({
 
         {activeTab === "nsupdate" && <ZoneTsigPolicies zone={zone} />}
 
-        {activeTab === "sync" && <ZoneSyncTab zone={zone} />}
+        {activeTab === "sync" && (
+          <ZoneSyncTab zone={zone} onZoneChanged={onZoneChanged} />
+        )}
       </div>
     </div>
   );
