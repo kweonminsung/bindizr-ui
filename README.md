@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-beta.6">
-        <img src="https://img.shields.io/badge/Compatible-0.1.0--beta.5-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-beta.7">
+        <img src="https://img.shields.io/badge/Compatible-0.1.0--beta.7-success" />
     </a>
 </p>
 
@@ -19,7 +19,7 @@ A modern web interface for managing DNS zones and records with [Bindizr](https:/
 ## Run with Docker
 
 ```bash
-$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-beta.6
+$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-beta.7
 ```
 
 Or with Docker Compose:
