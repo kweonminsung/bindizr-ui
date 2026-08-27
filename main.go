@@ -76,10 +76,23 @@ func main() {
 			log.Fatal("Failed to create sub filesystem:", err)
 		}
 
-		mux.Handle("/assets/", http.FileServer(http.FS(distSubFS)))
+		fileServer := http.FileServer(http.FS(distSubFS))
+		mux.Handle("/assets/", fileServer)
 
-		// Serve embedded index.html for all non-asset routes (SPA fallback)
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// Serve bundled root-level static files (e.g. /bindizr.png, /favicon.ico)
+			if name := strings.TrimPrefix(r.URL.Path, "/"); name != "" && fs.ValidPath(name) {
+				if file, err := distSubFS.Open(name); err == nil {
+					info, statErr := file.Stat()
+					file.Close()
+					if statErr == nil && !info.IsDir() {
+						fileServer.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+
+			// SPA fallback: every other route renders the app shell
 			indexFile, err := distSubFS.Open("index.html")
 			if err != nil {
 				http.Error(w, "Index file not found", http.StatusNotFound)
