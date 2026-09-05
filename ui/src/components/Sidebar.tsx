@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
+import logo from "@/assets/bindizr.png";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -110,7 +111,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <header className="py-4 mb-8">
           <Link to="/zones" onClick={onClose} className="flex justify-center">
-            <img src="/bindizr.png" alt="Bindizr" className="h-10 w-10" />
+            <img src={logo} alt="Bindizr" className="h-10 w-10" />
           </Link>
         </header>
         <nav className="flex-grow">
