@@ -9,7 +9,7 @@ interface TsigKeyFormProps {
 }
 
 const GLOBAL_WARNING =
-  "A global key can update every record of every zone without any policy. Create it anyway?";
+  "A Global Key can update every record of every zone without any grant. Create it anyway?";
 
 export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
   const [name, setName] = useState("");
@@ -43,7 +43,12 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Create TSIG Key</h2>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Create TSIG Key</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          A Scoped Key does nothing until you grant it access to zones.
+        </p>
+      </div>
 
       <div className="space-y-4">
         <div>
@@ -113,10 +118,10 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
             className="mt-1"
           />
           <span>
-            Global key
+            Global Key
             <span className="block text-amber-700">
-              Grants updates to every name and type in every zone, with no
-              policy. Fixed at creation.
+              Updates every name and type in every zone, with no grant. Fixed at
+              creation.
             </span>
           </span>
         </label>

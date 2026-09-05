@@ -1,20 +1,23 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
+  cancelDnssecWithdrawal,
   confirmDnssecDsSeen,
   disableDnssec,
   enableDnssec,
+  getDnssecPolicies,
   getDnssecStatus,
+  setZoneDnssecPolicy,
   signDnssecZone,
   startDnssecRollover,
+  withdrawDnssec,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
-  DNSSEC_ALGORITHMS,
-  DNSSEC_DENIAL_MODES,
-  DnssecAlgorithm,
-  DnssecDenialMode,
+  DEFAULT_DNSSEC_POLICY_NAME,
   DnssecKeyState,
+  DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
   Zone,
@@ -37,23 +40,24 @@ const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
   retired: "bg-gray-100 text-gray-600",
 };
 
+const describePolicy = (policy: DnssecPolicy) =>
+  `${policy.algorithm}, ${policy.denial.toUpperCase()}, ${
+    policy.split_keys ? "split KSK/ZSK" : "single CSK"
+  }`;
+
 export default function ZoneDnssecTab({
   zone,
   onEnabledChanged,
 }: ZoneDnssecTabProps) {
   const [status, setStatus] = useState<DnssecStatus | null>(null);
+  const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<ActionResult | null>(null);
 
-  const [algorithm, setAlgorithm] = useState<DnssecAlgorithm>(
-    DNSSEC_ALGORITHMS[0],
-  );
-  const [denial, setDenial] = useState<DnssecDenialMode>(
-    DNSSEC_DENIAL_MODES[0],
-  );
-  const [splitKeys, setSplitKeys] = useState(false);
+  const [policyName, setPolicyName] = useState(DEFAULT_DNSSEC_POLICY_NAME);
+  const [targetPolicy, setTargetPolicy] = useState("");
   const [rolloverRole, setRolloverRole] = useState<DnssecRolloverRole>("zsk");
   const [confirmInsecure, setConfirmInsecure] = useState(false);
   const [copiedDs, setCopiedDs] = useState<number | null>(null);
@@ -65,9 +69,15 @@ export default function ZoneDnssecTab({
       setLoading(true);
       setError(null);
       try {
-        const data = await getDnssecStatus(zone.name);
+        const [data, policyList] = await Promise.all([
+          getDnssecStatus(zone.name),
+          // Signing still works off the built-in policy if this listing fails.
+          getDnssecPolicies().catch(() => [] as DnssecPolicy[]),
+        ]);
         if (active) {
           setStatus(data);
+          setPolicies(policyList);
+          setTargetPolicy("");
         }
       } catch (fetchError) {
         if (active) {
@@ -125,17 +135,26 @@ export default function ZoneDnssecTab({
 
   const handleEnable = () =>
     runAction(async () => {
-      const data = await enableDnssec(zone.name, {
-        algorithm,
-        denial,
-        split_keys: splitKeys,
-      });
+      const data = await enableDnssec(zone.name, { policy: policyName });
       setStatus(data);
       setResult({
         text: "DNSSEC enabled. Register the DS records below in the parent zone.",
         failed: false,
       });
     }, "Failed to enable DNSSEC");
+
+  const handleChangePolicy = () =>
+    runAction(async () => {
+      const data = await setZoneDnssecPolicy(zone.name, {
+        policy: targetPolicy,
+      });
+      setStatus(data);
+      setTargetPolicy("");
+      setResult({
+        text: `Zone moved to the "${data.policy?.name ?? targetPolicy}" policy.`,
+        failed: false,
+      });
+    }, "Failed to change the zone's DNSSEC policy");
 
   const handleStartRollover = (role?: DnssecRolloverRole) =>
     runAction(async () => {
@@ -156,6 +175,26 @@ export default function ZoneDnssecTab({
         failed: false,
       });
     }, "Failed to confirm DS seen");
+
+  const handleWithdraw = () =>
+    runAction(async () => {
+      const data = await withdrawDnssec(zone.name);
+      setStatus(data);
+      setResult({
+        text: "Withdrawal published. A CDS-consuming parent drops the DS on its next poll.",
+        failed: false,
+      });
+    }, "Failed to publish the DS withdrawal");
+
+  const handleCancelWithdrawal = () =>
+    runAction(async () => {
+      const data = await cancelDnssecWithdrawal(zone.name);
+      setStatus(data);
+      setResult({
+        text: "Withdrawal cancelled: the per-key CDS/CDNSKEY set returns on the next signing pass.",
+        failed: false,
+      });
+    }, "Failed to cancel the DS withdrawal");
 
   // A failed refresh must not report a mutation that already succeeded as failed.
   const refreshStatus = async () => {
@@ -186,7 +225,16 @@ export default function ZoneDnssecTab({
       setResult({ text: message, failed: false });
       // The keys are gone regardless of whether the refresh below lands.
       setStatus((prev) =>
-        prev ? { ...prev, enabled: false, keys: [], ds_records: [] } : prev,
+        prev
+          ? {
+              ...prev,
+              enabled: false,
+              policy: null,
+              keys: [],
+              ds_records: [],
+              withdrawing: false,
+            }
+          : prev,
       );
       await refreshStatus();
     }, "Failed to disable DNSSEC");
@@ -224,73 +272,64 @@ export default function ZoneDnssecTab({
     </p>
   );
 
+  const policiesLink = (
+    <Link to="/dns/dnssec-policies" className="text-blue-600 hover:underline">
+      DNSSEC policies
+    </Link>
+  );
+
   if (!status.enabled) {
+    const selectedPolicy = policies.find(
+      (policy) => policy.name === policyName,
+    );
+
     return (
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-700">DNSSEC</h3>
           <p className="text-sm text-gray-500">
-            This zone is not signed. Enabling DNSSEC generates a signing key and
-            signs the whole zone; the DS records returned must then be
-            registered in the parent zone.
+            This zone is not signed. Enabling DNSSEC generates the signing keys
+            the chosen policy prescribes and signs the whole zone; the DS
+            records returned must then be registered in the parent zone.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor="dnssec_algorithm"
-              className="block text-sm font-medium text-gray-600 mb-1"
-            >
-              Algorithm
-            </label>
+        <div>
+          <label
+            htmlFor="dnssec_policy"
+            className="block text-sm font-medium text-gray-600 mb-1"
+          >
+            DNSSEC Policy
+          </label>
+          {policies.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Signing under the built-in <code>{policyName}</code> policy.
+            </p>
+          ) : (
             <select
-              id="dnssec_algorithm"
-              value={algorithm}
-              onChange={(e) => setAlgorithm(e.target.value as DnssecAlgorithm)}
+              id="dnssec_policy"
+              value={policyName}
+              onChange={(e) => setPolicyName(e.target.value)}
               className="w-full rounded"
             >
-              {DNSSEC_ALGORITHMS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
+              {policies.map((policy) => (
+                <option key={policy.id} value={policy.name}>
+                  {policy.name}
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label
-              htmlFor="dnssec_denial"
-              className="block text-sm font-medium text-gray-600 mb-1"
-            >
-              Denial of existence
-            </label>
-            <select
-              id="dnssec_denial"
-              value={denial}
-              onChange={(e) => setDenial(e.target.value as DnssecDenialMode)}
-              className="w-full rounded"
-            >
-              {DNSSEC_DENIAL_MODES.map((value) => (
-                <option key={value} value={value}>
-                  {value.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            <p className="text-sm text-gray-500 mt-1">Fixed at enable time.</p>
-          </div>
+          )}
+          <p className="text-sm text-gray-500 mt-1">
+            {selectedPolicy ? (
+              <>
+                {describePolicy(selectedPolicy)}. The denial mode and key layout
+                are fixed for as long as the zone stays signed.
+              </>
+            ) : (
+              <>Manage the parameter bundles under {policiesLink}.</>
+            )}
+          </p>
         </div>
-
-        <label className="flex items-center space-x-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={splitKeys}
-            onChange={(e) => setSplitKeys(e.target.checked)}
-          />
-          <span>
-            Split KSK/ZSK keys instead of one CSK, so the ZSK rolls without
-            touching the parent DS
-          </span>
-        </label>
 
         {resultBanner}
 
@@ -314,19 +353,37 @@ export default function ZoneDnssecTab({
   const awaitingDsSeen = publishedKeys.some((key) => key.role !== "zsk");
   // The server refuses a new rollover until every key is active again.
   const retiringKeys = status.keys.some((key) => key.state === "retired");
-  const splitKeyZone = status.keys.some((key) => key.role !== "csk");
+  const currentPolicy = status.policy;
+  const splitKeyZone =
+    currentPolicy?.split_keys ?? status.keys.some((key) => key.role !== "csk");
+  // The server rejects a policy whose denial mode or key layout differs.
+  const compatiblePolicies = currentPolicy
+    ? policies.filter(
+        (policy) =>
+          policy.name !== currentPolicy.name &&
+          policy.denial === currentPolicy.denial &&
+          policy.split_keys === currentPolicy.split_keys,
+      )
+    : [];
 
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-lg font-semibold text-gray-700">DNSSEC</h3>
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
             enabled
           </span>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">
-            {status.denial}
-          </span>
+          {currentPolicy && (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">
+              {currentPolicy.denial}
+            </span>
+          )}
+          {status.withdrawing && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              DS withdrawal published
+            </span>
+          )}
           <button
             type="button"
             onClick={handleRefresh}
@@ -359,6 +416,75 @@ export default function ZoneDnssecTab({
 
       {resultBanner}
 
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+          Policy
+        </h3>
+        {currentPolicy ? (
+          <>
+            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-sm text-gray-500">Signing under</p>
+              <p className="text-base text-gray-900 break-all">
+                {currentPolicy.name}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {describePolicy(currentPolicy)}; signatures valid{" "}
+                {currentPolicy.signature_validity_days} days, renewed with{" "}
+                {currentPolicy.signature_refresh_days} days left.
+              </p>
+            </div>
+            {compatiblePolicies.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No other policy shares this zone&apos;s denial mode and key
+                layout, the two the zone cannot change while signed. Define one
+                under {policiesLink} to move the zone — a different algorithm
+                there starts an algorithm rollover.
+              </p>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-gray-500">
+                  Moving to a policy of another algorithm double-signs the zone
+                  until the old keys leave after ds-seen. Timing changes apply
+                  on the next signing pass.
+                </p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={targetPolicy}
+                    onChange={(e) => setTargetPolicy(e.target.value)}
+                    aria-label="Policy to move to"
+                    className="rounded"
+                  >
+                    <option value="">Select a policy</option>
+                    {compatiblePolicies.map((policy) => (
+                      <option key={policy.id} value={policy.name}>
+                        {policy.name} ({policy.algorithm})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleChangePolicy}
+                    disabled={pending || !targetPolicy || rolloverInProgress}
+                    className="btn-primary whitespace-nowrap"
+                  >
+                    {pending ? "Moving..." : "Move Zone"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {rolloverInProgress && compatiblePolicies.length > 0 && (
+              <p className="text-sm text-gray-500">
+                A rollover is in progress; finish it before moving the zone.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">
+            This server reports no policy for the zone.
+          </p>
+        )}
+      </div>
+
       <div>
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
           Signing Keys
@@ -382,6 +508,9 @@ export default function ZoneDnssecTab({
                 <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Since
                 </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Next Step
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -401,6 +530,11 @@ export default function ZoneDnssecTab({
                   <td className="px-3 py-2 text-gray-500">{key.algorithm}</td>
                   <td className="px-3 py-2 text-gray-500">
                     {formatDateTime(key.state_changed_at)}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500">
+                    {key.eligible_at
+                      ? `${key.state === "published" ? "Promotable" : "Removable"} ${formatDateTime(key.eligible_at)}`
+                      : "-"}
                   </td>
                 </tr>
               ))}
@@ -480,7 +614,8 @@ export default function ZoneDnssecTab({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">
               Pre-publish a replacement key with the same algorithm, then
-              promote it once the parent has the new DS.
+              promote it once the parent has the new DS. To change the
+              algorithm, move the zone to a policy that uses it.
             </p>
             <div className="flex items-center gap-2">
               {splitKeyZone && (
@@ -533,14 +668,42 @@ export default function ZoneDnssecTab({
 
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-red-700 border-b border-red-200 pb-2">
-          Disable DNSSEC
+          Go Insecure
         </h3>
+        <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-3">
+          <p>
+            Step one: publish the RFC 8078 delete CDS/CDNSKEY pair, asking a
+            CDS-consuming parent to drop this zone&apos;s DS records. Parents
+            that do not consume CDS need the DS removed by hand.
+          </p>
+          <div className="flex justify-end">
+            {status.withdrawing ? (
+              <button
+                type="button"
+                onClick={handleCancelWithdrawal}
+                disabled={pending}
+                className="btn-secondary"
+              >
+                {pending ? "Cancelling..." : "Cancel Withdrawal"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleWithdraw}
+                disabled={pending}
+                className="btn-secondary"
+              >
+                {pending ? "Publishing..." : "Publish DS Withdrawal"}
+              </button>
+            )}
+          </div>
+        </div>
         <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-900 space-y-3">
           <p>
-            Disabling deletes the signing keys and unsigns the zone. While the
-            parent still publishes a DS record, this makes the zone bogus for
-            validating resolvers: remove the DS from the parent first, then wait
-            out its TTL.
+            Step two: disabling deletes the signing keys and unsigns the zone.
+            While the parent still publishes a DS record, this makes the zone
+            bogus for validating resolvers: remove the DS from the parent first,
+            then wait out its TTL.
           </p>
           <label className="flex items-center space-x-2">
             <input

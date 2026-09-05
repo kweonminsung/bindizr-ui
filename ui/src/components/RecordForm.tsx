@@ -184,7 +184,7 @@ export default function RecordForm({
             onChange={handleChange}
             className="w-full"
           >
-            {RECORD_TYPES.filter((type) => type !== "SOA").map((type) => (
+            {RECORD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>

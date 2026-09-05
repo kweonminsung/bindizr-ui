@@ -36,7 +36,6 @@ export const RECORD_TYPES = [
   "MX",
   "TXT",
   "NS",
-  "SOA",
   "SRV",
   "PTR",
   "SSHFP",
@@ -200,6 +199,7 @@ export interface TsigKey {
   id: number;
   name: string;
   algorithm: string;
+  /** Updates every zone without a grant. */
   global: boolean;
   created_at: string;
   /** Only returned on create and single-key reads. */
@@ -214,19 +214,29 @@ export interface CreateTsigKeyPayload {
   global?: boolean;
 }
 
-export interface ZoneTsigPolicy {
+/** One zone granted to a token or TSIG key; the pattern and types narrow writes only. */
+export interface ZoneGrant {
   id: number;
-  tsig_key: string;
+  zone_name: string;
+  /** Writes only: `*` any name, `@` apex, `*.sub` subtree, or an exact relative name. */
   record_name_pattern: string;
+  /** Writes only: `*` or a comma-separated list of record types. */
   record_types: string;
   created_at: string;
 }
 
-export interface CreateZoneTsigPolicyPayload {
-  tsig_key: string;
+/** The pattern and types default to `*`. */
+export interface CreateZoneGrantPayload {
+  zone_name: string;
   record_name_pattern?: string | null;
   record_types?: string | null;
 }
+
+export interface TsigGrant extends ZoneGrant {
+  tsig_key: string;
+}
+
+export type CreateTsigGrantPayload = CreateZoneGrantPayload;
 
 export interface ZoneVersion {
   serial: number;
@@ -280,13 +290,60 @@ export interface RollbackZoneResult {
   summary: RollbackSummary;
 }
 
-export const DNSSEC_ALGORITHMS = ["ecdsap256sha256", "ed25519"] as const;
+export const DNSSEC_ALGORITHMS = [
+  "ecdsap256sha256",
+  "ecdsap384sha384",
+  "ed25519",
+  "ed448",
+  "rsasha256",
+  "rsasha512",
+] as const;
 
 export type DnssecAlgorithm = (typeof DNSSEC_ALGORITHMS)[number];
 
 export const DNSSEC_DENIAL_MODES = ["nsec", "nsec3"] as const;
 
 export type DnssecDenialMode = (typeof DNSSEC_DENIAL_MODES)[number];
+
+/** Seeded at startup and refused for deletion. */
+export const DEFAULT_DNSSEC_POLICY_NAME = "default";
+
+/** A named bundle of signing parameters that zones sign under. */
+export interface DnssecPolicy {
+  id: number;
+  name: string;
+  algorithm: string;
+  denial: DnssecDenialMode;
+  /** A KSK/ZSK pair instead of one CSK, so the ZSK rolls without touching the parent DS. */
+  split_keys: boolean;
+  signature_validity_days: number;
+  signature_refresh_days: number;
+  /** 0 disables scheduled ZSK rollovers. */
+  zsk_lifetime_days: number;
+  rollover_publish_holddown_secs: number;
+  rollover_retire_holddown_secs: number;
+  created_at: string;
+}
+
+/** The timing fields of a policy; the only ones an edit may touch. */
+export interface DnssecPolicyTiming {
+  signature_validity_days?: number | null;
+  signature_refresh_days?: number | null;
+  zsk_lifetime_days?: number | null;
+  rollover_publish_holddown_secs?: number | null;
+  rollover_retire_holddown_secs?: number | null;
+}
+
+/** Algorithm, denial and key layout are fixed once the policy exists. */
+export interface CreateDnssecPolicyPayload extends DnssecPolicyTiming {
+  name: string;
+  algorithm?: DnssecAlgorithm | null;
+  denial?: DnssecDenialMode | null;
+  split_keys?: boolean;
+}
+
+/** An omitted field keeps its current value. */
+export type UpdateDnssecPolicyPayload = DnssecPolicyTiming;
 
 export type DnssecKeyRole = "csk" | "ksk" | "zsk";
 
@@ -303,6 +360,8 @@ export interface DnssecKey {
   key_tag: number;
   /** Apex DNSKEY RDATA in presentation form: `257 3 <alg> <public key>`. */
   dnskey: string;
+  /** Promotion for `published`, removal for `retired`; absent for `active`. */
+  eligible_at?: string | null;
   created_at: string;
 }
 
@@ -319,23 +378,63 @@ export interface DnssecDsRecord {
 export interface DnssecStatus {
   zone_name: string;
   enabled: boolean;
-  denial: DnssecDenialMode;
+  /** Absent for an unsigned zone. */
+  policy?: DnssecPolicy | null;
   keys: DnssecKey[];
   ds_records: DnssecDsRecord[];
+  /** Whether the RFC 8078 delete CDS/CDNSKEY pair asks the parent to drop the DS. */
+  withdrawing: boolean;
   serial: number;
   earliest_signature_expires_at?: string | null;
 }
 
 export interface EnableDnssecPayload {
-  algorithm?: DnssecAlgorithm | null;
-  /** Fixed at enable time. */
-  denial?: DnssecDenialMode | null;
-  /** Split KSK/ZSK keys instead of one CSK, so the ZSK rolls without touching the parent DS. */
-  split_keys?: boolean;
+  /** Name of the policy to sign under; defaults to `default`. */
+  policy?: string | null;
+}
+
+/** The new policy must match the zone's denial mode and key layout. */
+export interface SetZoneDnssecPolicyPayload {
+  policy: string;
 }
 
 /** Which key to roll: required for split-key zones, omitted for CSK zones. */
 export type DnssecRolloverRole = "ksk" | "zsk";
+
+/** An API token; the secret is only ever in the create response. */
+export interface ApiToken {
+  id: number;
+  name: string;
+  description?: string | null;
+  /** Covers every zone and the zone plane. */
+  global: boolean;
+  expires_at?: string | null;
+  last_used_at?: string | null;
+  created_at: string;
+}
+
+export interface CreateTokenPayload {
+  /** Letters, digits, `.`, `_`, and `-`: one URL path segment. */
+  name: string;
+  /** At most 255 characters. */
+  description?: string | null;
+  /** 1 to 36500; omit for a token that never expires. */
+  expires_in_days?: number | null;
+  /** Fixed at creation. */
+  global?: boolean;
+}
+
+/** The secret is shown this once. */
+export interface CreatedToken {
+  token: ApiToken;
+  secret: string;
+}
+
+export interface TokenGrant extends ZoneGrant {
+  api_token: string;
+}
+
+export type CreateTokenGrantPayload = CreateZoneGrantPayload;
 
 export const SECONDARY_STATUSES = [
   "in_sync",

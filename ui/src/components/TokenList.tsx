@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
-import { deleteTsigKey, getTsigKeys } from "@/lib/api";
+import { deleteToken, getTokens } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
-import { getErrorMessage, getErrorStatus } from "@/lib/errors";
+import { getErrorMessage } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
-import { TsigKey } from "@/lib/types";
+import { ApiToken } from "@/lib/types";
 import Modal from "./Modal";
-import TsigKeyDetails from "./TsigKeyDetails";
+import TokenDetails, { isTokenExpired } from "./TokenDetails";
 
-interface TsigKeyListProps {
-  onCreateKey: () => void;
+interface TokenListProps {
+  onCreateToken: () => void;
 }
 
-export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
+export default function TokenList({ onCreateToken }: TokenListProps) {
   const { focusName, clearFocusName } = useFocusName();
-  const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
-  const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
+  const [tokens, setTokens] = useState<ApiToken[]>([]);
+  const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,17 +24,17 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
   useEffect(() => {
     let active = true;
 
-    async function fetchTsigKeys() {
+    async function fetchTokens() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getTsigKeys();
+        const data = await getTokens();
         if (active) {
-          setTsigKeys(data);
+          setTokens(data);
         }
       } catch (fetchError) {
         if (active) {
-          setError(getErrorMessage(fetchError, "Failed to fetch TSIG keys"));
+          setError(getErrorMessage(fetchError, "Failed to fetch API tokens"));
         }
       } finally {
         if (active) {
@@ -43,7 +43,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
       }
     }
 
-    fetchTsigKeys();
+    fetchTokens();
 
     return () => {
       active = false;
@@ -54,60 +54,65 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
     if (!focusName) {
       return;
     }
-    const match = tsigKeys.find((tsigKey) => tsigKey.name === focusName);
+    const match = tokens.find((token) => token.name === focusName);
     if (match) {
-      setSelectedKey(match);
+      setSelectedToken(match);
     }
-  }, [tsigKeys, focusName]);
+  }, [tokens, focusName]);
 
   const handleCloseDetails = () => {
-    setSelectedKey(null);
+    setSelectedToken(null);
     clearFocusName();
   };
 
-  const handleDelete = async (tsigKey: TsigKey) => {
-    if (!window.confirm(`Are you sure you want to delete "${tsigKey.name}"?`)) {
+  const handleDelete = async (token: ApiToken) => {
+    if (
+      !window.confirm(
+        `Delete "${token.name}"? Its grants go with it, and clients using it stop working.`,
+      )
+    ) {
       return;
     }
 
     try {
-      await deleteTsigKey(tsigKey.name);
+      await deleteToken(token.name);
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
-      if (getErrorStatus(deleteError) === 409) {
-        alert(
-          `"${tsigKey.name}" still holds zone grants. Open the key and revoke them first.`,
-        );
-        return;
-      }
-      alert(getErrorMessage(deleteError, "Failed to delete TSIG key"));
+      alert(getErrorMessage(deleteError, "Failed to delete API token"));
     }
   };
 
-  if (loading && tsigKeys.length === 0) {
-    return <p className="text-center text-gray-500">Loading TSIG keys...</p>;
+  if (loading && tokens.length === 0) {
+    return <p className="text-center text-gray-500">Loading API tokens...</p>;
   }
   if (error) {
     return <p className="text-center text-red-500">{error}</p>;
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleKeys = query
-    ? tsigKeys.filter((tsigKey) => tsigKey.name.toLowerCase().includes(query))
-    : tsigKeys;
+  const visibleTokens = query
+    ? tokens.filter(
+        (token) =>
+          token.name.toLowerCase().includes(query) ||
+          token.description?.toLowerCase().includes(query),
+      )
+    : tokens;
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <input
           type="text"
-          placeholder="Search TSIG keys..."
+          placeholder="Search API tokens..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
-        <button onClick={onCreateKey} className="btn-primary w-full sm:w-auto">
-          Create TSIG Key
+        <button
+          onClick={onCreateToken}
+          className="btn-primary w-full sm:w-auto"
+        >
+          Create API Token
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -123,13 +128,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Algorithm
-              </th>
-              <th
-                scope="col"
-                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="w-28 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Scope
               </th>
@@ -137,7 +136,19 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
                 scope="col"
                 className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                Created
+                Description
+              </th>
+              <th
+                scope="col"
+                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Expires
+              </th>
+              <th
+                scope="col"
+                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Last Used
               </th>
               <th
                 scope="col"
@@ -148,19 +159,21 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {visibleKeys.map((tsigKey) => (
+            {visibleTokens.map((token) => (
               <tr
-                key={tsigKey.id}
-                {...clickableRowProps(() => setSelectedKey(tsigKey))}
+                key={token.id}
+                {...clickableRowProps(() => setSelectedToken(token))}
               >
                 <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {tsigKey.name}
-                </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {tsigKey.algorithm}
+                  {token.name}
+                  {isTokenExpired(token) && (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      Expired
+                    </span>
+                  )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  {tsigKey.global ? (
+                  {token.global ? (
                     <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
                       Global
                     </span>
@@ -170,14 +183,27 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
                     </span>
                   )}
                 </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {formatDateTime(tsigKey.created_at)}
+                <td
+                  className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
+                  title={token.description ?? undefined}
+                >
+                  {token.description || "-"}
+                </td>
+                <td className="hidden lg:table-cell truncate px-6 py-4 text-gray-500">
+                  {token.expires_at
+                    ? formatDateTime(token.expires_at)
+                    : "Never"}
+                </td>
+                <td className="hidden lg:table-cell truncate px-6 py-4 text-gray-500">
+                  {token.last_used_at
+                    ? formatDateTime(token.last_used_at)
+                    : "Never"}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(tsigKey);
+                      handleDelete(token);
                     }}
                     className="font-medium text-red-600 hover:underline"
                   >
@@ -189,16 +215,16 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
           </tbody>
         </table>
       </div>
-      {selectedKey && (
+      {selectedToken && (
         <Modal isOpen wide onClose={handleCloseDetails}>
-          <TsigKeyDetails tsigKey={selectedKey} />
+          <TokenDetails token={selectedToken} />
         </Modal>
       )}
       <div className="p-4">
         <p className="text-sm text-gray-700">
-          {visibleKeys.length > 0
-            ? `${visibleKeys.length} TSIG key${visibleKeys.length > 1 ? "s" : ""}`
-            : "No TSIG keys found"}
+          {visibleTokens.length > 0
+            ? `${visibleTokens.length} API token${visibleTokens.length > 1 ? "s" : ""}`
+            : "No API tokens found"}
         </p>
       </div>
     </div>

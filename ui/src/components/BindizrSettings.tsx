@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import Modal from "./Modal";
@@ -9,6 +10,7 @@ interface SettingsResult {
 }
 
 export default function BindizrSettings() {
+  const { self, refresh: refreshToken } = useBindizrToken();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bindizrUrl, setBindizrUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
@@ -72,6 +74,8 @@ export default function BindizrSettings() {
       const data = await res.json();
       if (res.ok) {
         setResult({ text: "Settings updated successfully.", failed: false });
+        // The new secret may have another scope.
+        await refreshToken();
         setTimeout(() => {
           setIsModalOpen(false);
         }, 1000);
@@ -101,6 +105,21 @@ export default function BindizrSettings() {
         <p className="text-sm text-gray-500 mt-2">
           Configure the connection to the Bindizr server.
         </p>
+        {self && (
+          <p className="text-sm text-gray-500 mt-1">
+            Connected as{" "}
+            <span className="font-medium text-gray-700">{self.name}</span>{" "}
+            {self.global ? (
+              "(Global Token)."
+            ) : (
+              <>
+                (Scoped Token). Zone management, DNSSEC and access pages are
+                hidden; the token reads its granted zones and writes only what
+                its grants allow.
+              </>
+            )}
+          </p>
+        )}
       </div>
       <button
         onClick={handleOpenModal}

@@ -1,10 +1,16 @@
 import {
+  ApiToken,
   BulkRecordItem,
   BulkRecordsResult,
+  CreateDnssecPolicyPayload,
   CreateRecordPayload,
+  CreateTokenGrantPayload,
+  CreateTokenPayload,
+  CreateTsigGrantPayload,
   CreateTsigKeyPayload,
-  CreateZoneTsigPolicyPayload,
+  CreatedToken,
   DnssecDsRecord,
+  DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
   EnableDnssecPayload,
@@ -18,8 +24,12 @@ import {
   RecordListQuery,
   RollbackZonePayload,
   RollbackZoneResult,
+  SetZoneDnssecPolicyPayload,
   SignedRecord,
+  TokenGrant,
+  TsigGrant,
   TsigKey,
+  UpdateDnssecPolicyPayload,
   UpdateRecordPayload,
   VersionDetail,
   VersionDiff,
@@ -28,7 +38,6 @@ import {
   ZoneListQuery,
   ZonePayload,
   ZoneStatus,
-  ZoneTsigPolicy,
   ZoneVersion,
 } from "./types";
 import { ApiError } from "./errors";
@@ -376,12 +385,23 @@ export async function getTsigKeys(): Promise<TsigKey[]> {
   return (await response.json()).tsig_keys as TsigKey[];
 }
 
+interface TsigKeyEnvelope {
+  tsig_key: TsigKey;
+  secret: string;
+}
+
+/** The create and single-key responses carry the secret beside the key. */
+const withSecret = ({ tsig_key, secret }: TsigKeyEnvelope): TsigKey => ({
+  ...tsig_key,
+  secret,
+});
+
 export async function getTsigKey(name: string): Promise<TsigKey> {
   const response = await apiFetch(
     `/tsig-keys/${encodeURIComponent(name)}`,
     "Failed to fetch TSIG key",
   );
-  return (await response.json()).tsig_key as TsigKey;
+  return withSecret((await response.json()) as TsigKeyEnvelope);
 }
 
 export async function createTsigKey(
@@ -391,7 +411,7 @@ export async function createTsigKey(
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return (await response.json()).tsig_key as TsigKey;
+  return withSecret((await response.json()) as TsigKeyEnvelope);
 }
 
 export async function deleteTsigKey(name: string): Promise<void> {
@@ -402,40 +422,127 @@ export async function deleteTsigKey(name: string): Promise<void> {
   );
 }
 
-export async function getZoneTsigPolicies(
-  zoneName: string,
-): Promise<ZoneTsigPolicy[]> {
+export async function getTsigGrants(keyName: string): Promise<TsigGrant[]> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/tsig-policies`,
-    "Failed to fetch zone TSIG policies",
+    `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
+    "Failed to fetch TSIG key grants",
   );
-  return (await response.json()).tsig_policies as ZoneTsigPolicy[];
+  return (await response.json()).tsig_grants as TsigGrant[];
 }
 
-export async function createZoneTsigPolicy(
-  zoneName: string,
-  payload: CreateZoneTsigPolicyPayload,
-): Promise<ZoneTsigPolicy> {
+export async function createTsigGrant(
+  keyName: string,
+  payload: CreateTsigGrantPayload,
+): Promise<TsigGrant> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/tsig-policies`,
-    "Failed to create zone TSIG policy",
+    `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
+    "Failed to grant the TSIG key zone access",
     {
       method: "POST",
       body: JSON.stringify(payload),
     },
   );
-  return (await response.json()).tsig_policy as ZoneTsigPolicy;
+  return (await response.json()).tsig_grant as TsigGrant;
 }
 
-export async function deleteZoneTsigPolicy(
-  zoneName: string,
+export async function deleteTsigGrant(
+  keyName: string,
   id: number,
 ): Promise<void> {
   await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/tsig-policies/${id}`,
-    "Failed to delete zone TSIG policy",
+    `/tsig-keys/${encodeURIComponent(keyName)}/grants/${id}`,
+    "Failed to revoke the TSIG grant",
     { method: "DELETE" },
   );
+}
+
+/** Read-only: grants are managed on the key. */
+export async function getZoneTsigGrants(
+  zoneName: string,
+): Promise<TsigGrant[]> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/tsig-grants`,
+    "Failed to fetch the zone's TSIG grants",
+  );
+  return (await response.json()).tsig_grants as TsigGrant[];
+}
+
+export async function getTokens(): Promise<ApiToken[]> {
+  const response = await apiFetch(`/tokens`, "Failed to fetch API tokens");
+  return (await response.json()).tokens as ApiToken[];
+}
+
+/** The calling token; 401 when Bindizr runs without auth. */
+export async function getSelfToken(): Promise<ApiToken> {
+  const response = await apiFetch(
+    `/tokens/self`,
+    "Failed to describe the API token",
+  );
+  return (await response.json()).token as ApiToken;
+}
+
+/** The secret is returned this once. */
+export async function createToken(
+  payload: CreateTokenPayload,
+): Promise<CreatedToken> {
+  const response = await apiFetch(`/tokens`, "Failed to create API token", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return (await response.json()) as CreatedToken;
+}
+
+export async function deleteToken(name: string): Promise<void> {
+  await apiFetch(
+    `/tokens/${encodeURIComponent(name)}`,
+    "Failed to delete API token",
+    { method: "DELETE" },
+  );
+}
+
+export async function getTokenGrants(tokenName: string): Promise<TokenGrant[]> {
+  const response = await apiFetch(
+    `/tokens/${encodeURIComponent(tokenName)}/grants`,
+    "Failed to fetch API token grants",
+  );
+  return (await response.json()).token_grants as TokenGrant[];
+}
+
+export async function createTokenGrant(
+  tokenName: string,
+  payload: CreateTokenGrantPayload,
+): Promise<TokenGrant> {
+  const response = await apiFetch(
+    `/tokens/${encodeURIComponent(tokenName)}/grants`,
+    "Failed to grant the API token zone access",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).token_grant as TokenGrant;
+}
+
+export async function deleteTokenGrant(
+  tokenName: string,
+  id: number,
+): Promise<void> {
+  await apiFetch(
+    `/tokens/${encodeURIComponent(tokenName)}/grants/${id}`,
+    "Failed to revoke the token grant",
+    { method: "DELETE" },
+  );
+}
+
+/** Read-only: grants are managed on the token. */
+export async function getZoneTokenGrants(
+  zoneName: string,
+): Promise<TokenGrant[]> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/token-grants`,
+    "Failed to fetch the zone's token grants",
+  );
+  return (await response.json()).token_grants as TokenGrant[];
 }
 
 export async function notifyZones(
@@ -533,4 +640,92 @@ export async function signDnssecZone(zoneName: string): Promise<string> {
     { method: "POST" },
   );
   return (await response.json()).message as string;
+}
+
+export async function setZoneDnssecPolicy(
+  zoneName: string,
+  payload: SetZoneDnssecPolicyPayload,
+): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/policy`,
+    "Failed to change the zone's DNSSEC policy",
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function withdrawDnssec(zoneName: string): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/withdraw`,
+    "Failed to publish the DS withdrawal",
+    { method: "POST" },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function cancelDnssecWithdrawal(
+  zoneName: string,
+): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/withdraw`,
+    "Failed to cancel the DS withdrawal",
+    { method: "DELETE" },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function getDnssecPolicies(): Promise<DnssecPolicy[]> {
+  const response = await apiFetch(
+    `/dnssec-policies`,
+    "Failed to fetch DNSSEC policies",
+  );
+  return (await response.json()).dnssec_policies as DnssecPolicy[];
+}
+
+export async function getDnssecPolicy(name: string): Promise<DnssecPolicy> {
+  const response = await apiFetch(
+    `/dnssec-policies/${encodeURIComponent(name)}`,
+    "Failed to fetch DNSSEC policy",
+  );
+  return (await response.json()).dnssec_policy as DnssecPolicy;
+}
+
+export async function createDnssecPolicy(
+  payload: CreateDnssecPolicyPayload,
+): Promise<DnssecPolicy> {
+  const response = await apiFetch(
+    `/dnssec-policies`,
+    "Failed to create DNSSEC policy",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).dnssec_policy as DnssecPolicy;
+}
+
+export async function updateDnssecPolicy(
+  name: string,
+  payload: UpdateDnssecPolicyPayload,
+): Promise<DnssecPolicy> {
+  const response = await apiFetch(
+    `/dnssec-policies/${encodeURIComponent(name)}`,
+    "Failed to update DNSSEC policy",
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).dnssec_policy as DnssecPolicy;
+}
+
+export async function deleteDnssecPolicy(name: string): Promise<void> {
+  await apiFetch(
+    `/dnssec-policies/${encodeURIComponent(name)}`,
+    "Failed to delete DNSSEC policy",
+    { method: "DELETE" },
+  );
 }

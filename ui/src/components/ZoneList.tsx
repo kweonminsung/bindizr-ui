@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
@@ -48,6 +49,7 @@ const countActiveFilters = (filters: ZoneFilters) =>
 
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
+  const { globalAccess } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -153,7 +155,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
 
   // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
-    if (zones.length === 0) {
+    // The status endpoint needs a global token.
+    if (!globalAccess || zones.length === 0) {
       return;
     }
 
@@ -194,7 +197,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [zones]);
+  }, [zones, globalAccess]);
 
   const handleDelete = async (zone: Zone) => {
     if (window.confirm("Are you sure you want to delete this zone?")) {
@@ -251,9 +254,14 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           }}
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
-        <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
-          Create Zone
-        </button>
+        {globalAccess && (
+          <button
+            onClick={onCreateZone}
+            className="btn-primary w-full sm:w-auto"
+          >
+            Create Zone
+          </button>
+        )}
       </div>
       <FilterPanel
         activeCount={activeFilterCount}
@@ -373,15 +381,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Records
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImportingZone(zone);
-                      }}
-                      className="font-medium text-purple-600 hover:underline"
-                    >
-                      Import
-                    </button>
+                    {globalAccess && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImportingZone(zone);
+                        }}
+                        className="font-medium text-purple-600 hover:underline"
+                      >
+                        Import
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -391,15 +401,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Export
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(zone);
-                      }}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    {globalAccess && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(zone);
+                        }}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZoneVersion, getZoneVersionsPage, rollbackZone } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -20,6 +21,8 @@ export default function ZoneVersions({
   zone,
   onRolledBack,
 }: ZoneVersionsProps) {
+  // Rollback needs a global token.
+  const { globalAccess } = useBindizrToken();
   const [versions, setVersions] = useState<ZoneVersion[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -275,7 +278,7 @@ export default function ZoneVersions({
           </div>
         )}
 
-        {!preview && !rollbackResult && (
+        {globalAccess && !preview && !rollbackResult && (
           <div className="flex justify-end">
             <button
               type="button"

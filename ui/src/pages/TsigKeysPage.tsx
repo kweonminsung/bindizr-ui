@@ -18,6 +18,11 @@ export default function TsigKeysPage() {
 
   return (
     <div>
+      <p className="mb-4 text-sm text-gray-500">
+        TSIG keys authenticate dynamic-update (nsupdate) clients. A Scoped Key
+        acts only in the zones it is granted; open a key to grant or revoke zone
+        access.
+      </p>
       <TsigKeyList key={refreshKey} onCreateKey={() => setIsFormOpen(true)} />
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)}>
         <TsigKeyForm
@@ -26,7 +31,7 @@ export default function TsigKeysPage() {
         />
       </Modal>
       {createdKey && (
-        <Modal isOpen onClose={() => setCreatedKey(null)}>
+        <Modal isOpen wide onClose={() => setCreatedKey(null)}>
           <TsigKeyDetails tsigKey={createdKey} isNew />
         </Modal>
       )}

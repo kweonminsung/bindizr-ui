@@ -3,6 +3,7 @@ import { getTsigKey } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { TsigKey } from "@/lib/types";
+import ZoneGrantsPanel from "./ZoneGrantsPanel";
 
 interface TsigKeyDetailsProps {
   tsigKey: TsigKey;
@@ -68,79 +69,90 @@ export default function TsigKeyDetails({
   };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
-        {isNew ? "TSIG Key Created" : "TSIG Key Details"}
-      </h2>
-
-      <div className="space-y-2">
-        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-          <p className="text-sm text-gray-500">Name</p>
-          <p className="text-base text-gray-900 break-all">{detail.name}</p>
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-800 break-all">
+            {isNew ? "TSIG Key Created" : detail.name}
+          </h2>
+          {detail.global ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              Global
+            </span>
+          ) : (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+              Scoped
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-500">Algorithm</p>
-            <p className="text-base text-gray-900">{detail.algorithm}</p>
+
+        <div className="space-y-2">
+          {isNew && (
+            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-sm text-gray-500">Name</p>
+              <p className="text-base text-gray-900 break-all">{detail.name}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-sm text-gray-500">Algorithm</p>
+              <p className="text-base text-gray-900">{detail.algorithm}</p>
+            </div>
+            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-sm text-gray-500">Created</p>
+              <p className="text-base text-gray-900">
+                {formatDateTime(detail.created_at)}
+              </p>
+            </div>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-500">Scope</p>
-            <p className="text-base text-gray-900">
-              {detail.global ? "Global (all zones)" : "Policy-based"}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">Secret</p>
+              {detail.secret && (
+                <div className="space-x-3 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => setRevealed((prev) => !prev)}
+                    className="font-medium text-blue-600 hover:underline"
+                  >
+                    {revealed ? "Hide" : "Reveal"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="font-medium text-green-600 hover:underline"
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-gray-900 font-mono break-all mt-1">
+              {loading
+                ? "Loading..."
+                : !detail.secret
+                  ? "-"
+                  : revealed
+                    ? detail.secret
+                    : "•".repeat(detail.secret.length)}
             </p>
           </div>
         </div>
-        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-          <p className="text-sm text-gray-500">Created</p>
-          <p className="text-base text-gray-900">
-            {formatDateTime(detail.created_at)}
+
+        {error && (
+          <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+            {error}
           </p>
-        </div>
-        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Secret</p>
-            {detail.secret && (
-              <div className="space-x-3 text-sm">
-                <button
-                  type="button"
-                  onClick={() => setRevealed((prev) => !prev)}
-                  className="font-medium text-blue-600 hover:underline"
-                >
-                  {revealed ? "Hide" : "Reveal"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="font-medium text-green-600 hover:underline"
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-            )}
-          </div>
-          <p className="text-sm text-gray-900 font-mono break-all mt-1">
-            {loading
-              ? "Loading..."
-              : !detail.secret
-                ? "-"
-                : revealed
-                  ? detail.secret
-                  : "•".repeat(detail.secret.length)}
-          </p>
-        </div>
+        )}
       </div>
 
-      {detail.global && (
+      {detail.global ? (
         <p className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800">
-          This key may update every name and type in every zone without a
-          policy.
+          This key is global: it may update every name and type in every zone,
+          and never carries grants.
         </p>
-      )}
-
-      {error && (
-        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-          {error}
-        </p>
+      ) : (
+        <ZoneGrantsPanel kind="tsig-key" holderName={detail.name} />
       )}
     </div>
   );

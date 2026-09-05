@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 
 interface SidebarProps {
@@ -13,8 +14,13 @@ interface NavLink {
 }
 
 const DNS_LINKS: NavLink[] = [
-  { to: "/dns/tsig-keys", label: "TSIG Keys" },
+  { to: "/dns/dnssec-policies", label: "DNSSEC Policies" },
   { to: "/dns/notify", label: "Notify" },
+];
+
+const ACCESS_LINKS: NavLink[] = [
+  { to: "/access/tokens", label: "API Tokens" },
+  { to: "/access/tsig-keys", label: "TSIG Keys" },
 ];
 
 const linkClasses = (pathname: string, path: string) => {
@@ -86,6 +92,8 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { pathname } = useLocation();
+  // Both groups need a global token.
+  const { globalAccess } = useBindizrToken();
 
   return (
     <>
@@ -125,12 +133,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Records
               </Link>
             </li>
-            <NavGroup
-              label="DNS"
-              basePath="/dns"
-              links={DNS_LINKS}
-              onNavigate={onClose}
-            />
+            {globalAccess && (
+              <>
+                <NavGroup
+                  label="DNS"
+                  basePath="/dns"
+                  links={DNS_LINKS}
+                  onNavigate={onClose}
+                />
+                <NavGroup
+                  label="Access"
+                  basePath="/access"
+                  links={ACCESS_LINKS}
+                  onNavigate={onClose}
+                />
+              </>
+            )}
             <li>
               <Link
                 to="/settings"

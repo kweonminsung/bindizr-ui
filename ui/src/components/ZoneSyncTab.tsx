@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
@@ -16,6 +17,8 @@ interface NotifyResult {
 }
 
 export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
+  // A scoped token may NOTIFY its zone but not bump the serial.
+  const { globalAccess } = useBindizrToken();
   const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const [result, setResult] = useState<NotifyResult | null>(null);
@@ -56,21 +59,24 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
           DNS NOTIFY
         </h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <label className="flex items-center space-x-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={bumpSerial}
-              onChange={(e) => setBumpSerial(e.target.checked)}
-            />
-            <span>
-              Bump serial first (secondaries transfer even when nothing changed)
-            </span>
-          </label>
+          {globalAccess && (
+            <label className="flex items-center space-x-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={bumpSerial}
+                onChange={(e) => setBumpSerial(e.target.checked)}
+              />
+              <span>
+                Bump serial first (secondaries transfer even when nothing
+                changed)
+              </span>
+            </label>
+          )}
           <button
             type="button"
             onClick={handleNotify}
             disabled={notifying}
-            className="btn-primary"
+            className="btn-primary sm:ml-auto"
           >
             {notifying
               ? "Sending..."
