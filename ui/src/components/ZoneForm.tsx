@@ -40,6 +40,7 @@ const toFormString = (value: unknown, fallback: string) =>
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (zone) {
@@ -73,6 +74,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     try {
       const payload: ZonePayload = {
@@ -118,14 +120,14 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
       }
       onSuccess(savedZone);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to save zone"));
+      setError(getErrorMessage(error, "Failed to save zone"));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {zone ? "Edit Zone" : "Create New Zone"}
+        {zone ? "Edit Zone" : "Create Zone"}
       </h2>
 
       <div className="space-y-4">
@@ -316,6 +318,12 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
             </p>
           </div>
         </div>
+      )}
+
+      {error && (
+        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {error}
+        </p>
       )}
 
       <div className="flex justify-end space-x-2 pt-4">

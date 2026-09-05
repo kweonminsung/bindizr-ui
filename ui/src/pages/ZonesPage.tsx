@@ -18,6 +18,10 @@ export default function ZonesPage() {
 
   return (
     <div>
+      <p className="mb-4 text-sm text-gray-500">
+        The zones this server is authoritative for. Open a zone for its history,
+        DNSSEC, access and secondary sync.
+      </p>
       <ZoneList key={refreshKey} onCreateZone={() => setIsModalOpen(true)} />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <ZoneForm

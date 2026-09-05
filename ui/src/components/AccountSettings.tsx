@@ -285,7 +285,7 @@ export default function AccountSettings() {
               htmlFor="newPassword"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              New Password (Optional)
+              New Password (optional)
             </label>
             <input
               type="password"

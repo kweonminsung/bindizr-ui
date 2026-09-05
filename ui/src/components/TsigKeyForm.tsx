@@ -17,6 +17,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
   const [secret, setSecret] = useState("");
   const [isGlobal, setIsGlobal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +27,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
     }
 
     setSubmitting(true);
+    setError(null);
     try {
       const tsigKey = await createTsigKey({
         name: name.trim(),
@@ -35,7 +37,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
       });
       onSuccess(tsigKey);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to create TSIG key"));
+      setError(getErrorMessage(error, "Failed to create TSIG key"));
     } finally {
       setSubmitting(false);
     }
@@ -127,12 +129,18 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
         </label>
       </div>
 
+      {error && (
+        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
         <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? "Creating..." : "Create Key"}
+          {submitting ? "Creating..." : "Create TSIG Key"}
         </button>
       </div>
     </form>

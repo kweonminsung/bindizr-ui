@@ -158,7 +158,7 @@ export default function BindizrSettings() {
               htmlFor="secretKey"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              Secret Key (Optional)
+              API Token (optional)
             </label>
             <input
               type="password"
@@ -170,6 +170,10 @@ export default function BindizrSettings() {
               }}
               className="w-full"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              The secret of a Bindizr API token. Leave empty if the server runs
+              without authentication.
+            </p>
           </div>
 
           {result && (

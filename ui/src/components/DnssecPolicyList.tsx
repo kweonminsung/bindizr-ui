@@ -54,7 +54,7 @@ export default function DnssecPolicyList({
   }, [refreshKey]);
 
   const handleDelete = async (policy: DnssecPolicy) => {
-    if (!window.confirm(`Are you sure you want to delete "${policy.name}"?`)) {
+    if (!window.confirm(`Delete "${policy.name}"?`)) {
       return;
     }
 

@@ -42,7 +42,7 @@ const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
 
 const describePolicy = (policy: DnssecPolicy) =>
   `${policy.algorithm}, ${policy.denial.toUpperCase()}, ${
-    policy.split_keys ? "split KSK/ZSK" : "single CSK"
+    policy.split_keys ? "a KSK/ZSK pair" : "a single CSK"
   }`;
 
 export default function ZoneDnssecTab({
@@ -372,7 +372,7 @@ export default function ZoneDnssecTab({
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-lg font-semibold text-gray-700">DNSSEC</h3>
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-            enabled
+            Enabled
           </span>
           {currentPolicy && (
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 uppercase">
@@ -381,7 +381,7 @@ export default function ZoneDnssecTab({
           )}
           {status.withdrawing && (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-              DS withdrawal published
+              Withdrawing DS
             </span>
           )}
           <button
@@ -521,7 +521,7 @@ export default function ZoneDnssecTab({
                   </td>
                   <td className="px-3 py-2">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${KEY_STATE_STYLES[key.state]}`}
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${KEY_STATE_STYLES[key.state]}`}
                     >
                       {key.state}
                     </span>

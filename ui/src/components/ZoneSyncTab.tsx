@@ -81,7 +81,7 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
             {notifying
               ? "Sending..."
               : bumpSerial
-                ? "Bump & NOTIFY"
+                ? "Bump serial & NOTIFY"
                 : "Send NOTIFY"}
           </button>
         </div>

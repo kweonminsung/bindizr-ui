@@ -106,7 +106,7 @@ export default function DnssecPolicyDetails({
         </h2>
         {policy.name === DEFAULT_DNSSEC_POLICY_NAME && (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-            built-in
+            Built-in
           </span>
         )}
       </div>
@@ -126,7 +126,7 @@ export default function DnssecPolicyDetails({
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Key Layout</p>
             <p className="text-base text-gray-900">
-              {policy.split_keys ? "Split KSK/ZSK" : "Single CSK"}
+              {policy.split_keys ? "KSK/ZSK" : "CSK"}
             </p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">

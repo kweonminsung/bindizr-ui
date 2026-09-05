@@ -61,6 +61,7 @@ export default function RecordForm({
   onCancel,
   zones = [],
 }: RecordFormProps) {
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
     zone_name: zoneName ?? "",
@@ -112,10 +113,11 @@ export default function RecordForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
     const selectedZoneName = zoneName ?? formData.zone_name;
     if (!record && !selectedZoneName) {
-      alert("Zone is required");
+      setError("Zone is required");
       return;
     }
 
@@ -141,14 +143,14 @@ export default function RecordForm({
 
       onSuccess(savedRecord);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to save record"));
+      setError(getErrorMessage(error, "Failed to save record"));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {record ? "Edit Record" : "Create New Record"}
+        {record ? "Edit Record" : "Create Record"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -270,6 +272,12 @@ export default function RecordForm({
           </div>
         )}
       </div>
+
+      {error && (
+        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

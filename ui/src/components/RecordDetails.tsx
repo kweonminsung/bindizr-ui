@@ -34,11 +34,14 @@ export default function RecordDetails({
 
   return (
     <div className="space-y-4">
-      <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800 mb-4">
-        Record Details
+      <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-800 mb-4">
+        <span className="break-all">{record.name}</span>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+          {record.record_type}
+        </span>
         {isDerived && (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-            derived
+            Derived
           </span>
         )}
       </h2>
@@ -51,10 +54,6 @@ export default function RecordDetails({
       )}
 
       <div className="space-y-2">
-        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-          <p className="text-sm text-gray-500">Name</p>
-          <p className="text-base text-gray-900 break-all">{record.name}</p>
-        </div>
         <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Value</p>
           <p

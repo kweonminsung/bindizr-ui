@@ -71,11 +71,13 @@ export default function DnssecPolicyForm({
     rollover_retire_holddown_secs: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSubmitting(true);
+    setError(null);
     try {
       const policy = await createDnssecPolicy({
         name: name.trim(),
@@ -105,7 +107,7 @@ export default function DnssecPolicyForm({
       });
       onSuccess(policy);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to create DNSSEC policy"));
+      setError(getErrorMessage(error, "Failed to create DNSSEC policy"));
     } finally {
       setSubmitting(false);
     }
@@ -196,7 +198,7 @@ export default function DnssecPolicyForm({
             className="mt-1"
           />
           <span>
-            Split keys
+            Split keys (KSK/ZSK)
             <span className="block text-gray-500">
               A KSK/ZSK pair instead of one CSK, so the ZSK rolls without
               touching the parent DS.
@@ -233,6 +235,12 @@ export default function DnssecPolicyForm({
           ))}
         </div>
       </div>
+
+      {error && (
+        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

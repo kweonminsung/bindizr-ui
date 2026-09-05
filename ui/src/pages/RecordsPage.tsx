@@ -40,6 +40,9 @@ export default function RecordsPage() {
 
   return (
     <div>
+      <p className="mb-4 text-sm text-gray-500">
+        The records of every zone. Filter by zone to work on one.
+      </p>
       <RecordList
         key={refreshKey}
         onCreateRecord={() => setIsModalOpen(true)}

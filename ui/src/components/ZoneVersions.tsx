@@ -343,7 +343,7 @@ export default function ZoneVersions({
                     {version.serial}
                     {version.serial === zone.serial && (
                       <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        current
+                        Current
                       </span>
                     )}
                   </td>

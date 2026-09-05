@@ -200,7 +200,9 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   }, [zones, globalAccess]);
 
   const handleDelete = async (zone: Zone) => {
-    if (window.confirm("Are you sure you want to delete this zone?")) {
+    if (
+      window.confirm(`Delete "${zone.name}"? All of its records go with it.`)
+    ) {
       try {
         await deleteZone(zone.name);
         if (zones.length === 1 && currentPage > 1) {

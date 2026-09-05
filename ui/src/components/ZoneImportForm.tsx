@@ -23,11 +23,13 @@ export default function ZoneImportForm({
   const [dryRun, setDryRun] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ImportZoneResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSubmitting(true);
+    setError(null);
     setResult(null);
     try {
       const response = await importZoneFile(zone.name, {
@@ -40,7 +42,7 @@ export default function ZoneImportForm({
         onApplied();
       }
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to import zone file"));
+      setError(getErrorMessage(error, "Failed to import zone file"));
     } finally {
       setSubmitting(false);
     }
@@ -134,6 +136,12 @@ export default function ZoneImportForm({
             </ul>
           )}
         </div>
+      )}
+
+      {error && (
+        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {error}
+        </p>
       )}
 
       <div className="flex justify-end pt-4">

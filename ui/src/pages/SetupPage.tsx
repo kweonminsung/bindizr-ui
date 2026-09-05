@@ -74,7 +74,7 @@ export default function SetupPage() {
               htmlFor="bindizrUrl"
               className="block text-sm font-medium text-gray-700"
             >
-              Bindizr Server URL
+              Bindizr URL
             </label>
             <input
               id="bindizrUrl"
@@ -93,7 +93,7 @@ export default function SetupPage() {
               htmlFor="secretKey"
               className="block text-sm font-medium text-gray-700"
             >
-              Secret Key (Optional)
+              API Token (optional)
             </label>
             <input
               id="secretKey"
@@ -105,6 +105,10 @@ export default function SetupPage() {
               }}
               className="w-full mt-1"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              The secret of a Bindizr API token. Leave empty if the server runs
+              without authentication.
+            </p>
           </div>
           <button
             type="button"
@@ -189,7 +193,7 @@ export default function SetupPage() {
             className="w-full btn-primary"
             disabled={!isConnectionTested}
           >
-            Save Configuration
+            Save
           </button>
         </form>
       </div>

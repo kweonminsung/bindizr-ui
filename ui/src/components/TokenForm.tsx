@@ -18,6 +18,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
   const [expiresInDays, setExpiresInDays] = useState("");
   const [isGlobal, setIsGlobal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +28,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
     }
 
     setSubmitting(true);
+    setError(null);
     try {
       const created = await createToken({
         name: name.trim(),
@@ -36,7 +38,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
       });
       onSuccess(created);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to create API token"));
+      setError(getErrorMessage(error, "Failed to create API token"));
     } finally {
       setSubmitting(false);
     }
@@ -130,12 +132,18 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
         </label>
       </div>
 
+      {error && (
+        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
         <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? "Creating..." : "Create Token"}
+          {submitting ? "Creating..." : "Create API Token"}
         </button>
       </div>
     </form>

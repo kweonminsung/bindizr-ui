@@ -177,10 +177,13 @@ export default function RecordList({
     zoneName,
   ]);
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this record?")) {
+  const handleDelete = async (record: SignedRecord) => {
+    if (record.id == null) {
+      return;
+    }
+    if (window.confirm(`Delete ${record.name} ${record.record_type}?`)) {
       try {
-        await deleteRecord(id);
+        await deleteRecord(record.id);
         if (records.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
@@ -406,7 +409,7 @@ export default function RecordList({
                   {record.name}
                   {record.id == null && (
                     <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                      derived
+                      Derived
                     </span>
                   )}
                 </td>
@@ -434,9 +437,7 @@ export default function RecordList({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (record.id != null) {
-                            handleDelete(record.id);
-                          }
+                          handleDelete(record);
                         }}
                         className="font-medium text-red-600 hover:underline"
                       >

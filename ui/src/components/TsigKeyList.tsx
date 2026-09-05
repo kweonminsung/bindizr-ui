@@ -66,7 +66,11 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
   };
 
   const handleDelete = async (tsigKey: TsigKey) => {
-    if (!window.confirm(`Are you sure you want to delete "${tsigKey.name}"?`)) {
+    if (
+      !window.confirm(
+        `Delete "${tsigKey.name}"? nsupdate clients using it stop working.`,
+      )
+    ) {
       return;
     }
 
