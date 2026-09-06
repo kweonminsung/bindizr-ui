@@ -12,6 +12,75 @@ interface TokenDetailsProps {
 export const isTokenExpired = (token: ApiToken) =>
   !!token.expires_at && new Date(token.expires_at).getTime() < Date.now();
 
+/** Scope and expiry pills, placed beside the token's name. */
+export function TokenBadges({ token }: { token: ApiToken }) {
+  return (
+    <>
+      {token.global ? (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+          Global
+        </span>
+      ) : (
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+          Scoped
+        </span>
+      )}
+      {isTokenExpired(token) && (
+        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+          Expired
+        </span>
+      )}
+    </>
+  );
+}
+
+interface TokenMetadataProps {
+  token: ApiToken;
+  /** Add the name row when the heading does not carry it. */
+  showName?: boolean;
+}
+
+export function TokenMetadata({ token, showName = false }: TokenMetadataProps) {
+  return (
+    <div className="space-y-2">
+      {showName && (
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-500">Name</p>
+          <p className="text-base text-gray-900 break-all">{token.name}</p>
+        </div>
+      )}
+      {token.description && (
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-500">Description</p>
+          <p className="text-base text-gray-900 break-words">
+            {token.description}
+          </p>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-500">Expires</p>
+          <p className="text-base text-gray-900">
+            {token.expires_at ? formatDateTime(token.expires_at) : "Never"}
+          </p>
+        </div>
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-500">Last Used</p>
+          <p className="text-base text-gray-900">
+            {token.last_used_at ? formatDateTime(token.last_used_at) : "Never"}
+          </p>
+        </div>
+        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+          <p className="text-sm text-gray-500">Created</p>
+          <p className="text-base text-gray-900">
+            {formatDateTime(token.created_at)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TokenDetails({ token, secret }: TokenDetailsProps) {
   const [revealed, setRevealed] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -43,20 +112,7 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
           <h2 className="text-2xl font-bold text-gray-800 break-all">
             {secret ? "API Token Created" : token.name}
           </h2>
-          {token.global ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-              Global
-            </span>
-          ) : (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-              Scoped
-            </span>
-          )}
-          {isTokenExpired(token) && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-              Expired
-            </span>
-          )}
+          <TokenBadges token={token} />
         </div>
 
         {secret && (
@@ -84,57 +140,18 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
               {revealed ? secret : "•".repeat(secret.length)}
             </p>
             <p className="text-sm text-amber-800">
-              Copy it now: the secret is shown this once and cannot be retrieved
-              later.
+              Copy it now; it is shown only once.
             </p>
             {copyError && <p className="text-sm text-red-700">{copyError}</p>}
           </div>
         )}
 
-        <div className="space-y-2">
-          {secret && (
-            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Name</p>
-              <p className="text-base text-gray-900 break-all">{token.name}</p>
-            </div>
-          )}
-          {token.description && (
-            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Description</p>
-              <p className="text-base text-gray-900 break-words">
-                {token.description}
-              </p>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Expires</p>
-              <p className="text-base text-gray-900">
-                {token.expires_at ? formatDateTime(token.expires_at) : "Never"}
-              </p>
-            </div>
-            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Last Used</p>
-              <p className="text-base text-gray-900">
-                {token.last_used_at
-                  ? formatDateTime(token.last_used_at)
-                  : "Never"}
-              </p>
-            </div>
-            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Created</p>
-              <p className="text-base text-gray-900">
-                {formatDateTime(token.created_at)}
-              </p>
-            </div>
-          </div>
-        </div>
+        <TokenMetadata token={token} showName={!!secret} />
       </div>
 
       {token.global ? (
         <p className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800">
-          This token is global: it manages every zone and the zone plane, and
-          never carries grants.
+          This token is global: it manages every zone and needs no grants.
         </p>
       ) : (
         <ZoneGrantsPanel kind="token" holderName={token.name} />

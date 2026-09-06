@@ -48,7 +48,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Create TSIG Key</h2>
         <p className="text-sm text-gray-500 mt-1">
-          A Scoped Key does nothing until you grant it access to zones.
+          A Scoped Key needs zone grants before it can act.
         </p>
       </div>
 
@@ -122,8 +122,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
           <span>
             Global Key
             <span className="block text-amber-700">
-              Updates every name and type in every zone, with no grant. Fixed at
-              creation.
+              May update every zone without grants. Cannot be changed later.
             </span>
           </span>
         </label>

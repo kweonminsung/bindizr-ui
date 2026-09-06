@@ -304,7 +304,7 @@ export default function ZoneVersions({
       <div>
         <h3 className="text-lg font-semibold text-gray-700">Version History</h3>
         <p className="text-sm text-gray-500">
-          Every mutation records a version. Current serial: {zone.serial ?? "-"}
+          Current serial: {zone.serial ?? "-"}
         </p>
       </div>
 

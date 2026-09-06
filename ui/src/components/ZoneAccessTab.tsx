@@ -124,12 +124,11 @@ function AccessSection({
       )}
 
       <p className="text-sm text-gray-500">
-        Grants are managed on the{" "}
+        Manage grants on the{" "}
         <Link to={managePath} className="text-blue-600 hover:underline">
           {manageLabel}
         </Link>{" "}
-        page: open a {holderLabel.toLowerCase()} there to grant or revoke its
-        access.
+        page.
       </p>
     </div>
   );
@@ -201,14 +200,13 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">
-        Who may reach this zone&apos;s records besides the UI. Access is granted
-        per token or key; the name pattern and record types narrow only what may
-        be written.
+        Tokens and keys with access to this zone. The pattern and types limit
+        writes only.
       </p>
 
       <AccessSection
         title="API Tokens"
-        description="Scoped Tokens that can see this zone. Each reads every record here; its pattern and types restrict only what it may write."
+        description="Scoped Tokens with access to this zone."
         holderLabel="Token"
         managePath="/access/tokens"
         manageLabel="API Tokens"
@@ -218,7 +216,7 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
 
       <AccessSection
         title="TSIG Keys"
-        description="Scoped Keys that may send dynamic updates (nsupdate) to this zone; the pattern and types restrict which updates are accepted."
+        description="Scoped Keys that may send dynamic updates to this zone."
         holderLabel="Key"
         managePath="/access/tsig-keys"
         manageLabel="TSIG Keys"

@@ -355,10 +355,10 @@ export default function RecordList({
       </FilterPanel>
       {signedView && userPlaneOnly && (
         <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-          Derived rows are hidden while searching or filtering by value,
-          priority, or a user record type.
+          Derived rows are hidden while filtering by value, priority or a user
+          record type.
           {derivedTypeSelected &&
-            ` The ${selectedType} filter is paused until those filters are cleared.`}
+            ` The ${selectedType} filter applies once they are cleared.`}
         </p>
       )}
       {/* Not an early return: a rejected filter must stay correctable. */}

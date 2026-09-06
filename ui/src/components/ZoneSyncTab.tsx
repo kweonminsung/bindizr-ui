@@ -66,10 +66,7 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
                 checked={bumpSerial}
                 onChange={(e) => setBumpSerial(e.target.checked)}
               />
-              <span>
-                Bump serial first (secondaries transfer even when nothing
-                changed)
-              </span>
+              <span>Bump serial first (forces a transfer)</span>
             </label>
           )}
           <button

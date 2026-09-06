@@ -65,8 +65,7 @@ export default function NotifyControls() {
           DNS NOTIFY
         </h2>
         <p className="text-sm text-gray-500 mt-2">
-          Prompt the secondaries of a zone — or of every zone — to pull the
-          latest data.
+          Ask secondaries to pull the latest zone data.
         </p>
       </div>
 

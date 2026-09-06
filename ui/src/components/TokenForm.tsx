@@ -49,8 +49,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Create API Token</h2>
         <p className="text-sm text-gray-500 mt-1">
-          The secret is shown once, right after creation. A Scoped Token does
-          nothing until you grant it access to zones.
+          A Scoped Token needs zone grants before it can act.
         </p>
       </div>
 
@@ -125,8 +124,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
           <span>
             Global Token
             <span className="block text-amber-700">
-              Manages every zone and the zone plane itself, with no grant. Fixed
-              at creation.
+              Manages every zone without grants. Cannot be changed later.
             </span>
           </span>
         </label>

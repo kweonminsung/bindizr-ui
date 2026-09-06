@@ -148,8 +148,7 @@ export default function TsigKeyDetails({
 
       {detail.global ? (
         <p className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800">
-          This key is global: it may update every name and type in every zone,
-          and never carries grants.
+          This key is global: it may update every zone and needs no grants.
         </p>
       ) : (
         <ZoneGrantsPanel kind="tsig-key" holderName={detail.name} />

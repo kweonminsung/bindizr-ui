@@ -15,9 +15,8 @@ export default function DnssecPoliciesPage() {
   return (
     <div>
       <p className="mb-4 text-sm text-gray-500">
-        DNSSEC policies are named signing-parameter bundles. Apply one from a
-        zone&apos;s DNSSEC tab: pick it when enabling DNSSEC, or move a signed
-        zone to it later.
+        Signing parameter sets for zones. Apply a policy from a zone&apos;s
+        DNSSEC tab.
       </p>
       <DnssecPolicyList
         key={refreshKey}

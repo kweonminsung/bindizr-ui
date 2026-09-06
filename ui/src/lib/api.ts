@@ -481,6 +481,15 @@ export async function getSelfToken(): Promise<ApiToken> {
   return (await response.json()).token as ApiToken;
 }
 
+/** The calling token's grants; empty for a global token, 401 without auth. */
+export async function getSelfTokenGrants(): Promise<TokenGrant[]> {
+  const response = await apiFetch(
+    `/tokens/self/grants`,
+    "Failed to fetch the API token's zone access",
+  );
+  return (await response.json()).token_grants as TokenGrant[];
+}
+
 /** The secret is returned this once. */
 export async function createToken(
   payload: CreateTokenPayload,

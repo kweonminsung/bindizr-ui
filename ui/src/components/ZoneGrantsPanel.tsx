@@ -51,14 +51,13 @@ const HOLDER_LABEL: Record<GrantHolderKind, string> = {
 
 const GRANT_NOTE: Record<GrantHolderKind, string> = {
   token:
-    "Each grant makes one zone visible to this token, which then reads every record in it. The name pattern and record types restrict writes only. Without a grant the token sees no zone at all.",
+    "Each grant gives this token one zone. The pattern and types limit writes only.",
   "tsig-key":
-    "Each grant lets this key send dynamic updates (nsupdate) to one zone. The name pattern and record types restrict which updates are accepted; every record in an update must match a grant. Without a grant the key can update nothing.",
+    "Each grant lets this key send dynamic updates to one zone. The pattern and types limit which updates are accepted.",
 };
 
 const GRANT_FORM_NOTE: Record<GrantHolderKind, string> = {
-  token:
-    "Pick a zone, then narrow what this token may write in it. Reads are never narrowed: a granted zone is readable in full.",
+  token: "Pick a zone, then narrow what this token may write in it.",
   "tsig-key": "Pick a zone, then narrow which updates this key may send to it.",
 };
 
@@ -73,7 +72,6 @@ export default function ZoneGrantsPanel({
 }: ZoneGrantsPanelProps) {
   const api = GRANT_API[kind];
   const holder = HOLDER_LABEL[kind];
-  const writeOnlyHint = kind === "token" ? " Restricts writes only." : null;
   const [tab, setTab] = useState<PanelTab>("grants");
   const [grants, setGrants] = useState<ZoneGrant[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
@@ -217,10 +215,7 @@ export default function ZoneGrantsPanel({
           ) : loadError ? (
             <p className="text-red-500">{loadError}</p>
           ) : grants.length === 0 ? (
-            <p className="text-gray-500">
-              This {holder} has no zone access yet. Add some from the Grant
-              Access tab.
-            </p>
+            <p className="text-gray-500">No zone access yet.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border border-gray-200">
               <table className="w-full table-fixed text-left text-sm">
@@ -285,10 +280,7 @@ export default function ZoneGrantsPanel({
 
       {tab === "grant" && (
         <form onSubmit={handleGrant} className="space-y-4">
-          <p className="text-sm text-gray-500">
-            {GRANT_FORM_NOTE[kind]} A zone can be granted more than once with
-            different patterns.
-          </p>
+          <p className="text-sm text-gray-500">{GRANT_FORM_NOTE[kind]}</p>
           <div>
             <label
               htmlFor="grant_zone_name"
@@ -348,7 +340,6 @@ export default function ZoneGrantsPanel({
               <p className="text-xs text-gray-500 mt-1">
                 <code>*</code> any name, <code>@</code> apex, <code>*.sub</code>{" "}
                 subtree, or an exact relative name.
-                {writeOnlyHint}
               </p>
             </div>
             <div>
@@ -369,7 +360,7 @@ export default function ZoneGrantsPanel({
               />
               <p className="text-xs text-gray-500 mt-1">
                 <code>*</code> or a comma-separated list such as{" "}
-                <code>A,AAAA,TXT</code>.{writeOnlyHint}
+                <code>A,AAAA,TXT</code>.
               </p>
             </div>
           </div>

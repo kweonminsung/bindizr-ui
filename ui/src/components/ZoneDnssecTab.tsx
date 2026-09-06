@@ -59,7 +59,7 @@ export default function ZoneDnssecTab({
   const [policyName, setPolicyName] = useState(DEFAULT_DNSSEC_POLICY_NAME);
   const [targetPolicy, setTargetPolicy] = useState("");
   const [rolloverRole, setRolloverRole] = useState<DnssecRolloverRole>("zsk");
-  const [confirmInsecure, setConfirmInsecure] = useState(false);
+  const [confirmDsRemoved, setConfirmDsRemoved] = useState(false);
   const [copiedDs, setCopiedDs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function ZoneDnssecTab({
   const handleDisable = () =>
     runAction(async () => {
       const message = await disableDnssec(zone.name);
-      setConfirmInsecure(false);
+      setConfirmDsRemoved(false);
       setResult({ text: message, failed: false });
       // The keys are gone regardless of whether the refresh below lands.
       setStatus((prev) =>
@@ -288,9 +288,8 @@ export default function ZoneDnssecTab({
         <div>
           <h3 className="text-lg font-semibold text-gray-700">DNSSEC</h3>
           <p className="text-sm text-gray-500">
-            This zone is not signed. Enabling DNSSEC generates the signing keys
-            the chosen policy prescribes and signs the whole zone; the DS
-            records returned must then be registered in the parent zone.
+            This zone is not signed. Enabling DNSSEC generates keys and signs
+            the zone; the DS records must then be registered at the parent.
           </p>
         </div>
 
@@ -322,11 +321,11 @@ export default function ZoneDnssecTab({
           <p className="text-sm text-gray-500 mt-1">
             {selectedPolicy ? (
               <>
-                {describePolicy(selectedPolicy)}. The denial mode and key layout
-                are fixed for as long as the zone stays signed.
+                {describePolicy(selectedPolicy)}. Denial mode and key layout
+                cannot change while signed.
               </>
             ) : (
-              <>Manage the parameter bundles under {policiesLink}.</>
+              <>Manage policies under {policiesLink}.</>
             )}
           </p>
         </div>
@@ -408,9 +407,8 @@ export default function ZoneDnssecTab({
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-2">
-          Signatures renew automatically. The derived records (DNSKEY, RRSIG,
-          the denial chain) can be inspected via the zone export&apos;s signed
-          view.
+          Signatures renew automatically. Derived records appear in the signed
+          zone export.
         </p>
       </div>
 
@@ -435,17 +433,14 @@ export default function ZoneDnssecTab({
             </div>
             {compatiblePolicies.length === 0 ? (
               <p className="text-sm text-gray-500">
-                No other policy shares this zone&apos;s denial mode and key
-                layout, the two the zone cannot change while signed. Define one
-                under {policiesLink} to move the zone — a different algorithm
-                there starts an algorithm rollover.
+                No other policy has the same denial mode and key layout. Define
+                one under {policiesLink} to move the zone.
               </p>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-sm text-gray-500">
-                  Moving to a policy of another algorithm double-signs the zone
-                  until the old keys leave after ds-seen. Timing changes apply
-                  on the next signing pass.
+                  A different algorithm starts an algorithm rollover. Timing
+                  changes apply on the next signing pass.
                 </p>
                 <div className="flex items-center gap-2">
                   <select
@@ -580,10 +575,8 @@ export default function ZoneDnssecTab({
           awaitingDsSeen ? (
             <div className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900 space-y-2">
               <p>
-                A rollover is in progress: the replacement key is pre-published.
-                Register the new DS record below at the parent, wait out its
-                TTL, then confirm here to promote the key. The confirmation is
-                accepted once the publish hold-down has elapsed.
+                Rollover in progress. Register the new DS record at the parent,
+                wait out its TTL, then confirm to promote the key.
               </p>
               <div className="flex justify-end">
                 <button
@@ -598,24 +591,20 @@ export default function ZoneDnssecTab({
             </div>
           ) : (
             <p className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900">
-              A ZSK rollover is in progress: the replacement key is
-              pre-published and is promoted automatically once the publish
-              hold-down has elapsed. No parent DS is involved, so there is
-              nothing to confirm.
+              ZSK rollover in progress. The new key is promoted automatically
+              after the publish hold-down; no DS change is needed.
             </p>
           )
         ) : retiringKeys ? (
           <p className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900">
-            The previous key is retired and draining from resolver caches. It is
-            removed once the retire hold-down has elapsed, and the next rollover
-            can start then.
+            The previous key is retired and is removed after the retire
+            hold-down. The next rollover can start then.
           </p>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">
-              Pre-publish a replacement key with the same algorithm, then
-              promote it once the parent has the new DS. To change the
-              algorithm, move the zone to a policy that uses it.
+              Pre-publish a replacement key, then promote it once the parent has
+              the new DS.
             </p>
             <div className="flex items-center gap-2">
               {splitKeyZone && (
@@ -652,8 +641,7 @@ export default function ZoneDnssecTab({
         </h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-gray-500">
-            Discard the stored signatures and re-sign the whole zone — a
-            recovery hatch when the signing state is doubted.
+            Discard stored signatures and re-sign the whole zone.
           </p>
           <button
             type="button"
@@ -668,13 +656,13 @@ export default function ZoneDnssecTab({
 
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-red-700 border-b border-red-200 pb-2">
-          Go Insecure
+          Disable DNSSEC
         </h3>
         <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-3">
           <p>
-            Step one: publish the RFC 8078 delete CDS/CDNSKEY pair, asking a
-            CDS-consuming parent to drop this zone&apos;s DS records. Parents
-            that do not consume CDS need the DS removed by hand.
+            Step 1. Remove the DS record from the parent zone. Publishing a
+            withdrawal asks a parent that reads CDS records to remove it
+            automatically; otherwise remove it by hand at the registrar.
           </p>
           <div className="flex justify-end">
             {status.withdrawing ? (
@@ -700,27 +688,25 @@ export default function ZoneDnssecTab({
         </div>
         <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-900 space-y-3">
           <p>
-            Step two: disabling deletes the signing keys and unsigns the zone.
-            While the parent still publishes a DS record, this makes the zone
-            bogus for validating resolvers: remove the DS from the parent first,
-            then wait out its TTL.
+            Step 2. Once the DS is gone and its TTL has passed, delete the keys
+            and unsign the zone. Doing this while the DS still exists makes
+            resolvers reject the zone.
           </p>
           <label className="flex items-center space-x-2">
             <input
               type="checkbox"
-              checked={confirmInsecure}
-              onChange={(e) => setConfirmInsecure(e.target.checked)}
+              checked={confirmDsRemoved}
+              onChange={(e) => setConfirmDsRemoved(e.target.checked)}
             />
             <span>
-              The DS record is removed from the parent zone and its TTL has
-              passed
+              The DS record is gone from the parent zone and its TTL has passed
             </span>
           </label>
           <div className="flex justify-end">
             <button
               type="button"
               onClick={handleDisable}
-              disabled={pending || !confirmInsecure}
+              disabled={pending || !confirmDsRemoved}
               className="btn-danger"
             >
               {pending ? "Disabling..." : "Disable DNSSEC"}

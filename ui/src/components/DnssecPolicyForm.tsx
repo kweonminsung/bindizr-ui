@@ -120,8 +120,7 @@ export default function DnssecPolicyForm({
           Create DNSSEC Policy
         </h2>
         <p className="text-sm text-gray-500 mt-1">
-          The algorithm, denial mode and key layout are fixed once the policy
-          exists; the timing below can be edited later.
+          Algorithm, denial mode and key layout cannot be changed later.
         </p>
       </div>
 
@@ -200,8 +199,7 @@ export default function DnssecPolicyForm({
           <span>
             Split keys (KSK/ZSK)
             <span className="block text-gray-500">
-              A KSK/ZSK pair instead of one CSK, so the ZSK rolls without
-              touching the parent DS.
+              ZSK rollovers then leave the parent DS untouched.
             </span>
           </span>
         </label>

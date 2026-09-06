@@ -106,8 +106,7 @@ export default function SetupPage() {
               className="w-full mt-1"
             />
             <p className="text-xs text-gray-500 mt-1">
-              The secret of a Bindizr API token. Leave empty if the server runs
-              without authentication.
+              Leave empty if Bindizr runs without authentication.
             </p>
           </div>
           <button

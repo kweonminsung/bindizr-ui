@@ -137,14 +137,8 @@ export default function DnssecPolicyDetails({
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          The algorithm, denial mode and key layout are fixed. Moving a zone to
-          a policy of another algorithm rolls its keys; the denial mode and key
-          layout can only change by disabling and re-enabling DNSSEC.
-        </p>
-        <p className="text-sm text-gray-500">
-          Zones sign under this policy from their DNSSEC tab: choose it when
-          enabling DNSSEC, or move a signed zone with a matching denial mode and
-          key layout to it.
+          Algorithm, denial mode and key layout are fixed; only the timing can
+          be edited.
         </p>
       </div>
 
@@ -182,7 +176,7 @@ export default function DnssecPolicyDetails({
         </div>
 
         <p className="text-sm text-gray-500">
-          Changes take effect on the next signing pass or maintenance scan.
+          Applies on the next signing pass.
         </p>
 
         {error && (

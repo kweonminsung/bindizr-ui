@@ -19,8 +19,8 @@ export default function TokensPage() {
   return (
     <div>
       <p className="mb-4 text-sm text-gray-500">
-        API tokens authenticate HTTP API clients. A Scoped Token acts only in
-        the zones it is granted; open a token to grant or revoke zone access.
+        API tokens authenticate HTTP API clients. Open a token to manage its
+        zone access.
       </p>
       <TokenList key={refreshKey} onCreateToken={() => setIsFormOpen(true)} />
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)}>

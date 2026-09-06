@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
+import ConnectedTokenDetails from "./ConnectedTokenDetails";
 import Modal from "./Modal";
 
 interface SettingsResult {
@@ -12,6 +13,7 @@ interface SettingsResult {
 export default function BindizrSettings() {
   const { self, refresh: refreshToken } = useBindizrToken();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTokenOpen, setIsTokenOpen] = useState(false);
   const [bindizrUrl, setBindizrUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -108,16 +110,15 @@ export default function BindizrSettings() {
         {self && (
           <p className="text-sm text-gray-500 mt-1">
             Connected as{" "}
-            <span className="font-medium text-gray-700">{self.name}</span>{" "}
-            {self.global ? (
-              "(Global Token)."
-            ) : (
-              <>
-                (Scoped Token). Zone management, DNSSEC and access pages are
-                hidden; the token reads its granted zones and writes only what
-                its grants allow.
-              </>
-            )}
+            <span className="font-medium text-gray-700">{self.name}</span> (
+            {self.global ? "Global" : "Scoped"} Token).{" "}
+            <button
+              type="button"
+              onClick={() => setIsTokenOpen(true)}
+              className="font-medium text-blue-600 hover:underline"
+            >
+              Details
+            </button>
           </p>
         )}
       </div>
@@ -127,6 +128,12 @@ export default function BindizrSettings() {
       >
         Edit Bindizr Settings
       </button>
+
+      {self && isTokenOpen && (
+        <Modal isOpen wide onClose={() => setIsTokenOpen(false)}>
+          <ConnectedTokenDetails token={self} />
+        </Modal>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,8 +178,7 @@ export default function BindizrSettings() {
               className="w-full"
             />
             <p className="text-xs text-gray-500 mt-1">
-              The secret of a Bindizr API token. Leave empty if the server runs
-              without authentication.
+              Leave empty if Bindizr runs without authentication.
             </p>
           </div>
 
