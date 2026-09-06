@@ -80,9 +80,7 @@ export default function RecordDetails({
           )}
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Zone</p>
-            <p className="text-base text-gray-900">
-              {record.zone_name ?? record.zone_id}
-            </p>
+            <p className="text-base text-gray-900">{record.zone_name}</p>
           </div>
         </div>
       </div>

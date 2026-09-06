@@ -6,7 +6,7 @@ export interface Zone {
   /** SOA RNAME: the admin email. */
   rname: string;
   default_ttl: number;
-  serial?: number | null;
+  serial: number;
   refresh: number;
   retry: number;
   expire: number;
@@ -53,8 +53,8 @@ export interface Record {
   record_type: RecordType;
   value: RecordValue;
   zone_id: number;
-  zone_name?: string | null;
-  ttl?: number | null;
+  zone_name: string;
+  ttl: number;
   priority?: number | null;
 }
 
@@ -100,8 +100,8 @@ export interface SignedRecord {
   record_type: string;
   value: RecordValue;
   zone_id: number;
-  zone_name?: string | null;
-  ttl?: number | null;
+  zone_name: string;
+  ttl: number;
   priority?: number | null;
 }
 
@@ -112,7 +112,7 @@ export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
 /** One record on one side of a diff; rendering the rdata is left to the client. */
 export interface RecordDiffValue {
   value: RecordValue;
-  ttl?: number | null;
+  ttl: number;
   priority?: number | null;
 }
 
@@ -250,12 +250,12 @@ export interface ZoneVersion {
   created_at: string;
 }
 
-/** Reconstructed from the change history, so it has no id and a plain string value. */
+/** Reconstructed from the zone's journal, so it has no id. */
 export interface VersionRecord {
   name: string;
   record_type: string;
-  value: string;
-  ttl?: number | null;
+  value: RecordValue;
+  ttl: number;
   priority?: number | null;
 }
 
@@ -475,15 +475,20 @@ export interface PageQuery {
   offset?: number;
 }
 
+export interface ZoneVersionListQuery extends PageQuery {
+  /** Also list signer-only serials (DNSSEC re-signs and rollovers), hidden by default. */
+  all?: boolean;
+}
+
 export interface ZoneListQuery extends PageQuery {
   search?: string;
   name?: string;
   id?: number;
   mname?: string;
   rname?: string;
-  ttl?: number;
-  min_ttl?: number;
-  max_ttl?: number;
+  default_ttl?: number;
+  min_default_ttl?: number;
+  max_default_ttl?: number;
   serial?: number;
 }
 

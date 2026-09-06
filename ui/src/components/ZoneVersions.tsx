@@ -3,6 +3,7 @@ import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZoneVersion, getZoneVersionsPage, rollbackZone } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
+import { formatRecordValue } from "@/lib/recordValue";
 import {
   RollbackZoneResult,
   VersionDetail,
@@ -27,6 +28,7 @@ export default function ZoneVersions({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showAll, setShowAll] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export default function ZoneVersions({
         const data = await getZoneVersionsPage(zone.name, {
           limit: pageSize,
           offset: (page - 1) * pageSize,
+          all: showAll,
         });
         if (active) {
           setVersions(data.items);
@@ -71,7 +74,7 @@ export default function ZoneVersions({
     return () => {
       active = false;
     };
-  }, [zone.name, page, pageSize, refreshKey]);
+  }, [zone.name, page, pageSize, showAll, refreshKey]);
 
   const handleSelect = async (serial: number) => {
     setDetailLoading(true);
@@ -220,11 +223,9 @@ export default function ZoneVersions({
                       {record.record_type}
                     </td>
                     <td className="px-3 py-2 text-gray-500 break-all">
-                      {record.value}
+                      {formatRecordValue(record.value)}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">
-                      {record.ttl ?? "-"}
-                    </td>
+                    <td className="px-3 py-2 text-gray-500">{record.ttl}</td>
                     <td className="px-3 py-2 text-gray-500">
                       {record.priority ?? "-"}
                     </td>
@@ -301,11 +302,24 @@ export default function ZoneVersions({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-700">Version History</h3>
-        <p className="text-sm text-gray-500">
-          Current serial: {zone.serial ?? "-"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700">
+            Version History
+          </h3>
+          <p className="text-sm text-gray-500">Current serial: {zone.serial}</p>
+        </div>
+        <label className="flex items-center space-x-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={(e) => {
+              setShowAll(e.target.checked);
+              setPage(1);
+            }}
+          />
+          <span>Include signer-only serials</span>
+        </label>
       </div>
 
       {loading && versions.length === 0 ? (

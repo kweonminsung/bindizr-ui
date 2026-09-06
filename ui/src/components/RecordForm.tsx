@@ -67,21 +67,15 @@ export default function RecordForm({
     zone_name: zoneName ?? "",
   });
 
-  // A string dep: an unstable `zones` would re-run the effect every render.
-  const recordZoneName =
-    record?.zone_name ??
-    zones.find((zone) => zone.id === record?.zone_id)?.name ??
-    "";
-
   useEffect(() => {
     if (record) {
       setFormData({
         name: record.name,
         record_type: record.record_type,
         value: recordValueToInput(record.value),
-        ttl: record.ttl?.toString() ?? "",
+        ttl: String(record.ttl),
         priority: record.priority?.toString() ?? "",
-        zone_name: recordZoneName,
+        zone_name: record.zone_name,
       });
       return;
     }
@@ -90,7 +84,7 @@ export default function RecordForm({
       ...defaultFormData,
       zone_name: zoneName ?? "",
     });
-  }, [record, zoneName, recordZoneName]);
+  }, [record, zoneName]);
 
   const supportsPriority = PRIORITY_RECORD_TYPES.includes(formData.record_type);
 

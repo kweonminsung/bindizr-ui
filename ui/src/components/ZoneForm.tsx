@@ -82,7 +82,8 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         mname: formData.mname,
         rname: formData.rname,
         default_ttl: toRequiredNumber(formData.default_ttl, "Default TTL"),
-        serial: toOptionalNumber(formData.serial, "Serial"),
+        // Only settable at creation.
+        serial: zone ? undefined : toOptionalNumber(formData.serial, "Serial"),
         refresh: toOptionalNumber(formData.refresh, "Refresh"),
         retry: toOptionalNumber(formData.retry, "Retry"),
         expire: toOptionalNumber(formData.expire, "Expire"),
@@ -292,6 +293,10 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.serial}
               onChange={handleChange}
               placeholder="Automatic"
+              disabled={zone !== null}
+              title={
+                zone ? "The serial can only be set at creation" : undefined
+              }
               className="w-full"
             />
           </div>

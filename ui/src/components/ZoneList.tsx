@@ -27,8 +27,8 @@ interface ZoneFilters {
   name: string;
   mname: string;
   rname: string;
-  min_ttl: string;
-  max_ttl: string;
+  min_default_ttl: string;
+  max_default_ttl: string;
   serial: string;
 }
 
@@ -36,8 +36,8 @@ const defaultFilters: ZoneFilters = {
   name: "",
   mname: "",
   rname: "",
-  min_ttl: "",
-  max_ttl: "",
+  min_default_ttl: "",
+  max_default_ttl: "",
   serial: "",
 };
 
@@ -114,8 +114,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           name: filters.name,
           mname: filters.mname,
           rname: filters.rname,
-          min_ttl: toFilterNumber(filters.min_ttl),
-          max_ttl: toFilterNumber(filters.max_ttl),
+          min_default_ttl: toFilterNumber(filters.min_default_ttl),
+          max_default_ttl: toFilterNumber(filters.max_default_ttl),
           serial: toFilterNumber(filters.serial),
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
@@ -291,18 +291,18 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("rname", value)}
         />
         <FilterField
-          id="filter_zone_min_ttl"
-          label="Min TTL"
+          id="filter_zone_min_default_ttl"
+          label="Min Default TTL"
           type="number"
-          value={filters.min_ttl}
-          onChange={(value) => handleFilterChange("min_ttl", value)}
+          value={filters.min_default_ttl}
+          onChange={(value) => handleFilterChange("min_default_ttl", value)}
         />
         <FilterField
-          id="filter_zone_max_ttl"
-          label="Max TTL"
+          id="filter_zone_max_default_ttl"
+          label="Max Default TTL"
           type="number"
-          value={filters.max_ttl}
-          onChange={(value) => handleFilterChange("max_ttl", value)}
+          value={filters.max_default_ttl}
+          onChange={(value) => handleFilterChange("max_default_ttl", value)}
         />
         <FilterField
           id="filter_zone_serial"

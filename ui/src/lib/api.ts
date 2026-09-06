@@ -39,6 +39,7 @@ import {
   ZonePayload,
   ZoneStatus,
   ZoneVersion,
+  ZoneVersionListQuery,
 } from "./types";
 import { ApiError } from "./errors";
 import { getLocalApiHeaders } from "./localApi";
@@ -124,9 +125,9 @@ async function getZoneListResult(
   appendQueryParam(params, "id", queryParams.id);
   appendQueryParam(params, "mname", queryParams.mname?.trim());
   appendQueryParam(params, "rname", queryParams.rname?.trim());
-  appendQueryParam(params, "ttl", queryParams.ttl);
-  appendQueryParam(params, "min_ttl", queryParams.min_ttl);
-  appendQueryParam(params, "max_ttl", queryParams.max_ttl);
+  appendQueryParam(params, "default_ttl", queryParams.default_ttl);
+  appendQueryParam(params, "min_default_ttl", queryParams.min_default_ttl);
+  appendQueryParam(params, "max_default_ttl", queryParams.max_default_ttl);
   appendQueryParam(params, "serial", queryParams.serial);
 
   const response = await apiFetch(
@@ -316,12 +317,13 @@ export async function createRecordsBulk(
 
 export async function getZoneVersionsPage(
   zoneName: string,
-  queryParams: PageQuery = {},
+  queryParams: ZoneVersionListQuery = {},
 ): Promise<ListResult<ZoneVersion>> {
   const params = pageParams({
     ...queryParams,
     limit: queryParams.limit ?? 10,
   });
+  appendQueryParam(params, "all", queryParams.all || undefined);
 
   const response = await apiFetch(
     withQuery(`/zones/${encodeURIComponent(zoneName)}/versions`, params),
