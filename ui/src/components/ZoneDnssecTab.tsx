@@ -8,10 +8,9 @@ import {
   enableDnssec,
   getDnssecPolicies,
   getDnssecStatus,
-  setDnssecParentNsAddrs,
-  setZoneDnssecPolicy,
   signDnssecZone,
   startDnssecRollover,
+  updateDnssecSettings,
   withdrawDnssec,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
@@ -205,7 +204,7 @@ export default function ZoneDnssecTab({
     runAction(
       "policy",
       async () => {
-        const data = await setZoneDnssecPolicy(zone.name, {
+        const data = await updateDnssecSettings(zone.name, {
           policy: targetPolicy,
         });
         setStatus(data);
@@ -285,8 +284,8 @@ export default function ZoneDnssecTab({
     runAction(
       "parent-ns",
       async () => {
-        const data = await setDnssecParentNsAddrs(zone.name, {
-          parent_ns_addrs: parentNsAddrs.trim() || null,
+        const data = await updateDnssecSettings(zone.name, {
+          parent_ns_addrs: parentNsAddrs.trim(),
         });
         setStatus(data);
         setParentNsAddrs(data.parent_ns_addrs ?? "");
@@ -549,6 +548,93 @@ export default function ZoneDnssecTab({
         </p>
       </div>
 
+      <div>
+        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
+          DS Records for the Parent Zone
+        </h3>
+        {status.ds_records.length === 0 ? (
+          <p className="text-sm text-gray-500">No DS records.</p>
+        ) : (
+          <ul className="space-y-2">
+            {status.ds_records.map((ds, index) => (
+              <li
+                key={`${ds.key_tag}-${index}`}
+                className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2"
+              >
+                <code className="min-w-0 flex-1 font-mono text-xs break-all">
+                  {ds.presentation}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => handleCopyDs(index, ds.presentation)}
+                  className="shrink-0 text-sm font-medium text-green-600 hover:underline"
+                >
+                  {copiedDs === index ? "Copied" : "Copy"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
+          <p className="text-sm text-gray-500">
+            Ask the parent&apos;s nameservers what DS they serve for the zone.
+          </p>
+          <button
+            type="button"
+            onClick={handleCheckDs}
+            disabled={busy}
+            className="btn-secondary whitespace-nowrap"
+          >
+            {pending === "check-ds" ? "Checking..." : "Check Parent DS"}
+          </button>
+        </div>
+        {delegation && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2 text-sm text-gray-600">
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                delegation.ds_state === "published"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
+              {delegation.ds_state === "published" ? "DS published" : "No DS"}
+            </span>
+            <span className="break-all">{describeDelegation(delegation)}</span>
+            <span className="ml-auto whitespace-nowrap text-gray-400">
+              {formatDateTime(delegation.checked_at)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+          Parent Nameservers
+        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <input
+            type="text"
+            value={parentNsAddrs}
+            onChange={(e) => setParentNsAddrs(e.target.value)}
+            placeholder="ns1.parent.example, ns2.parent.example:5353"
+            aria-label="Parent nameservers"
+            className="flex-1"
+          />
+          <button
+            type="button"
+            onClick={handleSetParentNsAddrs}
+            disabled={busy || parentNsUnchanged}
+            className="btn-primary whitespace-nowrap"
+          >
+            {pending === "parent-ns" ? "Saving..." : "Save"}
+          </button>
+        </div>
+        <p className="text-sm text-gray-500">
+          Comma-separated host[:port] asked for the zone&apos;s DS before
+          disabling; empty discovers the parent.
+        </p>
+      </div>
+
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
           Policy
@@ -676,65 +762,6 @@ export default function ZoneDnssecTab({
         </div>
       </div>
 
-      <div>
-        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
-          DS Records for the Parent Zone
-        </h3>
-        {status.ds_records.length === 0 ? (
-          <p className="text-sm text-gray-500">No DS records.</p>
-        ) : (
-          <ul className="space-y-2">
-            {status.ds_records.map((ds, index) => (
-              <li
-                key={`${ds.key_tag}-${index}`}
-                className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2"
-              >
-                <code className="min-w-0 flex-1 font-mono text-xs break-all">
-                  {ds.presentation}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => handleCopyDs(index, ds.presentation)}
-                  className="shrink-0 text-sm font-medium text-green-600 hover:underline"
-                >
-                  {copiedDs === index ? "Copied" : "Copy"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
-          <p className="text-sm text-gray-500">
-            Ask the parent&apos;s nameservers what DS they serve for the zone.
-          </p>
-          <button
-            type="button"
-            onClick={handleCheckDs}
-            disabled={busy}
-            className="btn-secondary whitespace-nowrap"
-          >
-            {pending === "check-ds" ? "Checking..." : "Check Parent DS"}
-          </button>
-        </div>
-        {delegation && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2 text-sm text-gray-600">
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                delegation.ds_state === "published"
-                  ? "bg-amber-100 text-amber-800"
-                  : "bg-green-100 text-green-700"
-              }`}
-            >
-              {delegation.ds_state === "published" ? "DS published" : "No DS"}
-            </span>
-            <span className="break-all">{describeDelegation(delegation)}</span>
-            <span className="ml-auto whitespace-nowrap text-gray-400">
-              {formatDateTime(delegation.checked_at)}
-            </span>
-          </div>
-        )}
-      </div>
-
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
           Key Rollover
@@ -845,34 +872,6 @@ export default function ZoneDnssecTab({
             {pending === "sign" ? "Signing..." : "Re-sign Zone"}
           </button>
         </div>
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-          Parent Nameservers
-        </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <input
-            type="text"
-            value={parentNsAddrs}
-            onChange={(e) => setParentNsAddrs(e.target.value)}
-            placeholder="ns1.parent.example, ns2.parent.example:5353"
-            aria-label="Parent nameservers"
-            className="flex-1"
-          />
-          <button
-            type="button"
-            onClick={handleSetParentNsAddrs}
-            disabled={busy || parentNsUnchanged}
-            className="btn-primary whitespace-nowrap"
-          >
-            {pending === "parent-ns" ? "Saving..." : "Save"}
-          </button>
-        </div>
-        <p className="text-sm text-gray-500">
-          Comma-separated host[:port] asked for the zone&apos;s DS before
-          disabling; empty discovers the parent.
-        </p>
       </div>
 
       <div className="space-y-3">

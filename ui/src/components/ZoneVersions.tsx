@@ -55,7 +55,7 @@ export default function ZoneVersions({
         const data = await getZoneVersionsPage(zone.name, {
           limit: pageSize,
           offset: (page - 1) * pageSize,
-          all: showAll,
+          include_signer_serials: showAll,
         });
         if (active) {
           setVersions(data.items);
@@ -103,7 +103,7 @@ export default function ZoneVersions({
     setRollbackPending(true);
     setRollbackResult(null);
     try {
-      setPreview(await rollbackZone(zone.name, { serial, dry_run: true }));
+      setPreview(await rollbackZone(zone.name, serial, true));
     } catch (rollbackError) {
       toast.error(getErrorMessage(rollbackError, "Failed to preview rollback"));
     } finally {
@@ -114,7 +114,7 @@ export default function ZoneVersions({
   const handleApplyRollback = async (serial: number) => {
     setRollbackPending(true);
     try {
-      const result = await rollbackZone(zone.name, { serial, dry_run: false });
+      const result = await rollbackZone(zone.name, serial, false);
       setPreview(null);
       setRollbackResult(result);
       toast.success(

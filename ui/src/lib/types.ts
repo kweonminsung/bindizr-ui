@@ -25,6 +25,9 @@ export interface ZonePayload {
   minimum_ttl?: number | null;
 }
 
+/** An omitted field keeps its value; a different `name` renames the zone. */
+export type UpdateZonePayload = Partial<Omit<ZonePayload, "serial">>;
+
 export type RecordValue = string | string[];
 
 export const RECORD_TYPES = [
@@ -67,10 +70,11 @@ export interface CreateRecordPayload {
   priority?: number | null;
 }
 
+/** An omitted field keeps its value; `value` is required when `record_type` changes. */
 export interface UpdateRecordPayload {
-  name: string;
-  record_type: RecordType;
-  value: RecordValue;
+  name?: string;
+  record_type?: RecordType;
+  value?: RecordValue;
   ttl?: number | null;
   priority?: number | null;
 }
@@ -158,8 +162,10 @@ export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
 
 export type ImportMode = (typeof IMPORT_MODES)[number];
 
+/** Exactly one of `content` (zone file text) and `from_server` (AXFR source). */
 export interface ImportZonePayload {
-  content: string;
+  content?: string;
+  from_server?: string;
   mode?: ImportMode;
   dry_run?: boolean;
 }
@@ -179,12 +185,6 @@ export interface ImportZoneResult {
   summary: ImportSummary;
   diff: RecordDiff;
   errors: string[];
-}
-
-export interface NotifyZonePayload {
-  zone_name?: string | null;
-  /** Bump the serial first, so secondaries transfer even when nothing changed. */
-  bump_serial?: boolean;
 }
 
 export const TSIG_ALGORITHMS = [
@@ -268,11 +268,6 @@ export interface VersionDiff {
   from_serial: number;
   to_serial: number;
   diff: RecordDiff;
-}
-
-export interface RollbackZonePayload {
-  serial: number;
-  dry_run?: boolean;
 }
 
 export interface RollbackSummary {
@@ -429,14 +424,11 @@ export interface EnableDnssecPayload {
   parent_ns_addrs?: string | null;
 }
 
-/** Null or empty returns the zone to discovering its parent. */
-export interface SetDnssecParentNsAddrsPayload {
+/** An omitted field keeps its value; an empty `parent_ns_addrs` returns the zone to discovery. */
+export interface UpdateDnssecSettingsPayload {
+  /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
+  policy?: string | null;
   parent_ns_addrs?: string | null;
-}
-
-/** The new policy must match the zone's denial mode and key layout. */
-export interface SetZoneDnssecPolicyPayload {
-  policy: string;
 }
 
 /** Which key to roll: required for split-key zones, omitted for CSK zones. */
@@ -518,7 +510,7 @@ export interface PageQuery {
 
 export interface ZoneVersionListQuery extends PageQuery {
   /** Also list signer-only serials (DNSSEC re-signs and rollovers), hidden by default. */
-  all?: boolean;
+  include_signer_serials?: boolean;
 }
 
 export interface ZoneListQuery extends PageQuery {

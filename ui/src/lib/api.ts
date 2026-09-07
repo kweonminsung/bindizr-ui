@@ -9,7 +9,6 @@ import {
   CreateTsigGrantPayload,
   CreateTsigKeyPayload,
   CreatedToken,
-  DnssecDsRecord,
   DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
@@ -17,21 +16,19 @@ import {
   ImportZonePayload,
   ImportZoneResult,
   ListResult,
-  NotifyZonePayload,
   PageQuery,
   Pagination,
   Record,
   RecordListQuery,
-  RollbackZonePayload,
   RollbackZoneResult,
-  SetDnssecParentNsAddrsPayload,
-  SetZoneDnssecPolicyPayload,
   SignedRecord,
   TokenGrant,
   TsigGrant,
   TsigKey,
   UpdateDnssecPolicyPayload,
+  UpdateDnssecSettingsPayload,
   UpdateRecordPayload,
+  UpdateZonePayload,
   VersionDetail,
   VersionDiff,
   Zone,
@@ -233,7 +230,7 @@ export async function createRecord(
 
 export async function updateZone(
   name: string,
-  zone: ZonePayload,
+  zone: UpdateZonePayload,
 ): Promise<Zone> {
   const response = await apiFetch(
     `/zones/${encodeURIComponent(name)}`,
@@ -273,13 +270,13 @@ export async function deleteRecord(id: number): Promise<string> {
   return (await response.json()).message as string;
 }
 
-export async function importZoneFile(
+export async function importZone(
   zoneName: string,
   payload: ImportZonePayload,
 ): Promise<ImportZoneResult> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/imports`,
-    "Failed to import zone file",
+    `/zones/${encodeURIComponent(zoneName)}/import`,
+    "Failed to import zone",
     {
       method: "POST",
       body: JSON.stringify(payload),
@@ -308,11 +305,11 @@ export async function createRecordsBulk(
   dryRun = false,
 ): Promise<BulkRecordsResult> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/records/bulk`,
+    "/records/bulk",
     "Failed to bulk create records",
     {
       method: "POST",
-      body: JSON.stringify({ records, dry_run: dryRun }),
+      body: JSON.stringify({ zone_name: zoneName, records, dry_run: dryRun }),
     },
   );
   return (await response.json()) as BulkRecordsResult;
@@ -326,7 +323,11 @@ export async function getZoneVersionsPage(
     ...queryParams,
     limit: queryParams.limit ?? 10,
   });
-  appendQueryParam(params, "all", queryParams.all || undefined);
+  appendQueryParam(
+    params,
+    "include_signer_serials",
+    queryParams.include_signer_serials || undefined,
+  );
 
   const response = await apiFetch(
     withQuery(`/zones/${encodeURIComponent(zoneName)}/versions`, params),
@@ -364,15 +365,13 @@ export async function diffZoneVersions(
 
 export async function rollbackZone(
   zoneName: string,
-  payload: RollbackZonePayload,
+  serial: number,
+  dryRun: boolean,
 ): Promise<RollbackZoneResult> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/rollback`,
+    `/zones/${encodeURIComponent(zoneName)}/versions/${serial}/rollback?dry_run=${dryRun}`,
     "Failed to roll back zone",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
+    { method: "POST" },
   );
   return (await response.json()) as RollbackZoneResult;
 }
@@ -563,22 +562,18 @@ export async function getZoneTokenGrants(
   return (await response.json()).token_grants as TokenGrant[];
 }
 
+/** Bumping the serial first makes secondaries transfer even when nothing changed. */
 export async function notifyZones(
   zoneName?: string | null,
   bumpSerial = false,
 ): Promise<string> {
-  const body: NotifyZonePayload = {
-    bump_serial: bumpSerial,
-    zone_name: zoneName ?? null,
-  };
-
+  const path = zoneName
+    ? `/zones/${encodeURIComponent(zoneName)}/notify`
+    : "/notify";
   const response = await apiFetch(
-    `/zones/notify`,
+    `${path}?bump_serial=${bumpSerial}`,
     "Failed to send DNS notify",
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-    },
+    { method: "POST" },
   );
   return (await response.json()).message as string;
 }
@@ -620,16 +615,6 @@ export async function disableDnssec(
     { method: "DELETE" },
   );
   return (await response.json()).message as string;
-}
-
-export async function getDnssecDsRecords(
-  zoneName: string,
-): Promise<DnssecDsRecord[]> {
-  const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/dnssec/ds`,
-    "Failed to fetch DS records",
-  );
-  return (await response.json()).ds_records as DnssecDsRecord[];
 }
 
 /** Asks the parent's nameservers for the zone's DS; the answer is in `delegation`. */
@@ -693,13 +678,13 @@ export async function signDnssecZone(zoneName: string): Promise<string> {
   return (await response.json()).message as string;
 }
 
-export async function setZoneDnssecPolicy(
+export async function updateDnssecSettings(
   zoneName: string,
-  payload: SetZoneDnssecPolicyPayload,
+  payload: UpdateDnssecSettingsPayload,
 ): Promise<DnssecStatus> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/dnssec/policy`,
-    "Failed to change the zone's DNSSEC policy",
+    `/zones/${encodeURIComponent(zoneName)}/dnssec`,
+    "Failed to change the zone's DNSSEC settings",
     {
       method: "PUT",
       body: JSON.stringify(payload),
@@ -724,21 +709,6 @@ export async function cancelDnssecWithdrawal(
     `/zones/${encodeURIComponent(zoneName)}/dnssec/withdraw`,
     "Failed to cancel the DS withdrawal",
     { method: "DELETE" },
-  );
-  return (await response.json()).dnssec as DnssecStatus;
-}
-
-export async function setDnssecParentNsAddrs(
-  zoneName: string,
-  payload: SetDnssecParentNsAddrsPayload,
-): Promise<DnssecStatus> {
-  const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/dnssec/parent-ns-addrs`,
-    "Failed to set the parent nameservers",
-    {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    },
   );
   return (await response.json()).dnssec as DnssecStatus;
 }

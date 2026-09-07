@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createZone, importZoneFile, updateZone } from "@/lib/api";
+import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
@@ -100,7 +100,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         const content = zoneFileContent.trim();
         if (content) {
           try {
-            const result = await importZoneFile(payload.name, {
+            const result = await importZone(payload.name, {
               content,
               mode: "append",
             });
