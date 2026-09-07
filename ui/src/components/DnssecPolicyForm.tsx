@@ -9,7 +9,7 @@ import {
   DnssecDenialMode,
   DnssecPolicy,
 } from "@/lib/types";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface DnssecPolicyFormProps {
   onSuccess: (policy: DnssecPolicy) => void;
@@ -56,6 +56,7 @@ export default function DnssecPolicyForm({
   onSuccess,
   onCancel,
 }: DnssecPolicyFormProps) {
+  const toast = useToast();
   const [name, setName] = useState("");
   const [algorithm, setAlgorithm] = useState<DnssecAlgorithm>(
     DNSSEC_ALGORITHMS[0],
@@ -72,13 +73,11 @@ export default function DnssecPolicyForm({
     rollover_retire_holddown_secs: "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSubmitting(true);
-    setError(null);
     try {
       const policy = await createDnssecPolicy({
         name: name.trim(),
@@ -108,7 +107,7 @@ export default function DnssecPolicyForm({
       });
       onSuccess(policy);
     } catch (error) {
-      setError(getErrorMessage(error, "Failed to create DNSSEC policy"));
+      toast.error(getErrorMessage(error, "Failed to create DNSSEC policy"));
     } finally {
       setSubmitting(false);
     }
@@ -234,8 +233,6 @@ export default function DnssecPolicyForm({
           ))}
         </div>
       </div>
-
-      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

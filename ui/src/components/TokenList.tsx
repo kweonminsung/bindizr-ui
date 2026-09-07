@@ -8,18 +8,19 @@ import { ApiToken } from "@/lib/types";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import TokenDetails, { isTokenExpired } from "./TokenDetails";
+import { useToast } from "@/contexts/ToastContext";
 
 interface TokenListProps {
   onCreateToken: () => void;
 }
 
 export default function TokenList({ onCreateToken }: TokenListProps) {
+  const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
   const [tokens, setTokens] = useState<ApiToken[]>([]);
   const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -76,14 +77,11 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
       return;
     }
 
-    setActionError(null);
     try {
-      await deleteToken(token.name);
+      toast.success(await deleteToken(token.name));
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
-      setActionError(
-        getErrorMessage(deleteError, "Failed to delete API token"),
-      );
+      toast.error(getErrorMessage(deleteError, "Failed to delete API token"));
     }
   };
 
@@ -120,11 +118,6 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
           Create API Token
         </button>
       </div>
-      {actionError && (
-        <Notice tone="error" className="mx-4 mb-4">
-          {actionError}
-        </Notice>
-      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">

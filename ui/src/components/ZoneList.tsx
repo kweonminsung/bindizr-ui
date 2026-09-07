@@ -19,6 +19,7 @@ import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneListProps {
   onCreateZone: () => void;
@@ -49,6 +50,7 @@ const countActiveFilters = (filters: ZoneFilters) =>
   Object.values(filters).filter((value) => value.trim() !== "").length;
 
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
+  const toast = useToast();
   const navigate = useNavigate();
   const { globalAccess } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -59,7 +61,6 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const [exportingZone, setExportingZone] = useState<Zone | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
@@ -205,16 +206,15 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     if (
       window.confirm(`Delete "${zone.name}"? All of its records go with it.`)
     ) {
-      setActionError(null);
       try {
-        await deleteZone(zone.name);
+        toast.success(await deleteZone(zone.name));
         if (zones.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
           setRefreshKey((prev) => prev + 1);
         }
       } catch (error) {
-        setActionError(getErrorMessage(error, "Failed to delete zone"));
+        toast.error(getErrorMessage(error, "Failed to delete zone"));
       }
     }
   };
@@ -315,11 +315,6 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("serial", value)}
         />
       </FilterPanel>
-      {actionError && (
-        <Notice tone="error" className="mx-4 mb-4">
-          {actionError}
-        </Notice>
-      )}
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">

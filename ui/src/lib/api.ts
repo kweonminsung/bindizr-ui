@@ -246,12 +246,13 @@ export async function updateZone(
   return (await response.json()).zone as Zone;
 }
 
-export async function deleteZone(name: string): Promise<void> {
-  await apiFetch(
+export async function deleteZone(name: string): Promise<string> {
+  const response = await apiFetch(
     `/zones/${encodeURIComponent(name)}`,
     "Failed to delete zone",
     { method: "DELETE" },
   );
+  return (await response.json()).message as string;
 }
 
 export async function updateRecord(
@@ -265,10 +266,11 @@ export async function updateRecord(
   return (await response.json()).record as Record;
 }
 
-export async function deleteRecord(id: number): Promise<void> {
-  await apiFetch(`/records/${id}`, "Failed to delete record", {
+export async function deleteRecord(id: number): Promise<string> {
+  const response = await apiFetch(`/records/${id}`, "Failed to delete record", {
     method: "DELETE",
   });
+  return (await response.json()).message as string;
 }
 
 export async function importZoneFile(
@@ -417,12 +419,13 @@ export async function createTsigKey(
   return withSecret((await response.json()) as TsigKeyEnvelope);
 }
 
-export async function deleteTsigKey(name: string): Promise<void> {
-  await apiFetch(
+export async function deleteTsigKey(name: string): Promise<string> {
+  const response = await apiFetch(
     `/tsig-keys/${encodeURIComponent(name)}`,
     "Failed to delete TSIG key",
     { method: "DELETE" },
   );
+  return (await response.json()).message as string;
 }
 
 export async function getTsigGrants(keyName: string): Promise<TsigGrant[]> {
@@ -451,12 +454,13 @@ export async function createTsigGrant(
 export async function deleteTsigGrant(
   keyName: string,
   id: number,
-): Promise<void> {
-  await apiFetch(
+): Promise<string> {
+  const response = await apiFetch(
     `/tsig-keys/${encodeURIComponent(keyName)}/grants/${id}`,
     "Failed to revoke the TSIG grant",
     { method: "DELETE" },
   );
+  return (await response.json()).message as string;
 }
 
 /** Read-only: grants are managed on the key. */
@@ -504,12 +508,13 @@ export async function createToken(
   return (await response.json()) as CreatedToken;
 }
 
-export async function deleteToken(name: string): Promise<void> {
-  await apiFetch(
+export async function deleteToken(name: string): Promise<string> {
+  const response = await apiFetch(
     `/tokens/${encodeURIComponent(name)}`,
     "Failed to delete API token",
     { method: "DELETE" },
   );
+  return (await response.json()).message as string;
 }
 
 export async function getTokenGrants(tokenName: string): Promise<TokenGrant[]> {
@@ -538,12 +543,13 @@ export async function createTokenGrant(
 export async function deleteTokenGrant(
   tokenName: string,
   id: number,
-): Promise<void> {
-  await apiFetch(
+): Promise<string> {
+  const response = await apiFetch(
     `/tokens/${encodeURIComponent(tokenName)}/grants/${id}`,
     "Failed to revoke the token grant",
     { method: "DELETE" },
   );
+  return (await response.json()).message as string;
 }
 
 /** Read-only: grants are managed on the token. */
@@ -782,10 +788,11 @@ export async function updateDnssecPolicy(
   return (await response.json()).dnssec_policy as DnssecPolicy;
 }
 
-export async function deleteDnssecPolicy(name: string): Promise<void> {
-  await apiFetch(
+export async function deleteDnssecPolicy(name: string): Promise<string> {
+  const response = await apiFetch(
     `/dnssec-policies/${encodeURIComponent(name)}`,
     "Failed to delete DNSSEC policy",
     { method: "DELETE" },
   );
+  return (await response.json()).message as string;
 }

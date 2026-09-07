@@ -27,16 +27,12 @@ import {
   Zone,
 } from "@/lib/types";
 import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneDnssecTabProps {
   zone: Zone;
   /** Keeps the badge next to the zone name in sync. */
   onEnabledChanged?: (enabled: boolean) => void;
-}
-
-interface ActionResult {
-  text: string;
-  failed: boolean;
 }
 
 /** The button at work, so only it shows progress. */
@@ -94,13 +90,13 @@ export default function ZoneDnssecTab({
   zone,
   onEnabledChanged,
 }: ZoneDnssecTabProps) {
+  const toast = useToast();
   const [status, setStatus] = useState<DnssecStatus | null>(null);
   const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const busy = pending !== null;
-  const [result, setResult] = useState<ActionResult | null>(null);
 
   const [policyName, setPolicyName] = useState(DEFAULT_DNSSEC_POLICY_NAME);
   const [targetPolicy, setTargetPolicy] = useState("");
@@ -176,16 +172,12 @@ export default function ZoneDnssecTab({
     fallbackError: string,
   ) => {
     setPending(action);
-    setResult(null);
     try {
       await run();
     } catch (actionError) {
       const message = getErrorMessage(actionError, fallbackError);
       const hint = DS_CHECK_HINTS[getErrorCode(actionError) ?? ""];
-      setResult({
-        text: hint ? `${message} ${hint}` : message,
-        failed: true,
-      });
+      toast.error(hint ? `${message} ${hint}` : message);
     } finally {
       setPending(null);
     }
@@ -204,10 +196,7 @@ export default function ZoneDnssecTab({
         });
         setStatus(data);
         setParentNsAddrs(data.parent_ns_addrs ?? "");
-        setResult({
-          text: "DNSSEC enabled. Register the DS records at the parent.",
-          failed: false,
-        });
+        toast.success("DNSSEC enabled. Register the DS records at the parent.");
       },
       "Failed to enable DNSSEC",
     );
@@ -221,10 +210,9 @@ export default function ZoneDnssecTab({
         });
         setStatus(data);
         setTargetPolicy("");
-        setResult({
-          text: `Zone moved to the "${data.policy?.name ?? targetPolicy}" policy.`,
-          failed: false,
-        });
+        toast.success(
+          `Zone moved to the "${data.policy?.name ?? targetPolicy}" policy.`,
+        );
       },
       "Failed to change the zone's DNSSEC policy",
     );
@@ -235,10 +223,9 @@ export default function ZoneDnssecTab({
       async () => {
         const data = await startDnssecRollover(zone.name, role);
         setStatus(data);
-        setResult({
-          text: "Rollover started; the replacement key is pre-published.",
-          failed: false,
-        });
+        toast.success(
+          "Rollover started; the replacement key is pre-published.",
+        );
       },
       "Failed to start key rollover",
     );
@@ -254,10 +241,7 @@ export default function ZoneDnssecTab({
         setSkipDsCheckOnDsSeen(false);
         setSkipHolddown(false);
         setStatus(data);
-        setResult({
-          text: "New key promoted.",
-          failed: false,
-        });
+        toast.success("New key promoted.");
       },
       "Failed to confirm DS seen",
     );
@@ -268,10 +252,9 @@ export default function ZoneDnssecTab({
       async () => {
         const data = await withdrawDnssec(zone.name);
         setStatus(data);
-        setResult({
-          text: "Withdrawal published; the parent drops the DS on its next CDS poll.",
-          failed: false,
-        });
+        toast.success(
+          "Withdrawal published; the parent drops the DS on its next CDS poll.",
+        );
       },
       "Failed to publish the DS withdrawal",
     );
@@ -282,10 +265,7 @@ export default function ZoneDnssecTab({
       async () => {
         const data = await cancelDnssecWithdrawal(zone.name);
         setStatus(data);
-        setResult({
-          text: "Withdrawal cancelled.",
-          failed: false,
-        });
+        toast.success("Withdrawal cancelled.");
       },
       "Failed to cancel the DS withdrawal",
     );
@@ -310,12 +290,11 @@ export default function ZoneDnssecTab({
         });
         setStatus(data);
         setParentNsAddrs(data.parent_ns_addrs ?? "");
-        setResult({
-          text: data.parent_ns_addrs
+        toast.success(
+          data.parent_ns_addrs
             ? `Parent nameservers set to ${data.parent_ns_addrs}.`
             : "Parent nameservers cleared; the parent is discovered.",
-          failed: false,
-        });
+        );
       },
       "Failed to set the parent nameservers",
     );
@@ -344,7 +323,7 @@ export default function ZoneDnssecTab({
       "sign",
       async () => {
         const message = await signDnssecZone(zone.name);
-        setResult({ text: message, failed: false });
+        toast.success(message);
         await refreshStatus();
       },
       "Failed to re-sign zone",
@@ -357,7 +336,7 @@ export default function ZoneDnssecTab({
         const message = await disableDnssec(zone.name, skipDsCheckOnDisable);
         setSkipDsCheckOnDisable(false);
         setDelegation(null);
-        setResult({ text: message, failed: false });
+        toast.success(message);
         // The keys are gone regardless of whether the refresh below lands.
         setStatus((prev) =>
           prev
@@ -396,10 +375,6 @@ export default function ZoneDnssecTab({
   if (!status) {
     return null;
   }
-
-  const resultBanner = result && (
-    <Notice tone={result.failed ? "error" : "success"}>{result.text}</Notice>
-  );
 
   const policiesLink = (
     <Link to="/dns/dnssec-policies" className="text-blue-600 hover:underline">
@@ -482,8 +457,6 @@ export default function ZoneDnssecTab({
             disabling; empty discovers the parent.
           </p>
         </div>
-
-        {resultBanner}
 
         <div className="flex justify-end">
           <button
@@ -575,8 +548,6 @@ export default function ZoneDnssecTab({
           export.
         </p>
       </div>
-
-      {resultBanner}
 
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">

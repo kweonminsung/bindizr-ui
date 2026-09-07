@@ -8,18 +8,19 @@ import { TsigKey } from "@/lib/types";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import TsigKeyDetails from "./TsigKeyDetails";
+import { useToast } from "@/contexts/ToastContext";
 
 interface TsigKeyListProps {
   onCreateKey: () => void;
 }
 
 export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
+  const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
   const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
   const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -76,18 +77,17 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
       return;
     }
 
-    setActionError(null);
     try {
-      await deleteTsigKey(tsigKey.name);
+      toast.success(await deleteTsigKey(tsigKey.name));
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
       if (getErrorStatus(deleteError) === 409) {
-        setActionError(
+        toast.error(
           `"${tsigKey.name}" still holds zone grants. Open the key and revoke them first.`,
         );
         return;
       }
-      setActionError(getErrorMessage(deleteError, "Failed to delete TSIG key"));
+      toast.error(getErrorMessage(deleteError, "Failed to delete TSIG key"));
     }
   };
 
@@ -117,11 +117,6 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
           Create TSIG Key
         </button>
       </div>
-      {actionError && (
-        <Notice tone="error" className="mx-4 mb-4">
-          {actionError}
-        </Notice>
-      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">

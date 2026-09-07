@@ -10,7 +10,7 @@ import {
   RecordType,
   Zone,
 } from "@/lib/types";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface RecordFormProps {
   zoneName?: string;
@@ -62,7 +62,7 @@ export default function RecordForm({
   onCancel,
   zones = [],
 }: RecordFormProps) {
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
     zone_name: zoneName ?? "",
@@ -108,11 +108,10 @@ export default function RecordForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     const selectedZoneName = zoneName ?? formData.zone_name;
     if (!record && !selectedZoneName) {
-      setError("Zone is required");
+      toast.error("Zone is required");
       return;
     }
 
@@ -138,7 +137,7 @@ export default function RecordForm({
 
       onSuccess(savedRecord);
     } catch (error) {
-      setError(getErrorMessage(error, "Failed to save record"));
+      toast.error(getErrorMessage(error, "Failed to save record"));
     }
   };
 
@@ -267,8 +266,6 @@ export default function RecordForm({
           </div>
         )}
       </div>
-
-      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

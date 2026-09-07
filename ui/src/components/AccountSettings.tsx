@@ -1,20 +1,12 @@
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
-import Notice from "./Notice";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import { useNavigate } from "react-router-dom";
-
-interface SettingsResult {
-  text: string;
-  failed: boolean;
-}
-
-const resultBanner = (result: SettingsResult) => (
-  <Notice tone={result.failed ? "error" : "success"}>{result.text}</Notice>
-);
+import { useToast } from "@/contexts/ToastContext";
 
 export default function AccountSettings() {
+  const toast = useToast();
   const navigate = useNavigate();
 
   const { accountEnabled, logout } = useAuth();
@@ -29,8 +21,6 @@ export default function AccountSettings() {
     useState("");
   const [isAccountEnabled, setIsAccountEnabled] = useState(accountEnabled);
   const [isLoading, setIsLoading] = useState(false);
-  const [changeResult, setChangeResult] = useState<SettingsResult | null>(null);
-  const [statusResult, setStatusResult] = useState<SettingsResult | null>(null);
 
   useEffect(() => {
     const fetchAccountStatus = async () => {
@@ -68,15 +58,14 @@ export default function AccountSettings() {
   const handleAccountChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword && newPassword !== confirmPassword) {
-      setChangeResult({ text: "New passwords do not match.", failed: true });
+      toast.error("New passwords do not match.");
       return;
     }
     if (!username.trim() && !newPassword) {
-      setChangeResult({ text: "No changes were made.", failed: true });
+      toast.error("No changes were made.");
       return;
     }
     setIsLoading(true);
-    setChangeResult(null);
 
     try {
       const res = await fetch("/api/account", {
@@ -88,7 +77,7 @@ export default function AccountSettings() {
         }),
       });
       const data = await res.json();
-      setChangeResult({ text: data.message, failed: !res.ok });
+      toast.show(res.ok ? "success" : "error", data.message);
       if (res.ok) {
         setNewPassword("");
         setConfirmPassword("");
@@ -98,10 +87,7 @@ export default function AccountSettings() {
       }
     } catch (error) {
       console.error("Failed to update account:", error);
-      setChangeResult({
-        text: "An error occurred while updating the account.",
-        failed: true,
-      });
+      toast.error("An error occurred while updating the account.");
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +96,6 @@ export default function AccountSettings() {
   const handleAccountStatusChange = async (enable = false) => {
     if (!enable) {
       setIsLoading(true);
-      setStatusResult(null);
       try {
         const res = await fetch("/api/account", {
           method: "POST",
@@ -118,16 +103,13 @@ export default function AccountSettings() {
           body: JSON.stringify({ isEnabled: false }),
         });
         const data = await res.json();
-        setStatusResult({ text: data.message, failed: !res.ok });
+        toast.show(res.ok ? "success" : "error", data.message);
         if (res.ok) {
           setIsAccountEnabled(false);
         }
       } catch (error) {
         console.error("Failed to disable account:", error);
-        setStatusResult({
-          text: "An error occurred while disabling the account.",
-          failed: true,
-        });
+        toast.error("An error occurred while disabling the account.");
       } finally {
         setIsLoading(false);
       }
@@ -135,7 +117,6 @@ export default function AccountSettings() {
       setNewAccountUsername("");
       setNewAccountPassword("");
       setNewAccountConfirmPassword("");
-      setStatusResult(null);
       setEnableAccountModalOpen(true);
     }
   };
@@ -143,11 +124,10 @@ export default function AccountSettings() {
   const handleEnableAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newAccountPassword !== newAccountConfirmPassword) {
-      setStatusResult({ text: "Passwords do not match.", failed: true });
+      toast.error("Passwords do not match.");
       return;
     }
     setIsLoading(true);
-    setStatusResult(null);
     try {
       const res = await fetch("/api/account", {
         method: "POST",
@@ -159,7 +139,7 @@ export default function AccountSettings() {
         }),
       });
       const data = await res.json();
-      setStatusResult({ text: data.message, failed: !res.ok });
+      toast.show(res.ok ? "success" : "error", data.message);
       if (res.ok) {
         setIsAccountEnabled(true);
         setTimeout(() => {
@@ -168,10 +148,7 @@ export default function AccountSettings() {
       }
     } catch (error) {
       console.error("Failed to enable account:", error);
-      setStatusResult({
-        text: "An error occurred while enabling the account.",
-        failed: true,
-      });
+      toast.error("An error occurred while enabling the account.");
     } finally {
       setIsLoading(false);
     }
@@ -183,7 +160,6 @@ export default function AccountSettings() {
   };
 
   const handleOpenModal = () => {
-    setChangeResult(null);
     setNewPassword("");
     setConfirmPassword("");
     setChangeAccountModalOpen(true);
@@ -232,7 +208,6 @@ export default function AccountSettings() {
               : "Enable Account"}
         </button>
       </div>
-      {statusResult && !isEnableAccountModalOpen && resultBanner(statusResult)}
 
       {isAccountEnabled && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -304,8 +279,6 @@ export default function AccountSettings() {
             />
           </div>
 
-          {changeResult && resultBanner(changeResult)}
-
           <div className="flex justify-end pt-4">
             <button type="submit" className="btn-primary" disabled={isLoading}>
               {isLoading ? "Saving..." : "Save Changes"}
@@ -370,8 +343,6 @@ export default function AccountSettings() {
               required
             />
           </div>
-
-          {statusResult && resultBanner(statusResult)}
 
           <div className="flex justify-end pt-4">
             <button type="submit" className="btn-primary" disabled={isLoading}>

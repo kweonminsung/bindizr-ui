@@ -4,7 +4,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface DnssecPolicyDetailsProps {
   policy: DnssecPolicy;
@@ -50,23 +50,18 @@ export default function DnssecPolicyDetails({
   policy,
   onUpdated,
 }: DnssecPolicyDetailsProps) {
+  const toast = useToast();
   const [timing, setTiming] = useState(() => toFormState(policy));
   const [submitting, setSubmitting] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setTiming(toFormState(policy));
-    setSaved(false);
-    setError(null);
   }, [policy]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSubmitting(true);
-    setSaved(false);
-    setError(null);
     try {
       const updated = await updateDnssecPolicy(policy.name, {
         signature_validity_days: toOptionalNumber(
@@ -91,9 +86,11 @@ export default function DnssecPolicyDetails({
         ),
       });
       onUpdated(updated);
-      setSaved(true);
+      toast.success("Timing saved.");
     } catch (updateError) {
-      setError(getErrorMessage(updateError, "Failed to update DNSSEC policy"));
+      toast.error(
+        getErrorMessage(updateError, "Failed to update DNSSEC policy"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -175,9 +172,6 @@ export default function DnssecPolicyDetails({
             </div>
           ))}
         </div>
-
-        {error && <Notice tone="error">{error}</Notice>}
-        {saved && <Notice tone="success">Timing saved.</Notice>}
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-gray-500">

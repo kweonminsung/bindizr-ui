@@ -1,25 +1,24 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import Notice from "@/components/Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 export default function LoginPage() {
+  const toast = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     const success = await login(username, password);
     if (success) {
       navigate("/zones");
     } else {
-      setError("Login failed. Please check your credentials.");
+      toast.error("Login failed. Please check your credentials.");
     }
   };
 
@@ -60,7 +59,6 @@ export default function LoginPage() {
               className="w-full mt-1"
             />
           </div>
-          {error && <Notice tone="error">{error}</Notice>}
           <button type="submit" className="w-full btn-primary">
             Login
           </button>

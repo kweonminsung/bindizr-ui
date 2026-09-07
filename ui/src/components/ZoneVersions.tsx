@@ -13,6 +13,7 @@ import {
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneVersionDiff from "./ZoneVersionDiff";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneVersionsProps {
   zone: Zone;
@@ -23,6 +24,7 @@ export default function ZoneVersions({
   zone,
   onRolledBack,
 }: ZoneVersionsProps) {
+  const toast = useToast();
   // Rollback needs a global token.
   const { globalAccess } = useBindizrToken();
   const [versions, setVersions] = useState<ZoneVersion[]>([]);
@@ -33,7 +35,6 @@ export default function ZoneVersions({
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const [detail, setDetail] = useState<VersionDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -82,11 +83,10 @@ export default function ZoneVersions({
     setDetailLoading(true);
     setPreview(null);
     setRollbackResult(null);
-    setActionError(null);
     try {
       setDetail(await getZoneVersion(zone.name, serial));
     } catch (fetchError) {
-      setActionError(getErrorMessage(fetchError, "Failed to fetch version"));
+      toast.error(getErrorMessage(fetchError, "Failed to fetch version"));
     } finally {
       setDetailLoading(false);
     }
@@ -94,7 +94,6 @@ export default function ZoneVersions({
 
   const handleBack = () => {
     setDetail(null);
-    setActionError(null);
     setPreview(null);
     setRollbackResult(null);
   };
@@ -103,13 +102,10 @@ export default function ZoneVersions({
   const handlePreviewRollback = async (serial: number) => {
     setRollbackPending(true);
     setRollbackResult(null);
-    setActionError(null);
     try {
       setPreview(await rollbackZone(zone.name, { serial, dry_run: true }));
     } catch (rollbackError) {
-      setActionError(
-        getErrorMessage(rollbackError, "Failed to preview rollback"),
-      );
+      toast.error(getErrorMessage(rollbackError, "Failed to preview rollback"));
     } finally {
       setRollbackPending(false);
     }
@@ -117,17 +113,17 @@ export default function ZoneVersions({
 
   const handleApplyRollback = async (serial: number) => {
     setRollbackPending(true);
-    setActionError(null);
     try {
       const result = await rollbackZone(zone.name, { serial, dry_run: false });
       setPreview(null);
       setRollbackResult(result);
+      toast.success(
+        `Rolled back to serial ${result.target_serial}. The zone is now at serial ${result.new_serial} (${renderSummary(result)}).`,
+      );
       setRefreshKey((prev) => prev + 1);
       onRolledBack(result);
     } catch (rollbackError) {
-      setActionError(
-        getErrorMessage(rollbackError, "Failed to roll back zone"),
-      );
+      toast.error(getErrorMessage(rollbackError, "Failed to roll back zone"));
     } finally {
       setRollbackPending(false);
     }
@@ -251,8 +247,6 @@ export default function ZoneVersions({
           </div>
         </div>
 
-        {actionError && <Notice tone="error">{actionError}</Notice>}
-
         {preview && (
           <Notice
             tone="warning"
@@ -285,14 +279,6 @@ export default function ZoneVersions({
                 {rollbackPending ? "Applying..." : "Apply Rollback"}
               </button>
             </div>
-          </Notice>
-        )}
-
-        {rollbackResult && (
-          <Notice tone="success">
-            Rolled back to serial {rollbackResult.target_serial}. The zone is
-            now at serial {rollbackResult.new_serial} (
-            {renderSummary(rollbackResult)}).
           </Notice>
         )}
 
@@ -338,8 +324,6 @@ export default function ZoneVersions({
           <span>Include signer-only serials</span>
         </label>
       </div>
-
-      {actionError && <Notice tone="error">{actionError}</Notice>}
 
       {loading && versions.length === 0 ? (
         <p className="text-gray-500">Loading versions...</p>

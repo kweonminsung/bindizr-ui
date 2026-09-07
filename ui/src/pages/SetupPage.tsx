@@ -2,27 +2,24 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
-import Notice from "@/components/Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 export default function SetupPage() {
+  const toast = useToast();
   const [bindizrUrl, setBindizrUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [createAccount, setCreateAccount] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [error, setError] = useState("");
   const [isConnectionTested, setIsConnectionTested] = useState(false);
   const navigate = useNavigate();
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
 
     if (createAccount && password !== confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
 
@@ -30,7 +27,7 @@ export default function SetupPage() {
       !bindizrUrl.startsWith("http://") &&
       !bindizrUrl.startsWith("https://")
     ) {
-      setError("Please enter a valid URL starting with http:// or https://");
+      toast.error("Please enter a valid URL starting with http:// or https://");
       return;
     }
 
@@ -49,19 +46,17 @@ export default function SetupPage() {
       navigate("/");
     } else {
       const data = await res.json();
-      setError(data.message || data.error || "Setup failed.");
+      toast.error(data.message || data.error || "Setup failed.");
     }
   };
 
   const testConnection = async () => {
-    setError("");
-    setSuccessMessage("");
     const result = await testBindizrConnection(bindizrUrl, secretKey);
     if (result.ok) {
-      setSuccessMessage(result.message);
+      toast.success(result.message);
       setIsConnectionTested(true);
     } else {
-      setError(result.message);
+      toast.error(result.message);
     }
   };
 
@@ -184,8 +179,6 @@ export default function SetupPage() {
               </div>
             </>
           )}
-          {error && <Notice tone="error">{error}</Notice>}
-          {successMessage && <Notice tone="success">{successMessage}</Notice>}
           <button
             type="submit"
             className="w-full btn-primary"

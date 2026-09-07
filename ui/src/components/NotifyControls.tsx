@@ -3,7 +3,7 @@ import { getZones, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 type NotifyMode = "normal" | "bump_serial";
 
@@ -12,17 +12,12 @@ const NOTIFY_MODE_LABELS: Record<NotifyMode, string> = {
   bump_serial: "Bump serial & NOTIFY",
 };
 
-interface NotifyResult {
-  text: string;
-  failed: boolean;
-}
-
 export default function NotifyControls() {
+  const toast = useToast();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZoneName, setSelectedZoneName] = useState("");
   const [notifyMode, setNotifyMode] = useState<NotifyMode>("normal");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [result, setResult] = useState<NotifyResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingZones, setLoadingZones] = useState(true);
 
@@ -31,10 +26,7 @@ export default function NotifyControls() {
       try {
         setZones(await getZones());
       } catch (error) {
-        setResult({
-          text: getErrorMessage(error, "Failed to fetch zones"),
-          failed: true,
-        });
+        toast.error(getErrorMessage(error, "Failed to fetch zones"));
       } finally {
         setLoadingZones(false);
       }
@@ -45,15 +37,11 @@ export default function NotifyControls() {
 
   const handleNotify = async (zoneName?: string | null) => {
     setLoading(true);
-    setResult(null);
     try {
       const message = await notifyZones(zoneName, notifyMode === "bump_serial");
-      setResult({ text: message, failed: false });
+      toast.success(message);
     } catch (error) {
-      setResult({
-        text: getErrorMessage(error, "Failed to send DNS NOTIFY"),
-        failed: true,
-      });
+      toast.error(getErrorMessage(error, "Failed to send DNS NOTIFY"));
     } finally {
       setLoading(false);
     }
@@ -134,12 +122,6 @@ export default function NotifyControls() {
           )}
         </div>
       </div>
-
-      {result && (
-        <Notice tone={result.failed ? "error" : "success"}>
-          {result.text}
-        </Notice>
-      )}
     </div>
   );
 }

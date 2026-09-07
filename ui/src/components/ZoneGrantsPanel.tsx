@@ -14,6 +14,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { CreateZoneGrantPayload, Zone, ZoneGrant } from "@/lib/types";
 import Notice from "./Notice";
 import TabBar from "./TabBar";
+import { useToast } from "@/contexts/ToastContext";
 
 /** Whose grants these are. */
 export type GrantHolderKind = "token" | "tsig-key";
@@ -29,7 +30,7 @@ interface GrantApi {
     holder: string,
     payload: CreateZoneGrantPayload,
   ) => Promise<ZoneGrant>;
-  revoke: (holder: string, id: number) => Promise<void>;
+  revoke: (holder: string, id: number) => Promise<string>;
 }
 
 const GRANT_API: Record<GrantHolderKind, GrantApi> = {
@@ -71,6 +72,7 @@ export default function ZoneGrantsPanel({
   kind,
   holderName,
 }: ZoneGrantsPanelProps) {
+  const toast = useToast();
   const api = GRANT_API[kind];
   const holder = HOLDER_LABEL[kind];
   const [tab, setTab] = useState<PanelTab>("grants");
@@ -79,8 +81,6 @@ export default function ZoneGrantsPanel({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [zonesError, setZonesError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [zoneName, setZoneName] = useState("");
   const [pattern, setPattern] = useState(DEFAULT_PATTERN);
   const [recordTypes, setRecordTypes] = useState(DEFAULT_TYPES);
@@ -93,8 +93,6 @@ export default function ZoneGrantsPanel({
       setLoading(true);
       setLoadError(null);
       setZonesError(null);
-      setActionError(null);
-      setNotice(null);
       setTab("grants");
       // Independent: a broken zone list still shows the grants.
       const [grantsResult, zonesResult] = await Promise.allSettled([
@@ -130,15 +128,12 @@ export default function ZoneGrantsPanel({
 
   const handleTabChange = (next: PanelTab) => {
     setTab(next);
-    setActionError(null);
-    setNotice(null);
   };
 
   const handleGrant = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSubmitting(true);
-    setActionError(null);
     try {
       const created = await api.create(holderName, {
         zone_name: zoneName,
@@ -149,12 +144,10 @@ export default function ZoneGrantsPanel({
       setZoneName("");
       setPattern(DEFAULT_PATTERN);
       setRecordTypes(DEFAULT_TYPES);
-      setNotice(`Granted access to "${created.zone_name}".`);
+      toast.success(`Granted access to "${created.zone_name}".`);
       setTab("grants");
     } catch (grantError) {
-      setActionError(
-        getErrorMessage(grantError, "Failed to grant zone access"),
-      );
+      toast.error(getErrorMessage(grantError, "Failed to grant zone access"));
     } finally {
       setSubmitting(false);
     }
@@ -168,16 +161,11 @@ export default function ZoneGrantsPanel({
     ) {
       return;
     }
-
-    setActionError(null);
-    setNotice(null);
     try {
-      await api.revoke(holderName, grant.id);
+      toast.success(await api.revoke(holderName, grant.id));
       setGrants((prev) => prev.filter((item) => item.id !== grant.id));
     } catch (revokeError) {
-      setActionError(
-        getErrorMessage(revokeError, "Failed to revoke the grant"),
-      );
+      toast.error(getErrorMessage(revokeError, "Failed to revoke the grant"));
     }
   };
 
@@ -190,10 +178,6 @@ export default function ZoneGrantsPanel({
     { id: "grant" as const, label: "Grant Access" },
   ];
 
-  const errorBanner = actionError && (
-    <Notice tone="error">{actionError}</Notice>
-  );
-
   return (
     <div className="space-y-4">
       <TabBar tabs={tabs} active={tab} onChange={handleTabChange} />
@@ -201,9 +185,6 @@ export default function ZoneGrantsPanel({
       {tab === "grants" && (
         <div className="space-y-3">
           <p className="text-sm text-gray-500">{GRANT_NOTE[kind]}</p>
-
-          {notice && <Notice tone="success">{notice}</Notice>}
-          {errorBanner}
 
           {loading ? (
             <p className="text-gray-500">Loading grants...</p>
@@ -359,8 +340,6 @@ export default function ZoneGrantsPanel({
               </p>
             </div>
           </div>
-
-          {errorBanner}
 
           <div className="flex justify-end">
             <button

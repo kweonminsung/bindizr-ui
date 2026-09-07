@@ -3,12 +3,11 @@ import { createZone, importZoneFile, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneFormProps {
   zone: Zone | null;
-  /** A warning reports a created zone whose zone file did not import. */
-  onSuccess: (zone: Zone, warning?: string) => void;
+  onSuccess: (zone: Zone) => void;
   onCancel: () => void;
 }
 
@@ -40,9 +39,9 @@ const toFormString = (value: unknown, fallback: string) =>
   value === null || value === undefined ? fallback : String(value);
 
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (zone) {
@@ -76,7 +75,6 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     try {
       const payload: ZonePayload = {
@@ -93,7 +91,6 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
       };
 
       let savedZone: Zone;
-      let warning: string | undefined;
 
       if (zone) {
         savedZone = await updateZone(zone.name, payload);
@@ -108,16 +105,20 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               mode: "append",
             });
             if (result.errors.length > 0) {
-              warning = `Zone created, but no records were imported:\n${result.errors.join("\n")}`;
+              toast.warning(
+                `Zone created, but no records were imported:\n${result.errors.join("\n")}`,
+              );
             }
           } catch (error) {
-            warning = `Zone created, but importing the zone file failed: ${getErrorMessage(error, "unknown error")}`;
+            toast.warning(
+              `Zone created, but importing the zone file failed: ${getErrorMessage(error, "unknown error")}`,
+            );
           }
         }
       }
-      onSuccess(savedZone, warning);
+      onSuccess(savedZone);
     } catch (error) {
-      setError(getErrorMessage(error, "Failed to save zone"));
+      toast.error(getErrorMessage(error, "Failed to save zone"));
     }
   };
 
@@ -320,8 +321,6 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           </div>
         </div>
       )}
-
-      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

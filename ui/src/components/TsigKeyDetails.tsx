@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { TsigKey } from "@/lib/types";
 import Notice from "./Notice";
 import ZoneGrantsPanel from "./ZoneGrantsPanel";
+import { useToast } from "@/contexts/ToastContext";
 
 interface TsigKeyDetailsProps {
   tsigKey: TsigKey;
@@ -15,17 +16,16 @@ export default function TsigKeyDetails({
   tsigKey,
   isNew = false,
 }: TsigKeyDetailsProps) {
+  const toast = useToast();
   const [detail, setDetail] = useState(tsigKey);
   const [revealed, setRevealed] = useState(isNew);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setDetail(tsigKey);
     setRevealed(isNew);
     setCopied(false);
-    setError(null);
 
     // The list response omits secrets, so fetch the key on its own to read one.
     if (tsigKey.secret) {
@@ -42,7 +42,7 @@ export default function TsigKeyDetails({
       })
       .catch((fetchError) => {
         if (active) {
-          setError(getErrorMessage(fetchError, "Failed to fetch TSIG key"));
+          toast.error(getErrorMessage(fetchError, "Failed to fetch TSIG key"));
         }
       })
       .finally(() => {
@@ -65,7 +65,7 @@ export default function TsigKeyDetails({
       await navigator.clipboard.writeText(detail.secret);
       setCopied(true);
     } catch {
-      setError("Failed to copy the secret to the clipboard");
+      toast.error("Failed to copy the secret to the clipboard");
     }
   };
 
@@ -139,8 +139,6 @@ export default function TsigKeyDetails({
             </p>
           </div>
         </div>
-
-        {error && <Notice tone="error">{error}</Notice>}
       </div>
 
       {detail.global ? (

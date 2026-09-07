@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createTsigKey } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { TSIG_ALGORITHMS, TsigKey } from "@/lib/types";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface TsigKeyFormProps {
   onSuccess: (tsigKey: TsigKey) => void;
@@ -13,12 +13,12 @@ const GLOBAL_WARNING =
   "A Global Key can update every record of every zone without any grant. Create it anyway?";
 
 export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
+  const toast = useToast();
   const [name, setName] = useState("");
   const [algorithm, setAlgorithm] = useState<string>(TSIG_ALGORITHMS[0]);
   const [secret, setSecret] = useState("");
   const [isGlobal, setIsGlobal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +28,6 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
     }
 
     setSubmitting(true);
-    setError(null);
     try {
       const tsigKey = await createTsigKey({
         name: name.trim(),
@@ -38,7 +37,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
       });
       onSuccess(tsigKey);
     } catch (error) {
-      setError(getErrorMessage(error, "Failed to create TSIG key"));
+      toast.error(getErrorMessage(error, "Failed to create TSIG key"));
     } finally {
       setSubmitting(false);
     }
@@ -128,8 +127,6 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
           </span>
         </label>
       </div>
-
-      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

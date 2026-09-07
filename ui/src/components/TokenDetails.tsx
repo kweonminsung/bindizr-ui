@@ -3,6 +3,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { ApiToken } from "@/lib/types";
 import Notice from "./Notice";
 import ZoneGrantsPanel from "./ZoneGrantsPanel";
+import { useToast } from "@/contexts/ToastContext";
 
 interface TokenDetailsProps {
   token: ApiToken;
@@ -83,14 +84,13 @@ export function TokenMetadata({ token, showName = false }: TokenMetadataProps) {
 }
 
 export default function TokenDetails({ token, secret }: TokenDetailsProps) {
+  const toast = useToast();
   const [revealed, setRevealed] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     setRevealed(true);
     setCopied(false);
-    setCopyError(null);
   }, [token, secret]);
 
   const handleCopy = async () => {
@@ -102,7 +102,7 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
       await navigator.clipboard.writeText(secret);
       setCopied(true);
     } catch {
-      setCopyError("Failed to copy the secret to the clipboard");
+      toast.error("Failed to copy the secret to the clipboard");
     }
   };
 
@@ -143,7 +143,6 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
             <p className="text-sm text-amber-800">
               Copy it now; it is shown only once.
             </p>
-            {copyError && <Notice tone="error">{copyError}</Notice>}
           </Notice>
         )}
 

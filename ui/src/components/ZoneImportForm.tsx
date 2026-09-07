@@ -3,6 +3,7 @@ import { importZoneFile } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { IMPORT_MODES, ImportMode, ImportZoneResult, Zone } from "@/lib/types";
 import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneImportFormProps {
   zone: Zone;
@@ -19,18 +20,17 @@ export default function ZoneImportForm({
   zone,
   onApplied,
 }: ZoneImportFormProps) {
+  const toast = useToast();
   const [content, setContent] = useState("");
   const [mode, setMode] = useState<ImportMode>("append");
   const [dryRun, setDryRun] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ImportZoneResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setSubmitting(true);
-    setError(null);
     setResult(null);
     try {
       const response = await importZoneFile(zone.name, {
@@ -43,7 +43,7 @@ export default function ZoneImportForm({
         onApplied();
       }
     } catch (error) {
-      setError(getErrorMessage(error, "Failed to import zone file"));
+      toast.error(getErrorMessage(error, "Failed to import zone file"));
     } finally {
       setSubmitting(false);
     }
@@ -140,8 +140,6 @@ export default function ZoneImportForm({
           )}
         </Notice>
       )}
-
-      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end pt-4">
         <button type="submit" disabled={submitting} className="btn-primary">

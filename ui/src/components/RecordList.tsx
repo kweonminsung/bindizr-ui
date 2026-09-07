@@ -22,6 +22,7 @@ import Modal from "./Modal";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
+import { useToast } from "@/contexts/ToastContext";
 
 interface RecordListProps {
   zoneName?: string;
@@ -60,6 +61,7 @@ export default function RecordList({
   zones = [],
   onCreateRecord,
 }: RecordListProps) {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<SignedRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<SignedRecord | null>(
@@ -69,7 +71,6 @@ export default function RecordList({
   const [detailEditing, setDetailEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
@@ -184,16 +185,15 @@ export default function RecordList({
       return;
     }
     if (window.confirm(`Delete ${record.name} ${record.record_type}?`)) {
-      setActionError(null);
       try {
-        await deleteRecord(record.id);
+        toast.success(await deleteRecord(record.id));
         if (records.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
           setRefreshKey((prev) => prev + 1);
         }
       } catch (error) {
-        setActionError(getErrorMessage(error, "Failed to delete record"));
+        toast.error(getErrorMessage(error, "Failed to delete record"));
       }
     }
   };
@@ -363,11 +363,6 @@ export default function RecordList({
           {derivedTypeSelected &&
             ` The ${selectedType} filter applies once they are cleared.`}
         </p>
-      )}
-      {actionError && (
-        <Notice tone="error" className="mx-4 mb-4">
-          {actionError}
-        </Notice>
       )}
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (

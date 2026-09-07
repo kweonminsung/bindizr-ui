@@ -3,7 +3,7 @@ import { createToken } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { CreatedToken } from "@/lib/types";
-import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface TokenFormProps {
   onSuccess: (created: CreatedToken) => void;
@@ -14,12 +14,12 @@ const GLOBAL_WARNING =
   "A Global Token can manage every zone and the zone plane, with no grant. Create it anyway?";
 
 export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
+  const toast = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("");
   const [isGlobal, setIsGlobal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +29,6 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
     }
 
     setSubmitting(true);
-    setError(null);
     try {
       const created = await createToken({
         name: name.trim(),
@@ -39,7 +38,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
       });
       onSuccess(created);
     } catch (error) {
-      setError(getErrorMessage(error, "Failed to create API token"));
+      toast.error(getErrorMessage(error, "Failed to create API token"));
     } finally {
       setSubmitting(false);
     }
@@ -130,8 +129,6 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
           </span>
         </label>
       </div>
-
-      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

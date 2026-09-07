@@ -3,8 +3,8 @@ import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
-import Notice from "./Notice";
 import ZoneStatusPanel from "./ZoneStatusPanel";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneSyncTabProps {
   zone: Zone;
@@ -12,26 +12,20 @@ interface ZoneSyncTabProps {
   onZoneChanged?: (zone: Zone) => void;
 }
 
-interface NotifyResult {
-  text: string;
-  failed: boolean;
-}
-
 export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
+  const toast = useToast();
   // A scoped token may NOTIFY its zone but not bump the serial.
   const { globalAccess } = useBindizrToken();
   const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
-  const [result, setResult] = useState<NotifyResult | null>(null);
   // Re-probe the secondaries once a NOTIFY has gone out.
   const [statusToken, setStatusToken] = useState(0);
 
   const handleNotify = async () => {
     setNotifying(true);
-    setResult(null);
     try {
       const message = await notifyZones(zone.name, bumpSerial);
-      setResult({ text: message, failed: false });
+      toast.success(message);
       setStatusToken((prev) => prev + 1);
       if (bumpSerial && onZoneChanged) {
         // Best-effort: the NOTIFY already went out either way.
@@ -42,10 +36,7 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
         }
       }
     } catch (error) {
-      setResult({
-        text: getErrorMessage(error, "Failed to send DNS NOTIFY"),
-        failed: true,
-      });
+      toast.error(getErrorMessage(error, "Failed to send DNS NOTIFY"));
     } finally {
       setNotifying(false);
     }
@@ -83,11 +74,6 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
                 : "Send NOTIFY"}
           </button>
         </div>
-        {result && (
-          <Notice tone={result.failed ? "error" : "success"}>
-            {result.text}
-          </Notice>
-        )}
       </div>
     </div>
   );

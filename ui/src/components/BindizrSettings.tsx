@@ -4,14 +4,10 @@ import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import ConnectedTokenDetails from "./ConnectedTokenDetails";
 import Modal from "./Modal";
-import Notice from "./Notice";
-
-interface SettingsResult {
-  text: string;
-  failed: boolean;
-}
+import { useToast } from "@/contexts/ToastContext";
 
 export default function BindizrSettings() {
+  const toast = useToast();
   const { self, refresh: refreshToken } = useBindizrToken();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTokenOpen, setIsTokenOpen] = useState(false);
@@ -19,7 +15,6 @@ export default function BindizrSettings() {
   const [secretKey, setSecretKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConnectionTested, setIsConnectionTested] = useState(false);
-  const [result, setResult] = useState<SettingsResult | null>(null);
 
   const fetchSettings = async () => {
     try {
@@ -33,7 +28,7 @@ export default function BindizrSettings() {
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
-      setResult({ text: "Failed to load settings.", failed: true });
+      toast.error("Failed to load settings.");
     }
   };
 
@@ -44,15 +39,13 @@ export default function BindizrSettings() {
 
   const handleOpenModal = () => {
     fetchSettings();
-    setResult(null);
     setIsConnectionTested(false);
     setIsModalOpen(true);
   };
 
   const testConnection = async () => {
-    setResult(null);
     const testResult = await testBindizrConnection(bindizrUrl, secretKey);
-    setResult({ text: testResult.message, failed: !testResult.ok });
+    toast.show(testResult.ok ? "success" : "error", testResult.message);
     if (testResult.ok) {
       setIsConnectionTested(true);
     }
@@ -60,9 +53,8 @@ export default function BindizrSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setResult(null);
     if (!isConnectionTested) {
-      setResult({ text: "Please test the connection first.", failed: true });
+      toast.error("Please test the connection first.");
       return;
     }
     setIsLoading(true);
@@ -76,24 +68,18 @@ export default function BindizrSettings() {
 
       const data = await res.json();
       if (res.ok) {
-        setResult({ text: "Settings updated successfully.", failed: false });
+        toast.success("Settings updated successfully.");
         // The new secret may have another scope.
         await refreshToken();
         setTimeout(() => {
           setIsModalOpen(false);
         }, 1000);
       } else {
-        setResult({
-          text: data.message || "Failed to update settings.",
-          failed: true,
-        });
+        toast.error(data.message || "Failed to update settings.");
       }
     } catch (error) {
       console.error("Failed to update settings:", error);
-      setResult({
-        text: "An error occurred while updating settings.",
-        failed: true,
-      });
+      toast.error("An error occurred while updating settings.");
     } finally {
       setIsLoading(false);
     }
@@ -184,12 +170,6 @@ export default function BindizrSettings() {
               Leave empty if Bindizr runs without authentication.
             </p>
           </div>
-
-          {result && (
-            <Notice tone={result.failed ? "error" : "success"}>
-              {result.text}
-            </Notice>
-          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <button
