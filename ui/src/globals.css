@@ -91,6 +91,12 @@ button {
 .btn-secondary:hover {
   background-color: #e5e7eb;
 }
+.btn-secondary:disabled,
+.btn-secondary[disabled] {
+  background-color: transparent;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
 
 select {
   cursor: pointer;

@@ -19,6 +19,7 @@ import { formatRecordValue } from "@/lib/recordValue";
 import { toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
+import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
 
@@ -68,6 +69,7 @@ export default function RecordList({
   const [detailEditing, setDetailEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,6 +184,7 @@ export default function RecordList({
       return;
     }
     if (window.confirm(`Delete ${record.name} ${record.record_type}?`)) {
+      setActionError(null);
       try {
         await deleteRecord(record.id);
         if (records.length === 1 && currentPage > 1) {
@@ -190,7 +193,7 @@ export default function RecordList({
           setRefreshKey((prev) => prev + 1);
         }
       } catch (error) {
-        alert(getErrorMessage(error, "Failed to delete record"));
+        setActionError(getErrorMessage(error, "Failed to delete record"));
       }
     }
   };
@@ -361,12 +364,17 @@ export default function RecordList({
             ` The ${selectedType} filter applies once they are cleared.`}
         </p>
       )}
+      {actionError && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {actionError}
+        </Notice>
+      )}
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
-        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Notice tone="error" className="mx-4 mb-4">
           {error}
           {records.length > 0 && " — showing the last results that loaded."}
-        </p>
+        </Notice>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}

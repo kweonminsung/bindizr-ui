@@ -6,6 +6,7 @@ import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
 import { TsigKey } from "@/lib/types";
 import Modal from "./Modal";
+import Notice from "./Notice";
 import TsigKeyDetails from "./TsigKeyDetails";
 
 interface TsigKeyListProps {
@@ -18,6 +19,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
   const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -74,17 +76,18 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
       return;
     }
 
+    setActionError(null);
     try {
       await deleteTsigKey(tsigKey.name);
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
       if (getErrorStatus(deleteError) === 409) {
-        alert(
+        setActionError(
           `"${tsigKey.name}" still holds zone grants. Open the key and revoke them first.`,
         );
         return;
       }
-      alert(getErrorMessage(deleteError, "Failed to delete TSIG key"));
+      setActionError(getErrorMessage(deleteError, "Failed to delete TSIG key"));
     }
   };
 
@@ -92,7 +95,7 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
     return <p className="text-center text-gray-500">Loading TSIG keys...</p>;
   }
   if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
+    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
@@ -114,6 +117,11 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
           Create TSIG Key
         </button>
       </div>
+      {actionError && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {actionError}
+        </Notice>
+      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">

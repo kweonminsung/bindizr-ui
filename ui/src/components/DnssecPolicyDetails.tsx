@@ -4,6 +4,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
+import Notice from "./Notice";
 
 interface DnssecPolicyDetailsProps {
   policy: DnssecPolicy;
@@ -175,23 +176,18 @@ export default function DnssecPolicyDetails({
           ))}
         </div>
 
-        <p className="text-sm text-gray-500">
-          Applies on the next signing pass.
-        </p>
+        {error && <Notice tone="error">{error}</Notice>}
+        {saved && <Notice tone="success">Timing saved.</Notice>}
 
-        {error && (
-          <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-            {error}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-gray-500">
+            Applies on the next signing pass.
           </p>
-        )}
-        {saved && (
-          <p className="p-3 rounded-md border border-green-200 bg-green-50 text-sm text-green-800">
-            Timing saved.
-          </p>
-        )}
-
-        <div className="flex justify-end">
-          <button type="submit" disabled={submitting} className="btn-primary">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary whitespace-nowrap"
+          >
             {submitting ? "Saving..." : "Save Timing"}
           </button>
         </div>

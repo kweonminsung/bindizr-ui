@@ -4,6 +4,7 @@ import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import ConnectedTokenDetails from "./ConnectedTokenDetails";
 import Modal from "./Modal";
+import Notice from "./Notice";
 
 interface SettingsResult {
   text: string;
@@ -100,34 +101,36 @@ export default function BindizrSettings() {
 
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-          Bindizr Settings
-        </h2>
-        <p className="text-sm text-gray-500 mt-2">
-          Configure the connection to the Bindizr server.
-        </p>
-        {self && (
-          <p className="text-sm text-gray-500 mt-1">
-            Connected as{" "}
-            <span className="font-medium text-gray-700">{self.name}</span> (
-            {self.global ? "Global" : "Scoped"} Token).{" "}
-            <button
-              type="button"
-              onClick={() => setIsTokenOpen(true)}
-              className="font-medium text-blue-600 hover:underline"
-            >
-              Details
-            </button>
+      <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+        Bindizr Settings
+      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-sm text-gray-500">
+            Configure the connection to the Bindizr server.
           </p>
-        )}
+          {self && (
+            <p className="text-sm text-gray-500 mt-1">
+              Connected as{" "}
+              <span className="font-medium text-gray-700">{self.name}</span> (
+              {self.global ? "Global" : "Scoped"} Token).{" "}
+              <button
+                type="button"
+                onClick={() => setIsTokenOpen(true)}
+                className="font-medium text-blue-600 hover:underline"
+              >
+                Details
+              </button>
+            </p>
+          )}
+        </div>
+        <button
+          onClick={handleOpenModal}
+          className="btn-primary w-full sm:w-auto"
+        >
+          Edit Bindizr Settings
+        </button>
       </div>
-      <button
-        onClick={handleOpenModal}
-        className="btn-primary w-full sm:w-auto"
-      >
-        Edit Bindizr Settings
-      </button>
 
       {self && isTokenOpen && (
         <Modal isOpen wide onClose={() => setIsTokenOpen(false)}>
@@ -183,15 +186,9 @@ export default function BindizrSettings() {
           </div>
 
           {result && (
-            <p
-              className={`p-3 rounded-md border text-sm ${
-                result.failed
-                  ? "border-red-200 bg-red-50 text-red-700"
-                  : "border-green-200 bg-green-50 text-green-800"
-              }`}
-            >
+            <Notice tone={result.failed ? "error" : "success"}>
               {result.text}
-            </p>
+            </Notice>
           )}
 
           <div className="flex justify-end space-x-2 pt-4">

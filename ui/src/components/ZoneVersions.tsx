@@ -10,6 +10,7 @@ import {
   Zone,
   ZoneVersion,
 } from "@/lib/types";
+import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneVersionDiff from "./ZoneVersionDiff";
 
@@ -32,6 +33,7 @@ export default function ZoneVersions({
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [detail, setDetail] = useState<VersionDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -80,10 +82,11 @@ export default function ZoneVersions({
     setDetailLoading(true);
     setPreview(null);
     setRollbackResult(null);
+    setActionError(null);
     try {
       setDetail(await getZoneVersion(zone.name, serial));
     } catch (fetchError) {
-      alert(getErrorMessage(fetchError, "Failed to fetch version"));
+      setActionError(getErrorMessage(fetchError, "Failed to fetch version"));
     } finally {
       setDetailLoading(false);
     }
@@ -91,6 +94,7 @@ export default function ZoneVersions({
 
   const handleBack = () => {
     setDetail(null);
+    setActionError(null);
     setPreview(null);
     setRollbackResult(null);
   };
@@ -99,10 +103,13 @@ export default function ZoneVersions({
   const handlePreviewRollback = async (serial: number) => {
     setRollbackPending(true);
     setRollbackResult(null);
+    setActionError(null);
     try {
       setPreview(await rollbackZone(zone.name, { serial, dry_run: true }));
     } catch (rollbackError) {
-      alert(getErrorMessage(rollbackError, "Failed to preview rollback"));
+      setActionError(
+        getErrorMessage(rollbackError, "Failed to preview rollback"),
+      );
     } finally {
       setRollbackPending(false);
     }
@@ -110,6 +117,7 @@ export default function ZoneVersions({
 
   const handleApplyRollback = async (serial: number) => {
     setRollbackPending(true);
+    setActionError(null);
     try {
       const result = await rollbackZone(zone.name, { serial, dry_run: false });
       setPreview(null);
@@ -117,7 +125,9 @@ export default function ZoneVersions({
       setRefreshKey((prev) => prev + 1);
       onRolledBack(result);
     } catch (rollbackError) {
-      alert(getErrorMessage(rollbackError, "Failed to roll back zone"));
+      setActionError(
+        getErrorMessage(rollbackError, "Failed to roll back zone"),
+      );
     } finally {
       setRollbackPending(false);
     }
@@ -241,21 +251,28 @@ export default function ZoneVersions({
           </div>
         </div>
 
+        {actionError && <Notice tone="error">{actionError}</Notice>}
+
         {preview && (
-          <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-2">
-            <p className="font-medium">
-              Rolling back to serial {preview.target_serial} will apply:{" "}
-              {renderSummary(preview)}.
-            </p>
-            <p>
-              The zone serial advances to {preview.new_serial} — serials never
-              go backward. A single NOTIFY is sent.
-            </p>
-            <div className="flex justify-end space-x-2">
+          <Notice
+            tone="warning"
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+          >
+            <div className="space-y-1">
+              <p className="font-medium">
+                Rolling back to serial {preview.target_serial} will apply:{" "}
+                {renderSummary(preview)}.
+              </p>
+              <p>
+                The zone serial advances to {preview.new_serial} — serials never
+                go backward. A single NOTIFY is sent.
+              </p>
+            </div>
+            <div className="flex shrink-0 space-x-2">
               <button
                 type="button"
                 onClick={() => setPreview(null)}
-                className="btn-secondary"
+                className="btn-secondary whitespace-nowrap"
               >
                 Cancel
               </button>
@@ -263,20 +280,20 @@ export default function ZoneVersions({
                 type="button"
                 onClick={() => handleApplyRollback(preview.target_serial)}
                 disabled={rollbackPending}
-                className="btn-primary"
+                className="btn-primary whitespace-nowrap"
               >
                 {rollbackPending ? "Applying..." : "Apply Rollback"}
               </button>
             </div>
-          </div>
+          </Notice>
         )}
 
         {rollbackResult && (
-          <div className="p-3 rounded-md border border-green-200 bg-green-50 text-sm text-green-800">
+          <Notice tone="success">
             Rolled back to serial {rollbackResult.target_serial}. The zone is
             now at serial {rollbackResult.new_serial} (
             {renderSummary(rollbackResult)}).
-          </div>
+          </Notice>
         )}
 
         {globalAccess && !preview && !rollbackResult && (
@@ -322,10 +339,12 @@ export default function ZoneVersions({
         </label>
       </div>
 
+      {actionError && <Notice tone="error">{actionError}</Notice>}
+
       {loading && versions.length === 0 ? (
         <p className="text-gray-500">Loading versions...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : versions.length === 0 ? (
         <p className="text-gray-500">No versions for this zone yet.</p>
       ) : (

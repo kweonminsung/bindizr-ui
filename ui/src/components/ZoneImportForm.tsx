@@ -2,6 +2,7 @@ import { useState } from "react";
 import { importZoneFile } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { IMPORT_MODES, ImportMode, ImportZoneResult, Zone } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneImportFormProps {
   zone: Zone;
@@ -108,12 +109,14 @@ export default function ZoneImportForm({
       </div>
 
       {result && (
-        <div
-          className={`p-3 rounded-md border text-sm ${
+        <Notice
+          tone={
             result.errors.length > 0
-              ? "bg-red-50 border-red-200 text-red-700"
-              : "bg-gray-50 border-gray-200 text-gray-700"
-          }`}
+              ? "error"
+              : result.applied
+                ? "success"
+                : "info"
+          }
         >
           <p className="font-medium mb-1">
             {result.errors.length > 0
@@ -135,14 +138,10 @@ export default function ZoneImportForm({
               ))}
             </ul>
           )}
-        </div>
+        </Notice>
       )}
 
-      {error && (
-        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end pt-4">
         <button type="submit" disabled={submitting} className="btn-primary">

@@ -24,6 +24,7 @@ import {
   RecordListQuery,
   RollbackZonePayload,
   RollbackZoneResult,
+  SetDnssecParentNsAddrsPayload,
   SetZoneDnssecPolicyPayload,
   SignedRecord,
   TokenGrant,
@@ -599,9 +600,16 @@ export async function enableDnssec(
   return (await response.json()).dnssec as DnssecStatus;
 }
 
-export async function disableDnssec(zoneName: string): Promise<string> {
+/** Refused while the parent still serves a DS unless the check is skipped. */
+export async function disableDnssec(
+  zoneName: string,
+  skipDsCheck = false,
+): Promise<string> {
+  const params = new URLSearchParams();
+  appendQueryParam(params, "skip_ds_check", skipDsCheck || undefined);
+
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/dnssec`,
+    withQuery(`/zones/${encodeURIComponent(zoneName)}/dnssec`, params),
     "Failed to disable DNSSEC",
     { method: "DELETE" },
   );
@@ -616,6 +624,16 @@ export async function getDnssecDsRecords(
     "Failed to fetch DS records",
   );
   return (await response.json()).ds_records as DnssecDsRecord[];
+}
+
+/** Asks the parent's nameservers for the zone's DS; the answer is in `delegation`. */
+export async function checkDnssecDs(zoneName: string): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/check-ds`,
+    "Failed to check the parent's DS",
+    { method: "POST" },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
 }
 
 export async function startDnssecRollover(
@@ -633,11 +651,27 @@ export async function startDnssecRollover(
   return (await response.json()).dnssec as DnssecStatus;
 }
 
+export interface DsSeenOptions {
+  /** Take the DS on your word instead of asking the parent. */
+  skipDsCheck?: boolean;
+  /** Promote before the hold-down ends; resolvers caching the old keys fail until it expires. */
+  skipHolddown?: boolean;
+}
+
+/** Refused during the hold-down or while the parent lacks the new key's DS, unless skipped. */
 export async function confirmDnssecDsSeen(
   zoneName: string,
+  { skipDsCheck = false, skipHolddown = false }: DsSeenOptions = {},
 ): Promise<DnssecStatus> {
+  const params = new URLSearchParams();
+  appendQueryParam(params, "skip_ds_check", skipDsCheck || undefined);
+  appendQueryParam(params, "skip_holddown", skipHolddown || undefined);
+
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/dnssec/rollover/ds-seen`,
+    withQuery(
+      `/zones/${encodeURIComponent(zoneName)}/dnssec/rollover/ds-seen`,
+      params,
+    ),
     "Failed to confirm DS seen",
     { method: "POST" },
   );
@@ -684,6 +718,21 @@ export async function cancelDnssecWithdrawal(
     `/zones/${encodeURIComponent(zoneName)}/dnssec/withdraw`,
     "Failed to cancel the DS withdrawal",
     { method: "DELETE" },
+  );
+  return (await response.json()).dnssec as DnssecStatus;
+}
+
+export async function setDnssecParentNsAddrs(
+  zoneName: string,
+  payload: SetDnssecParentNsAddrsPayload,
+): Promise<DnssecStatus> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/dnssec/parent-ns-addrs`,
+    "Failed to set the parent nameservers",
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
   );
   return (await response.json()).dnssec as DnssecStatus;
 }

@@ -3,6 +3,7 @@ import { getZones, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
+import Notice from "./Notice";
 
 type NotifyMode = "normal" | "bump_serial";
 
@@ -135,15 +136,9 @@ export default function NotifyControls() {
       </div>
 
       {result && (
-        <p
-          className={`p-3 rounded-md border text-sm whitespace-pre-wrap ${
-            result.failed
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-green-200 bg-green-50 text-green-800"
-          }`}
-        >
+        <Notice tone={result.failed ? "error" : "success"}>
           {result.text}
-        </p>
+        </Notice>
       )}
     </div>
   );

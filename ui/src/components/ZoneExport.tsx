@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { exportZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneExportProps {
   zone: Zone;
@@ -119,12 +120,12 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
         </span>
       </label>
 
-      {copyError && <p className="text-sm text-red-500">{copyError}</p>}
+      {copyError && <Notice tone="error">{copyError}</Notice>}
 
       {loading ? (
         <p className="text-gray-500">Exporting...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : (
         <textarea
           readOnly

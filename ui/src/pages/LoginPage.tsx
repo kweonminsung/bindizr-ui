@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import Notice from "@/components/Notice";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -59,7 +60,7 @@ export default function LoginPage() {
               className="w-full mt-1"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <Notice tone="error">{error}</Notice>}
           <button type="submit" className="w-full btn-primary">
             Login
           </button>

@@ -375,6 +375,36 @@ export interface DnssecDsRecord {
   presentation: string;
 }
 
+/** `published` when the parent serves a DS for the zone, `hidden` when none. */
+export type DnssecDsState = "published" | "hidden";
+
+/** One of the zone's SEP keys against the parent's DS records. */
+export interface DnssecDelegationKeyInfo {
+  key_tag: number;
+  role: Exclude<DnssecKeyRole, "zsk">;
+  state: DnssecKeyState;
+  /** Whether the parent serves a DS for this key. */
+  ds_published: boolean;
+  /** When a `published` key's hold-down ends. */
+  eligible_at?: string | null;
+}
+
+/** What the parent zone's servers answered when asked for the zone's DS. */
+export interface DnssecDelegationInfo {
+  /** The zone's `parent_ns_addrs`, or the discovered parent's nameservers. */
+  parent_servers: string[];
+  /** Whether the servers were discovered rather than configured on the zone. */
+  discovered: boolean;
+  ds_state: DnssecDsState;
+  /** Key tags of the DS records the parent serves. */
+  ds_key_tags: number[];
+  /** The zone's SEP keys, each with whether the parent serves its DS. */
+  keys: DnssecDelegationKeyInfo[];
+  /** How long caches may keep serving the parent's DS once removed. */
+  ds_ttl?: number | null;
+  checked_at: string;
+}
+
 export interface DnssecStatus {
   zone_name: string;
   enabled: boolean;
@@ -386,11 +416,22 @@ export interface DnssecStatus {
   withdrawing: boolean;
   serial: number;
   earliest_signature_expires_at?: string | null;
+  /** The parent nameservers configured on the zone; absent when discovered. */
+  parent_ns_addrs?: string | null;
+  /** Present only when the status comes from a parent DS check. */
+  delegation?: DnssecDelegationInfo | null;
 }
 
 export interface EnableDnssecPayload {
   /** Name of the policy to sign under; defaults to `default`. */
   policy?: string | null;
+  /** Comma-separated `host[:port]` asked for the DS before disabling; omitted keeps the zone's setting, empty returns it to discovery. */
+  parent_ns_addrs?: string | null;
+}
+
+/** Null or empty returns the zone to discovering its parent. */
+export interface SetDnssecParentNsAddrsPayload {
+  parent_ns_addrs?: string | null;
 }
 
 /** The new policy must match the zone's denial mode and key layout. */

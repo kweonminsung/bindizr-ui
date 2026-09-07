@@ -9,6 +9,7 @@ import {
   DnssecDenialMode,
   DnssecPolicy,
 } from "@/lib/types";
+import Notice from "./Notice";
 
 interface DnssecPolicyFormProps {
   onSuccess: (policy: DnssecPolicy) => void;
@@ -234,11 +235,7 @@ export default function DnssecPolicyForm({
         </div>
       </div>
 
-      {error && (
-        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

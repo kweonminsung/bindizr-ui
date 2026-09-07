@@ -3,10 +3,12 @@ import { createZone, importZoneFile, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneFormProps {
   zone: Zone | null;
-  onSuccess: (zone: Zone) => void;
+  /** A warning reports a created zone whose zone file did not import. */
+  onSuccess: (zone: Zone, warning?: string) => void;
   onCancel: () => void;
 }
 
@@ -91,6 +93,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
       };
 
       let savedZone: Zone;
+      let warning: string | undefined;
 
       if (zone) {
         savedZone = await updateZone(zone.name, payload);
@@ -105,21 +108,14 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               mode: "append",
             });
             if (result.errors.length > 0) {
-              alert(
-                `Zone created, but no records were imported:\n${result.errors.join("\n")}`,
-              );
+              warning = `Zone created, but no records were imported:\n${result.errors.join("\n")}`;
             }
           } catch (error) {
-            alert(
-              `Zone created, but importing the zone file failed: ${getErrorMessage(
-                error,
-                "unknown error",
-              )}`,
-            );
+            warning = `Zone created, but importing the zone file failed: ${getErrorMessage(error, "unknown error")}`;
           }
         }
       }
-      onSuccess(savedZone);
+      onSuccess(savedZone, warning);
     } catch (error) {
       setError(getErrorMessage(error, "Failed to save zone"));
     }
@@ -325,11 +321,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         </div>
       )}
 
-      {error && (
-        <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <Notice tone="error">{error}</Notice>}
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">

@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
 import { ApiToken } from "@/lib/types";
 import Modal from "./Modal";
+import Notice from "./Notice";
 import TokenDetails, { isTokenExpired } from "./TokenDetails";
 
 interface TokenListProps {
@@ -18,6 +19,7 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
   const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -74,11 +76,14 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
       return;
     }
 
+    setActionError(null);
     try {
       await deleteToken(token.name);
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
-      alert(getErrorMessage(deleteError, "Failed to delete API token"));
+      setActionError(
+        getErrorMessage(deleteError, "Failed to delete API token"),
+      );
     }
   };
 
@@ -86,7 +91,7 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
     return <p className="text-center text-gray-500">Loading API tokens...</p>;
   }
   if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
+    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
@@ -115,6 +120,11 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
           Create API Token
         </button>
       </div>
+      {actionError && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {actionError}
+        </Notice>
+      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">

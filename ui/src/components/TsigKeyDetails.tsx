@@ -3,6 +3,7 @@ import { getTsigKey } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { TsigKey } from "@/lib/types";
+import Notice from "./Notice";
 import ZoneGrantsPanel from "./ZoneGrantsPanel";
 
 interface TsigKeyDetailsProps {
@@ -139,17 +140,13 @@ export default function TsigKeyDetails({
           </div>
         </div>
 
-        {error && (
-          <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+        {error && <Notice tone="error">{error}</Notice>}
       </div>
 
       {detail.global ? (
-        <p className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800">
+        <Notice tone="warning">
           This key is global: it may update every zone and needs no grants.
-        </p>
+        </Notice>
       ) : (
         <ZoneGrantsPanel kind="tsig-key" holderName={detail.name} />
       )}

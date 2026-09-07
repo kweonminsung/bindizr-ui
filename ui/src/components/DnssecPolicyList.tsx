@@ -5,6 +5,7 @@ import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
 import DnssecPolicyDetails from "./DnssecPolicyDetails";
 import Modal from "./Modal";
+import Notice from "./Notice";
 
 interface DnssecPolicyListProps {
   onCreatePolicy: () => void;
@@ -19,6 +20,7 @@ export default function DnssecPolicyList({
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -58,17 +60,20 @@ export default function DnssecPolicyList({
       return;
     }
 
+    setActionError(null);
     try {
       await deleteDnssecPolicy(policy.name);
       setRefreshKey((prev) => prev + 1);
     } catch (deleteError) {
       if (getErrorStatus(deleteError) === 409) {
-        alert(
+        setActionError(
           `Zones still sign under "${policy.name}". Move them to another policy first.`,
         );
         return;
       }
-      alert(getErrorMessage(deleteError, "Failed to delete DNSSEC policy"));
+      setActionError(
+        getErrorMessage(deleteError, "Failed to delete DNSSEC policy"),
+      );
     }
   };
 
@@ -85,7 +90,7 @@ export default function DnssecPolicyList({
     );
   }
   if (error) {
-    return <p className="text-center text-red-500">{error}</p>;
+    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
@@ -110,6 +115,11 @@ export default function DnssecPolicyList({
           Create Policy
         </button>
       </div>
+      {actionError && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {actionError}
+        </Notice>
+      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">

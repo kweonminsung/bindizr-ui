@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { formatDateTime } from "@/lib/datetime";
 import { ApiToken } from "@/lib/types";
+import Notice from "./Notice";
 import ZoneGrantsPanel from "./ZoneGrantsPanel";
 
 interface TokenDetailsProps {
@@ -116,7 +117,7 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
         </div>
 
         {secret && (
-          <div className="p-3 rounded-md border border-amber-200 bg-amber-50 space-y-2">
+          <Notice tone="warning" className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium text-amber-900">Secret</p>
               <div className="space-x-3 text-sm">
@@ -142,17 +143,17 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
             <p className="text-sm text-amber-800">
               Copy it now; it is shown only once.
             </p>
-            {copyError && <p className="text-sm text-red-700">{copyError}</p>}
-          </div>
+            {copyError && <Notice tone="error">{copyError}</Notice>}
+          </Notice>
         )}
 
         <TokenMetadata token={token} showName={!!secret} />
       </div>
 
       {token.global ? (
-        <p className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800">
+        <Notice tone="warning">
           This token is global: it manages every zone and needs no grants.
-        </p>
+        </Notice>
       ) : (
         <ZoneGrantsPanel kind="token" holderName={token.name} />
       )}

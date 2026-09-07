@@ -12,6 +12,7 @@ import {
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { CreateZoneGrantPayload, Zone, ZoneGrant } from "@/lib/types";
+import Notice from "./Notice";
 import TabBar from "./TabBar";
 
 /** Whose grants these are. */
@@ -190,9 +191,7 @@ export default function ZoneGrantsPanel({
   ];
 
   const errorBanner = actionError && (
-    <p className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-700">
-      {actionError}
-    </p>
+    <Notice tone="error">{actionError}</Notice>
   );
 
   return (
@@ -203,17 +202,13 @@ export default function ZoneGrantsPanel({
         <div className="space-y-3">
           <p className="text-sm text-gray-500">{GRANT_NOTE[kind]}</p>
 
-          {notice && (
-            <p className="p-3 rounded-md border border-green-200 bg-green-50 text-sm text-green-800">
-              {notice}
-            </p>
-          )}
+          {notice && <Notice tone="success">{notice}</Notice>}
           {errorBanner}
 
           {loading ? (
             <p className="text-gray-500">Loading grants...</p>
           ) : loadError ? (
-            <p className="text-red-500">{loadError}</p>
+            <Notice tone="error">{loadError}</Notice>
           ) : grants.length === 0 ? (
             <p className="text-gray-500">No zone access yet.</p>
           ) : (
@@ -289,7 +284,7 @@ export default function ZoneGrantsPanel({
               Zone
             </label>
             {zonesError ? (
-              <p className="text-sm text-red-600">{zonesError}</p>
+              <Notice tone="error">{zonesError}</Notice>
             ) : (
               <select
                 id="grant_zone_name"

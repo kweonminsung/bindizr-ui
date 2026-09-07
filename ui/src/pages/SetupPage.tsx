@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
+import Notice from "@/components/Notice";
 
 export default function SetupPage() {
   const [bindizrUrl, setBindizrUrl] = useState("");
@@ -183,10 +184,8 @@ export default function SetupPage() {
               </div>
             </>
           )}
-          {error && <p className="text-center text-red-600">{error}</p>}
-          {successMessage && (
-            <p className="text-center text-green-600">{successMessage}</p>
-          )}
+          {error && <Notice tone="error">{error}</Notice>}
+          {successMessage && <Notice tone="success">{successMessage}</Notice>}
           <button
             type="submit"
             className="w-full btn-primary"

@@ -5,6 +5,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { ApiToken, TokenGrant } from "@/lib/types";
 import { TokenBadges, TokenMetadata } from "./TokenDetails";
+import Notice from "./Notice";
 
 interface ConnectedTokenDetailsProps {
   /** The token the UI presents to Bindizr. */
@@ -68,9 +69,9 @@ export default function ConnectedTokenDetails({
       </div>
 
       {token.global ? (
-        <p className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-800">
+        <Notice tone="warning">
           This token is global: it manages every zone and needs no grants.
-        </p>
+        </Notice>
       ) : (
         <div className="space-y-3">
           <div>
@@ -86,7 +87,7 @@ export default function ConnectedTokenDetails({
           {loading ? (
             <p className="text-gray-500">Loading zone access...</p>
           ) : error ? (
-            <p className="text-red-500">{error}</p>
+            <Notice tone="error">{error}</Notice>
           ) : grants.length === 0 ? (
             <p className="text-sm text-gray-500">No zones granted yet.</p>
           ) : (

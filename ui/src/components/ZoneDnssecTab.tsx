@@ -2,26 +2,31 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   cancelDnssecWithdrawal,
+  checkDnssecDs,
   confirmDnssecDsSeen,
   disableDnssec,
   enableDnssec,
   getDnssecPolicies,
   getDnssecStatus,
+  setDnssecParentNsAddrs,
   setZoneDnssecPolicy,
   signDnssecZone,
   startDnssecRollover,
   withdrawDnssec,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorCode, getErrorMessage } from "@/lib/errors";
 import {
   DEFAULT_DNSSEC_POLICY_NAME,
+  DnssecDelegationInfo,
+  DnssecKey,
   DnssecKeyState,
   DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
   Zone,
 } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneDnssecTabProps {
   zone: Zone;
@@ -34,16 +39,56 @@ interface ActionResult {
   failed: boolean;
 }
 
+/** The button at work, so only it shows progress. */
+type PendingAction =
+  | "enable"
+  | "refresh"
+  | "policy"
+  | "rollover"
+  | "ds-seen"
+  | "withdraw"
+  | "cancel-withdrawal"
+  | "check-ds"
+  | "parent-ns"
+  | "sign"
+  | "disable";
+
 const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
   published: "bg-blue-100 text-blue-700",
   active: "bg-green-100 text-green-700",
   retired: "bg-gray-100 text-gray-600",
 };
 
+/** What to do next when a parent DS check refuses an action. */
+const DS_CHECK_HINTS: Record<string, string> = {
+  DNSSEC_DS_PUBLISHED:
+    "Remove the DS at the parent (publish a withdrawal for a CDS-reading parent), then retry.",
+  DNSSEC_DS_NOT_PUBLISHED:
+    "Register the new DS at the parent, then use Check Parent DS to confirm it before retrying.",
+  DNSSEC_DS_UNVERIFIED:
+    "Set the parent nameservers below, or skip the check to proceed on your own word.",
+};
+
 const describePolicy = (policy: DnssecPolicy) =>
   `${policy.algorithm}, ${policy.denial.toUpperCase()}, ${
     policy.split_keys ? "a KSK/ZSK pair" : "a single CSK"
   }`;
+
+/** The detail beside the state pill. */
+const describeDelegation = ({
+  parent_servers,
+  discovered,
+  ds_state,
+  ds_key_tags,
+  ds_ttl,
+}: DnssecDelegationInfo) => {
+  const servers = `${parent_servers.join(", ")}${discovered ? " (discovered)" : ""}`;
+  if (ds_state !== "published") {
+    return `nothing served by ${servers}`;
+  }
+  const tags = `key tag${ds_key_tags.length === 1 ? "" : "s"} ${ds_key_tags.join(", ")}`;
+  return `${tags} served by ${servers}${ds_ttl != null ? `, TTL ${ds_ttl}s` : ""}`;
+};
 
 export default function ZoneDnssecTab({
   zone,
@@ -53,13 +98,21 @@ export default function ZoneDnssecTab({
   const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const busy = pending !== null;
   const [result, setResult] = useState<ActionResult | null>(null);
 
   const [policyName, setPolicyName] = useState(DEFAULT_DNSSEC_POLICY_NAME);
   const [targetPolicy, setTargetPolicy] = useState("");
   const [rolloverRole, setRolloverRole] = useState<DnssecRolloverRole>("zsk");
-  const [confirmDsRemoved, setConfirmDsRemoved] = useState(false);
+  const [skipDsCheckOnDisable, setSkipDsCheckOnDisable] = useState(false);
+  const [skipDsCheckOnDsSeen, setSkipDsCheckOnDsSeen] = useState(false);
+  const [skipHolddown, setSkipHolddown] = useState(false);
+  const [parentNsAddrs, setParentNsAddrs] = useState("");
+  // The last parent check; a plain status refresh must not drop it.
+  const [delegation, setDelegation] = useState<DnssecDelegationInfo | null>(
+    null,
+  );
   const [copiedDs, setCopiedDs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -78,6 +131,8 @@ export default function ZoneDnssecTab({
           setStatus(data);
           setPolicies(policyList);
           setTargetPolicy("");
+          setParentNsAddrs(data.parent_ns_addrs ?? "");
+          setDelegation(null);
         }
       } catch (fetchError) {
         if (active) {
@@ -116,85 +171,154 @@ export default function ZoneDnssecTab({
   }, [copiedDs]);
 
   const runAction = async (
-    action: () => Promise<void>,
+    action: PendingAction,
+    run: () => Promise<void>,
     fallbackError: string,
   ) => {
-    setPending(true);
+    setPending(action);
     setResult(null);
     try {
-      await action();
+      await run();
     } catch (actionError) {
+      const message = getErrorMessage(actionError, fallbackError);
+      const hint = DS_CHECK_HINTS[getErrorCode(actionError) ?? ""];
       setResult({
-        text: getErrorMessage(actionError, fallbackError),
+        text: hint ? `${message} ${hint}` : message,
         failed: true,
       });
     } finally {
-      setPending(false);
+      setPending(null);
     }
   };
 
   const handleEnable = () =>
-    runAction(async () => {
-      const data = await enableDnssec(zone.name, { policy: policyName });
-      setStatus(data);
-      setResult({
-        text: "DNSSEC enabled. Register the DS records below in the parent zone.",
-        failed: false,
-      });
-    }, "Failed to enable DNSSEC");
+    runAction(
+      "enable",
+      async () => {
+        const parentNs = parentNsAddrs.trim();
+        const data = await enableDnssec(zone.name, {
+          policy: policyName,
+          // Omitted keeps the zone's setting; given, even empty, replaces it.
+          parent_ns_addrs:
+            parentNs === (status?.parent_ns_addrs ?? "") ? undefined : parentNs,
+        });
+        setStatus(data);
+        setParentNsAddrs(data.parent_ns_addrs ?? "");
+        setResult({
+          text: "DNSSEC enabled. Register the DS records at the parent.",
+          failed: false,
+        });
+      },
+      "Failed to enable DNSSEC",
+    );
 
   const handleChangePolicy = () =>
-    runAction(async () => {
-      const data = await setZoneDnssecPolicy(zone.name, {
-        policy: targetPolicy,
-      });
-      setStatus(data);
-      setTargetPolicy("");
-      setResult({
-        text: `Zone moved to the "${data.policy?.name ?? targetPolicy}" policy.`,
-        failed: false,
-      });
-    }, "Failed to change the zone's DNSSEC policy");
+    runAction(
+      "policy",
+      async () => {
+        const data = await setZoneDnssecPolicy(zone.name, {
+          policy: targetPolicy,
+        });
+        setStatus(data);
+        setTargetPolicy("");
+        setResult({
+          text: `Zone moved to the "${data.policy?.name ?? targetPolicy}" policy.`,
+          failed: false,
+        });
+      },
+      "Failed to change the zone's DNSSEC policy",
+    );
 
   const handleStartRollover = (role?: DnssecRolloverRole) =>
-    runAction(async () => {
-      const data = await startDnssecRollover(zone.name, role);
-      setStatus(data);
-      setResult({
-        text: "Rollover started: the replacement key is pre-published.",
-        failed: false,
-      });
-    }, "Failed to start key rollover");
+    runAction(
+      "rollover",
+      async () => {
+        const data = await startDnssecRollover(zone.name, role);
+        setStatus(data);
+        setResult({
+          text: "Rollover started; the replacement key is pre-published.",
+          failed: false,
+        });
+      },
+      "Failed to start key rollover",
+    );
 
   const handleDsSeen = () =>
-    runAction(async () => {
-      const data = await confirmDnssecDsSeen(zone.name);
-      setStatus(data);
-      setResult({
-        text: "Rollover advanced: the new key is promoted.",
-        failed: false,
-      });
-    }, "Failed to confirm DS seen");
+    runAction(
+      "ds-seen",
+      async () => {
+        const data = await confirmDnssecDsSeen(zone.name, {
+          skipDsCheck: skipDsCheckOnDsSeen,
+          skipHolddown,
+        });
+        setSkipDsCheckOnDsSeen(false);
+        setSkipHolddown(false);
+        setStatus(data);
+        setResult({
+          text: "New key promoted.",
+          failed: false,
+        });
+      },
+      "Failed to confirm DS seen",
+    );
 
   const handleWithdraw = () =>
-    runAction(async () => {
-      const data = await withdrawDnssec(zone.name);
-      setStatus(data);
-      setResult({
-        text: "Withdrawal published. A CDS-consuming parent drops the DS on its next poll.",
-        failed: false,
-      });
-    }, "Failed to publish the DS withdrawal");
+    runAction(
+      "withdraw",
+      async () => {
+        const data = await withdrawDnssec(zone.name);
+        setStatus(data);
+        setResult({
+          text: "Withdrawal published; the parent drops the DS on its next CDS poll.",
+          failed: false,
+        });
+      },
+      "Failed to publish the DS withdrawal",
+    );
 
   const handleCancelWithdrawal = () =>
-    runAction(async () => {
-      const data = await cancelDnssecWithdrawal(zone.name);
-      setStatus(data);
-      setResult({
-        text: "Withdrawal cancelled: the per-key CDS/CDNSKEY set returns on the next signing pass.",
-        failed: false,
-      });
-    }, "Failed to cancel the DS withdrawal");
+    runAction(
+      "cancel-withdrawal",
+      async () => {
+        const data = await cancelDnssecWithdrawal(zone.name);
+        setStatus(data);
+        setResult({
+          text: "Withdrawal cancelled.",
+          failed: false,
+        });
+      },
+      "Failed to cancel the DS withdrawal",
+    );
+
+  const handleCheckDs = () =>
+    runAction(
+      "check-ds",
+      async () => {
+        const data = await checkDnssecDs(zone.name);
+        setStatus(data);
+        setDelegation(data.delegation ?? null);
+      },
+      "Failed to check the parent's DS",
+    );
+
+  const handleSetParentNsAddrs = () =>
+    runAction(
+      "parent-ns",
+      async () => {
+        const data = await setDnssecParentNsAddrs(zone.name, {
+          parent_ns_addrs: parentNsAddrs.trim() || null,
+        });
+        setStatus(data);
+        setParentNsAddrs(data.parent_ns_addrs ?? "");
+        setResult({
+          text: data.parent_ns_addrs
+            ? `Parent nameservers set to ${data.parent_ns_addrs}.`
+            : "Parent nameservers cleared; the parent is discovered.",
+          failed: false,
+        });
+      },
+      "Failed to set the parent nameservers",
+    );
 
   // A failed refresh must not report a mutation that already succeeded as failed.
   const refreshStatus = async () => {
@@ -207,37 +331,50 @@ export default function ZoneDnssecTab({
 
   // Keys promote and retire on server hold-downs, which nothing pushes to us.
   const handleRefresh = () =>
-    runAction(async () => {
-      setStatus(await getDnssecStatus(zone.name));
-    }, "Failed to refresh DNSSEC status");
+    runAction(
+      "refresh",
+      async () => {
+        setStatus(await getDnssecStatus(zone.name));
+      },
+      "Failed to refresh DNSSEC status",
+    );
 
   const handleSign = () =>
-    runAction(async () => {
-      const message = await signDnssecZone(zone.name);
-      setResult({ text: message, failed: false });
-      await refreshStatus();
-    }, "Failed to re-sign zone");
+    runAction(
+      "sign",
+      async () => {
+        const message = await signDnssecZone(zone.name);
+        setResult({ text: message, failed: false });
+        await refreshStatus();
+      },
+      "Failed to re-sign zone",
+    );
 
   const handleDisable = () =>
-    runAction(async () => {
-      const message = await disableDnssec(zone.name);
-      setConfirmDsRemoved(false);
-      setResult({ text: message, failed: false });
-      // The keys are gone regardless of whether the refresh below lands.
-      setStatus((prev) =>
-        prev
-          ? {
-              ...prev,
-              enabled: false,
-              policy: null,
-              keys: [],
-              ds_records: [],
-              withdrawing: false,
-            }
-          : prev,
-      );
-      await refreshStatus();
-    }, "Failed to disable DNSSEC");
+    runAction(
+      "disable",
+      async () => {
+        const message = await disableDnssec(zone.name, skipDsCheckOnDisable);
+        setSkipDsCheckOnDisable(false);
+        setDelegation(null);
+        setResult({ text: message, failed: false });
+        // The keys are gone regardless of whether the refresh below lands.
+        setStatus((prev) =>
+          prev
+            ? {
+                ...prev,
+                enabled: false,
+                policy: null,
+                keys: [],
+                ds_records: [],
+                withdrawing: false,
+              }
+            : prev,
+        );
+        await refreshStatus();
+      },
+      "Failed to disable DNSSEC",
+    );
 
   const handleCopyDs = async (index: number, presentation: string) => {
     try {
@@ -253,7 +390,7 @@ export default function ZoneDnssecTab({
   }
 
   if (error) {
-    return <p className="text-red-500">{error}</p>;
+    return <Notice tone="error">{error}</Notice>;
   }
 
   if (!status) {
@@ -261,15 +398,7 @@ export default function ZoneDnssecTab({
   }
 
   const resultBanner = result && (
-    <p
-      className={`p-3 rounded-md border text-sm whitespace-pre-wrap ${
-        result.failed
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-green-200 bg-green-50 text-green-800"
-      }`}
-    >
-      {result.text}
-    </p>
+    <Notice tone={result.failed ? "error" : "success"}>{result.text}</Notice>
   );
 
   const policiesLink = (
@@ -277,6 +406,9 @@ export default function ZoneDnssecTab({
       DNSSEC policies
     </Link>
   );
+
+  const parentNsUnchanged =
+    parentNsAddrs.trim() === (status.parent_ns_addrs ?? "");
 
   if (!status.enabled) {
     const selectedPolicy = policies.find(
@@ -288,8 +420,8 @@ export default function ZoneDnssecTab({
         <div>
           <h3 className="text-lg font-semibold text-gray-700">DNSSEC</h3>
           <p className="text-sm text-gray-500">
-            This zone is not signed. Enabling DNSSEC generates keys and signs
-            the zone; the DS records must then be registered at the parent.
+            Not signed. Enabling generates keys and signs the zone; register the
+            DS records at the parent afterwards.
           </p>
         </div>
 
@@ -321,12 +453,33 @@ export default function ZoneDnssecTab({
           <p className="text-sm text-gray-500 mt-1">
             {selectedPolicy ? (
               <>
-                {describePolicy(selectedPolicy)}. Denial mode and key layout
-                cannot change while signed.
+                {describePolicy(selectedPolicy)}. Denial and key layout are
+                fixed while signed.
               </>
             ) : (
               <>Manage policies under {policiesLink}.</>
             )}
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="dnssec_parent_ns_addrs"
+            className="block text-sm font-medium text-gray-600 mb-1"
+          >
+            Parent Nameservers
+          </label>
+          <input
+            type="text"
+            id="dnssec_parent_ns_addrs"
+            value={parentNsAddrs}
+            onChange={(e) => setParentNsAddrs(e.target.value)}
+            placeholder="Discovered through the system resolver"
+            className="w-full"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Optional. Comma-separated host[:port] asked for the DS before
+            disabling; empty discovers the parent.
           </p>
         </div>
 
@@ -336,10 +489,10 @@ export default function ZoneDnssecTab({
           <button
             type="button"
             onClick={handleEnable}
-            disabled={pending}
+            disabled={busy}
             className="btn-primary"
           >
-            {pending ? "Enabling..." : "Enable DNSSEC"}
+            {pending === "enable" ? "Enabling..." : "Enable DNSSEC"}
           </button>
         </div>
       </div>
@@ -365,6 +518,17 @@ export default function ZoneDnssecTab({
       )
     : [];
 
+  // ZSKs have no DS; for the others the answer is known after a parent check.
+  const atParent = (key: DnssecKey) => {
+    if (!delegation || key.role === "zsk") {
+      return "-";
+    }
+    const checked = delegation.keys.find(
+      (entry) => entry.key_tag === key.key_tag && entry.role === key.role,
+    );
+    return checked ? (checked.ds_published ? "Yes" : "No") : "-";
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -386,7 +550,7 @@ export default function ZoneDnssecTab({
           <button
             type="button"
             onClick={handleRefresh}
-            disabled={pending}
+            disabled={busy}
             className="btn-secondary ml-auto"
           >
             Refresh
@@ -407,8 +571,8 @@ export default function ZoneDnssecTab({
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-2">
-          Signatures renew automatically. Derived records appear in the signed
-          zone export.
+          Signatures renew automatically; derived records are in the signed
+          export.
         </p>
       </div>
 
@@ -433,14 +597,13 @@ export default function ZoneDnssecTab({
             </div>
             {compatiblePolicies.length === 0 ? (
               <p className="text-sm text-gray-500">
-                No other policy has the same denial mode and key layout. Define
-                one under {policiesLink} to move the zone.
+                No other policy matches the zone&apos;s denial and key layout.
+                See {policiesLink}.
               </p>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-sm text-gray-500">
-                  A different algorithm starts an algorithm rollover. Timing
-                  changes apply on the next signing pass.
+                  A different algorithm starts an algorithm rollover.
                 </p>
                 <div className="flex items-center gap-2">
                   <select
@@ -459,23 +622,23 @@ export default function ZoneDnssecTab({
                   <button
                     type="button"
                     onClick={handleChangePolicy}
-                    disabled={pending || !targetPolicy || rolloverInProgress}
+                    disabled={busy || !targetPolicy || rolloverInProgress}
                     className="btn-primary whitespace-nowrap"
                   >
-                    {pending ? "Moving..." : "Move Zone"}
+                    {pending === "policy" ? "Moving..." : "Move Zone"}
                   </button>
                 </div>
               </div>
             )}
             {rolloverInProgress && compatiblePolicies.length > 0 && (
               <p className="text-sm text-gray-500">
-                A rollover is in progress; finish it before moving the zone.
+                Finish the rollover before moving the zone.
               </p>
             )}
           </>
         ) : (
           <p className="text-sm text-gray-500">
-            This server reports no policy for the zone.
+            No policy reported for the zone.
           </p>
         )}
       </div>
@@ -506,6 +669,9 @@ export default function ZoneDnssecTab({
                 <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Next Step
                 </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  At Parent
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -531,6 +697,7 @@ export default function ZoneDnssecTab({
                       ? `${key.state === "published" ? "Promotable" : "Removable"} ${formatDateTime(key.eligible_at)}`
                       : "-"}
                   </td>
+                  <td className="px-3 py-2 text-gray-500">{atParent(key)}</td>
                 </tr>
               ))}
             </tbody>
@@ -565,6 +732,36 @@ export default function ZoneDnssecTab({
             ))}
           </ul>
         )}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
+          <p className="text-sm text-gray-500">
+            Ask the parent&apos;s nameservers what DS they serve for the zone.
+          </p>
+          <button
+            type="button"
+            onClick={handleCheckDs}
+            disabled={busy}
+            className="btn-secondary whitespace-nowrap"
+          >
+            {pending === "check-ds" ? "Checking..." : "Check Parent DS"}
+          </button>
+        </div>
+        {delegation && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2 text-sm text-gray-600">
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                delegation.ds_state === "published"
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-green-100 text-green-700"
+              }`}
+            >
+              {delegation.ds_state === "published" ? "DS published" : "No DS"}
+            </span>
+            <span className="break-all">{describeDelegation(delegation)}</span>
+            <span className="ml-auto whitespace-nowrap text-gray-400">
+              {formatDateTime(delegation.checked_at)}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -573,38 +770,63 @@ export default function ZoneDnssecTab({
         </h3>
         {rolloverInProgress ? (
           awaitingDsSeen ? (
-            <div className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900 space-y-2">
+            <Notice tone="info" className="space-y-3">
               <p>
-                Rollover in progress. Register the new DS record at the parent,
-                wait out its TTL, then confirm to promote the key.
+                Register the new DS at the parent, wait out its TTL, then
+                confirm to promote the key. The parent&apos;s nameservers are
+                asked for the new DS first.
               </p>
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div className="space-y-1">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={skipDsCheckOnDsSeen}
+                      onChange={(e) => setSkipDsCheckOnDsSeen(e.target.checked)}
+                    />
+                    <span>
+                      Skip the parent DS check (unsafe while the DS is not
+                      published)
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={skipHolddown}
+                      onChange={(e) => setSkipHolddown(e.target.checked)}
+                    />
+                    <span>
+                      Skip the hold-down (resolvers caching the old keys fail
+                      until it expires; for a compromised key)
+                    </span>
+                  </label>
+                </div>
                 <button
                   type="button"
                   onClick={handleDsSeen}
-                  disabled={pending}
-                  className="btn-primary"
+                  disabled={busy}
+                  className="btn-primary whitespace-nowrap"
                 >
-                  {pending ? "Confirming..." : "Confirm DS Seen"}
+                  {pending === "ds-seen" ? "Confirming..." : "Confirm DS Seen"}
                 </button>
               </div>
-            </div>
+            </Notice>
           ) : (
-            <p className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900">
-              ZSK rollover in progress. The new key is promoted automatically
-              after the publish hold-down; no DS change is needed.
-            </p>
+            <Notice tone="info">
+              ZSK rollover in progress; the new key is promoted after the
+              hold-down. No DS change needed.
+            </Notice>
           )
         ) : retiringKeys ? (
-          <p className="p-3 rounded-md border border-blue-200 bg-blue-50 text-sm text-blue-900">
-            The previous key is retired and is removed after the retire
-            hold-down. The next rollover can start then.
-          </p>
+          <Notice tone="info">
+            The retired key is removed after the hold-down; the next rollover
+            can start then.
+          </Notice>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">
-              Pre-publish a replacement key, then promote it once the parent has
-              the new DS.
+              Pre-publish a replacement key; promote it once the parent has its
+              DS.
             </p>
             <div className="flex items-center gap-2">
               {splitKeyZone && (
@@ -625,10 +847,10 @@ export default function ZoneDnssecTab({
                 onClick={() =>
                   handleStartRollover(splitKeyZone ? rolloverRole : undefined)
                 }
-                disabled={pending}
+                disabled={busy}
                 className="btn-primary whitespace-nowrap"
               >
-                {pending ? "Starting..." : "Start Rollover"}
+                {pending === "rollover" ? "Starting..." : "Start Rollover"}
               </button>
             </div>
           </div>
@@ -641,75 +863,103 @@ export default function ZoneDnssecTab({
         </h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-gray-500">
-            Discard stored signatures and re-sign the whole zone.
+            Discard stored signatures and re-sign the zone.
           </p>
           <button
             type="button"
             onClick={handleSign}
-            disabled={pending}
+            disabled={busy}
             className="btn-primary whitespace-nowrap"
           >
-            {pending ? "Signing..." : "Re-sign Zone"}
+            {pending === "sign" ? "Signing..." : "Re-sign Zone"}
           </button>
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+          Parent Nameservers
+        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <input
+            type="text"
+            value={parentNsAddrs}
+            onChange={(e) => setParentNsAddrs(e.target.value)}
+            placeholder="ns1.parent.example, ns2.parent.example:5353"
+            aria-label="Parent nameservers"
+            className="flex-1"
+          />
+          <button
+            type="button"
+            onClick={handleSetParentNsAddrs}
+            disabled={busy || parentNsUnchanged}
+            className="btn-primary whitespace-nowrap"
+          >
+            {pending === "parent-ns" ? "Saving..." : "Save"}
+          </button>
+        </div>
+        <p className="text-sm text-gray-500">
+          Comma-separated host[:port] asked for the zone&apos;s DS before
+          disabling; empty discovers the parent.
+        </p>
       </div>
 
       <div className="space-y-3">
         <h3 className="text-lg font-semibold text-red-700 border-b border-red-200 pb-2">
           Disable DNSSEC
         </h3>
-        <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-3">
-          <p>
-            Step 1. Remove the DS record from the parent zone. Publishing a
-            withdrawal asks a parent that reads CDS records to remove it
-            automatically; otherwise remove it by hand at the registrar.
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-gray-500">
+            Remove the DS at the parent first: publish a withdrawal for a
+            CDS-reading parent, or remove it at the registrar.
           </p>
-          <div className="flex justify-end">
-            {status.withdrawing ? (
-              <button
-                type="button"
-                onClick={handleCancelWithdrawal}
-                disabled={pending}
-                className="btn-secondary"
-              >
-                {pending ? "Cancelling..." : "Cancel Withdrawal"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleWithdraw}
-                disabled={pending}
-                className="btn-secondary"
-              >
-                {pending ? "Publishing..." : "Publish DS Withdrawal"}
-              </button>
-            )}
-          </div>
+          {status.withdrawing ? (
+            <button
+              type="button"
+              onClick={handleCancelWithdrawal}
+              disabled={busy}
+              className="btn-secondary whitespace-nowrap"
+            >
+              {pending === "cancel-withdrawal"
+                ? "Cancelling..."
+                : "Cancel Withdrawal"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={busy}
+              className="btn-secondary whitespace-nowrap"
+            >
+              {pending === "withdraw"
+                ? "Publishing..."
+                : "Publish DS Withdrawal"}
+            </button>
+          )}
         </div>
         <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-900 space-y-3">
           <p>
-            Step 2. Once the DS is gone and its TTL has passed, delete the keys
-            and unsign the zone. Doing this while the DS still exists makes
-            resolvers reject the zone.
+            Deletes the keys and unsigns the zone. Refused while the parent
+            still serves a DS or cannot be reached.
           </p>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={confirmDsRemoved}
-              onChange={(e) => setConfirmDsRemoved(e.target.checked)}
-            />
-            <span>
-              The DS record is gone from the parent zone and its TTL has passed
-            </span>
-          </label>
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={skipDsCheckOnDisable}
+                onChange={(e) => setSkipDsCheckOnDisable(e.target.checked)}
+              />
+              <span>
+                Skip the parent DS check (unsafe while a DS is still published)
+              </span>
+            </label>
             <button
               type="button"
               onClick={handleDisable}
-              disabled={pending || !confirmDsRemoved}
-              className="btn-danger"
+              disabled={busy}
+              className="btn-danger whitespace-nowrap"
             >
-              {pending ? "Disabling..." : "Disable DNSSEC"}
+              {pending === "disable" ? "Disabling..." : "Disable DNSSEC"}
             </button>
           </div>
         </div>

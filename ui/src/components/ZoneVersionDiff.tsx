@@ -8,6 +8,7 @@ import {
   VersionDiff,
   Zone,
 } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneVersionDiffProps {
   zone: Zone;
@@ -116,7 +117,7 @@ export default function ZoneVersionDiff({
       {loading ? (
         <p className="text-gray-500">Computing diff...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : !recordDiff || recordDiff.entries.length === 0 ? (
         <p className="text-gray-500">
           No record differences between these serials.

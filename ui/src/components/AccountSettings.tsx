@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Modal from "./Modal";
+import Notice from "./Notice";
 import { useAuth } from "@/contexts/AuthContext";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import { useNavigate } from "react-router-dom";
@@ -10,15 +11,7 @@ interface SettingsResult {
 }
 
 const resultBanner = (result: SettingsResult) => (
-  <p
-    className={`p-3 rounded-md border text-sm ${
-      result.failed
-        ? "border-red-200 bg-red-50 text-red-700"
-        : "border-green-200 bg-green-50 text-green-800"
-    }`}
-  >
-    {result.text}
-  </p>
+  <Notice tone={result.failed ? "error" : "success"}>{result.text}</Notice>
 );
 
 export default function AccountSettings() {

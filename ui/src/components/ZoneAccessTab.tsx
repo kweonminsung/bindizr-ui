@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { focusLink } from "@/lib/focusName";
 import { Zone, ZoneGrant } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneAccessTabProps {
   zone: Zone;
@@ -106,7 +107,7 @@ function AccessSection({
       )}
 
       {globals.length > 0 && (
-        <p className="text-sm text-amber-800">
+        <Notice tone="warning">
           Global {holderLabel}s cover this zone without a grant:{" "}
           {globals.map((name, index) => (
             <span key={name}>
@@ -120,7 +121,7 @@ function AccessSection({
             </span>
           ))}
           .
-        </p>
+        </Notice>
       )}
 
       <p className="text-sm text-gray-500">
@@ -194,7 +195,7 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
   }
 
   if (error) {
-    return <p className="text-red-500">{error}</p>;
+    return <Notice tone="error">{error}</Notice>;
   }
 
   return (

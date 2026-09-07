@@ -3,6 +3,7 @@ import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
+import Notice from "./Notice";
 import ZoneStatusPanel from "./ZoneStatusPanel";
 
 interface ZoneSyncTabProps {
@@ -83,15 +84,9 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
           </button>
         </div>
         {result && (
-          <p
-            className={`p-3 rounded-md border text-sm whitespace-pre-wrap ${
-              result.failed
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-gray-200 bg-gray-50 text-gray-700"
-            }`}
-          >
+          <Notice tone={result.failed ? "error" : "success"}>
             {result.text}
-          </p>
+          </Notice>
         )}
       </div>
     </div>
