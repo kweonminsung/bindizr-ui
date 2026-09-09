@@ -135,6 +135,7 @@ async function getZoneListResult(
   return toListResult((await response.json()) as ListResponse<Zone>);
 }
 
+/** Without a limit the server returns every zone. */
 export async function getZones(
   queryParams: ZoneListQuery = {},
 ): Promise<Zone[]> {
