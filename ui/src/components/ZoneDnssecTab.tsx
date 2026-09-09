@@ -492,6 +492,13 @@ export default function ZoneDnssecTab({
           policy.split_keys === currentPolicy.split_keys,
       )
     : [];
+  const selectedPolicy = compatiblePolicies.find(
+    (policy) => policy.name === targetPolicy,
+  );
+  // A new algorithm starts a rollover.
+  const algorithmRollover =
+    !!selectedPolicy && selectedPolicy.algorithm !== currentPolicy?.algorithm;
+  const moveBlocked = rolloverInProgress || (retiringKeys && algorithmRollover);
 
   // ZSKs have no DS; the rest need a parent check.
   const atParent = (key: DnssecKey) => {
@@ -680,7 +687,7 @@ export default function ZoneDnssecTab({
                   <button
                     type="button"
                     onClick={handleChangePolicy}
-                    disabled={busy || !targetPolicy || rolloverInProgress}
+                    disabled={busy || !targetPolicy || moveBlocked}
                     className="btn-primary whitespace-nowrap"
                   >
                     {pending === "policy" ? "Moving..." : "Move Zone"}
@@ -688,9 +695,11 @@ export default function ZoneDnssecTab({
                 </div>
               </div>
             )}
-            {rolloverInProgress && compatiblePolicies.length > 0 && (
+            {moveBlocked && compatiblePolicies.length > 0 && (
               <p className="text-sm text-gray-500">
-                Finish the rollover before moving the zone.
+                {rolloverInProgress
+                  ? "Finish the rollover before moving the zone."
+                  : "A new algorithm can start once the retired key is removed."}
               </p>
             )}
           </>
