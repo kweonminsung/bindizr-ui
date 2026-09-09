@@ -291,6 +291,8 @@ export default function ZoneDnssecTab({
         });
         setStatus(data);
         setParentNsAddrs(data.parent_ns_addrs ?? "");
+        // Checked against the old servers.
+        setDelegation(null);
         toast.success(
           data.parent_ns_addrs
             ? `Parent nameservers set to ${data.parent_ns_addrs}.`
