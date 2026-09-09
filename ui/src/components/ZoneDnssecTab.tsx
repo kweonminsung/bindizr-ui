@@ -498,9 +498,7 @@ export default function ZoneDnssecTab({
     if (!delegation || key.role === "zsk") {
       return "-";
     }
-    const checked = delegation.keys.find(
-      (entry) => entry.key_tag === key.key_tag && entry.role === key.role,
-    );
+    const checked = delegation.keys.find((entry) => entry.id === key.id);
     return checked ? (checked.ds_published ? "Yes" : "No") : "-";
   };
 
