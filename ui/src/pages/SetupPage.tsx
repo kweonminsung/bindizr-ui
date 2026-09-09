@@ -2,26 +2,24 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
+import { useToast } from "@/contexts/ToastContext";
 
 export default function SetupPage() {
+  const toast = useToast();
   const [bindizrUrl, setBindizrUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [createAccount, setCreateAccount] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [error, setError] = useState("");
   const [isConnectionTested, setIsConnectionTested] = useState(false);
   const navigate = useNavigate();
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccessMessage("");
 
     if (createAccount && password !== confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
 
@@ -29,7 +27,7 @@ export default function SetupPage() {
       !bindizrUrl.startsWith("http://") &&
       !bindizrUrl.startsWith("https://")
     ) {
-      setError("Please enter a valid URL starting with http:// or https://");
+      toast.error("Please enter a valid URL starting with http:// or https://");
       return;
     }
 
@@ -48,19 +46,17 @@ export default function SetupPage() {
       navigate("/");
     } else {
       const data = await res.json();
-      setError(data.message || data.error || "Setup failed.");
+      toast.error(data.message || data.error || "Setup failed.");
     }
   };
 
   const testConnection = async () => {
-    setError("");
-    setSuccessMessage("");
     const result = await testBindizrConnection(bindizrUrl, secretKey);
     if (result.ok) {
-      setSuccessMessage(result.message);
+      toast.success(result.message);
       setIsConnectionTested(true);
     } else {
-      setError(result.message);
+      toast.error(result.message);
     }
   };
 
@@ -74,7 +70,7 @@ export default function SetupPage() {
               htmlFor="bindizrUrl"
               className="block text-sm font-medium text-gray-700"
             >
-              Bindizr Server URL
+              Bindizr URL
             </label>
             <input
               id="bindizrUrl"
@@ -93,7 +89,7 @@ export default function SetupPage() {
               htmlFor="secretKey"
               className="block text-sm font-medium text-gray-700"
             >
-              Secret Key (Optional)
+              API Token (optional)
             </label>
             <input
               id="secretKey"
@@ -105,6 +101,9 @@ export default function SetupPage() {
               }}
               className="w-full mt-1"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Leave empty if Bindizr runs without authentication.
+            </p>
           </div>
           <button
             type="button"
@@ -180,16 +179,12 @@ export default function SetupPage() {
               </div>
             </>
           )}
-          {error && <p className="text-center text-red-600">{error}</p>}
-          {successMessage && (
-            <p className="text-center text-green-600">{successMessage}</p>
-          )}
           <button
             type="submit"
             className="w-full btn-primary"
             disabled={!isConnectionTested}
           >
-            Save Configuration
+            Save
           </button>
         </form>
       </div>

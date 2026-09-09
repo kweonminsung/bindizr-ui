@@ -2,19 +2,20 @@ import { useEffect, useState } from "react";
 import { exportZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
+import Notice from "./Notice";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneExportProps {
   zone: Zone;
 }
 
 export default function ZoneExport({ zone }: ZoneExportProps) {
+  const toast = useToast();
   const [content, setContent] = useState("");
   const [signed, setSigned] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  // Kept apart from `error`, which hides the exported text when it is set.
-  const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -57,11 +58,10 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(content);
-      setCopyError(null);
       setCopied(true);
     } catch {
       setCopied(false);
-      setCopyError("Failed to copy to the clipboard");
+      toast.error("Failed to copy to the clipboard");
     }
   };
 
@@ -119,12 +119,10 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
         </span>
       </label>
 
-      {copyError && <p className="text-sm text-red-500">{copyError}</p>}
-
       {loading ? (
         <p className="text-gray-500">Exporting...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : (
         <textarea
           readOnly

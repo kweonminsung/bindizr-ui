@@ -10,6 +10,7 @@ import {
   RecordType,
   Zone,
 } from "@/lib/types";
+import { useToast } from "@/contexts/ToastContext";
 
 interface RecordFormProps {
   zoneName?: string;
@@ -61,16 +62,11 @@ export default function RecordForm({
   onCancel,
   zones = [],
 }: RecordFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
     zone_name: zoneName ?? "",
   });
-
-  // A string dep: an unstable `zones` would re-run the effect every render.
-  const recordZoneName =
-    record?.zone_name ??
-    zones.find((zone) => zone.id === record?.zone_id)?.name ??
-    "";
 
   useEffect(() => {
     if (record) {
@@ -78,9 +74,9 @@ export default function RecordForm({
         name: record.name,
         record_type: record.record_type,
         value: recordValueToInput(record.value),
-        ttl: record.ttl?.toString() ?? "",
+        ttl: String(record.ttl),
         priority: record.priority?.toString() ?? "",
-        zone_name: recordZoneName,
+        zone_name: record.zone_name,
       });
       return;
     }
@@ -89,7 +85,7 @@ export default function RecordForm({
       ...defaultFormData,
       zone_name: zoneName ?? "",
     });
-  }, [record, zoneName, recordZoneName]);
+  }, [record, zoneName]);
 
   const supportsPriority = PRIORITY_RECORD_TYPES.includes(formData.record_type);
 
@@ -115,7 +111,7 @@ export default function RecordForm({
 
     const selectedZoneName = zoneName ?? formData.zone_name;
     if (!record && !selectedZoneName) {
-      alert("Zone is required");
+      toast.error("Zone is required");
       return;
     }
 
@@ -141,14 +137,14 @@ export default function RecordForm({
 
       onSuccess(savedRecord);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to save record"));
+      toast.error(getErrorMessage(error, "Failed to save record"));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {record ? "Edit Record" : "Create New Record"}
+        {record ? "Edit Record" : "Create Record"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -184,7 +180,7 @@ export default function RecordForm({
             onChange={handleChange}
             className="w-full"
           >
-            {RECORD_TYPES.filter((type) => type !== "SOA").map((type) => (
+            {RECORD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>

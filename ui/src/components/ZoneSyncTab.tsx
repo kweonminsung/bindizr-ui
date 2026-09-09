@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Zone } from "@/lib/types";
 import ZoneStatusPanel from "./ZoneStatusPanel";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneSyncTabProps {
   zone: Zone;
@@ -10,24 +12,20 @@ interface ZoneSyncTabProps {
   onZoneChanged?: (zone: Zone) => void;
 }
 
-interface NotifyResult {
-  text: string;
-  failed: boolean;
-}
-
 export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
+  const toast = useToast();
+  // A scoped token may NOTIFY its zone but not bump the serial.
+  const { globalAccess } = useBindizrToken();
   const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
-  const [result, setResult] = useState<NotifyResult | null>(null);
   // Re-probe the secondaries once a NOTIFY has gone out.
   const [statusToken, setStatusToken] = useState(0);
 
   const handleNotify = async () => {
     setNotifying(true);
-    setResult(null);
     try {
       const message = await notifyZones(zone.name, bumpSerial);
-      setResult({ text: message, failed: false });
+      toast.success(message);
       setStatusToken((prev) => prev + 1);
       if (bumpSerial && onZoneChanged) {
         // Best-effort: the NOTIFY already went out either way.
@@ -38,10 +36,7 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
         }
       }
     } catch (error) {
-      setResult({
-        text: getErrorMessage(error, "Failed to send DNS NOTIFY"),
-        failed: true,
-      });
+      toast.error(getErrorMessage(error, "Failed to send DNS NOTIFY"));
     } finally {
       setNotifying(false);
     }
@@ -56,40 +51,29 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
           DNS NOTIFY
         </h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <label className="flex items-center space-x-2 text-sm text-gray-600">
-            <input
-              type="checkbox"
-              checked={bumpSerial}
-              onChange={(e) => setBumpSerial(e.target.checked)}
-            />
-            <span>
-              Bump serial first (secondaries transfer even when nothing changed)
-            </span>
-          </label>
+          {globalAccess && (
+            <label className="flex items-center space-x-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={bumpSerial}
+                onChange={(e) => setBumpSerial(e.target.checked)}
+              />
+              <span>Bump serial first (forces a transfer)</span>
+            </label>
+          )}
           <button
             type="button"
             onClick={handleNotify}
             disabled={notifying}
-            className="btn-primary"
+            className="btn-primary sm:ml-auto"
           >
             {notifying
               ? "Sending..."
               : bumpSerial
-                ? "Bump & NOTIFY"
+                ? "Bump serial & NOTIFY"
                 : "Send NOTIFY"}
           </button>
         </div>
-        {result && (
-          <p
-            className={`p-3 rounded-md border text-sm whitespace-pre-wrap ${
-              result.failed
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-gray-200 bg-gray-50 text-gray-700"
-            }`}
-          >
-            {result.text}
-          </p>
-        )}
       </div>
     </div>
   );

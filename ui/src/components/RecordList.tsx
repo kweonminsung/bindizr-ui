@@ -19,8 +19,10 @@ import { formatRecordValue } from "@/lib/recordValue";
 import { toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
+import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
+import { useToast } from "@/contexts/ToastContext";
 
 interface RecordListProps {
   zoneName?: string;
@@ -59,6 +61,7 @@ export default function RecordList({
   zones = [],
   onCreateRecord,
 }: RecordListProps) {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [records, setRecords] = useState<SignedRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<SignedRecord | null>(
@@ -177,17 +180,20 @@ export default function RecordList({
     zoneName,
   ]);
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this record?")) {
+  const handleDelete = async (record: SignedRecord) => {
+    if (record.id == null) {
+      return;
+    }
+    if (window.confirm(`Delete ${record.name} ${record.record_type}?`)) {
       try {
-        await deleteRecord(id);
+        toast.success(await deleteRecord(record.id));
         if (records.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
           setRefreshKey((prev) => prev + 1);
         }
       } catch (error) {
-        alert(getErrorMessage(error, "Failed to delete record"));
+        toast.error(getErrorMessage(error, "Failed to delete record"));
       }
     }
   };
@@ -352,18 +358,18 @@ export default function RecordList({
       </FilterPanel>
       {signedView && userPlaneOnly && (
         <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-          Derived rows are hidden while searching or filtering by value,
-          priority, or a user record type.
+          Derived rows are hidden while filtering by value, priority or a user
+          record type.
           {derivedTypeSelected &&
-            ` The ${selectedType} filter is paused until those filters are cleared.`}
+            ` The ${selectedType} filter applies once they are cleared.`}
         </p>
       )}
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
-        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Notice tone="error" className="mx-4 mb-4">
           {error}
           {records.length > 0 && " — showing the last results that loaded."}
-        </p>
+        </Notice>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
@@ -406,7 +412,7 @@ export default function RecordList({
                   {record.name}
                   {record.id == null && (
                     <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                      derived
+                      Derived
                     </span>
                   )}
                 </td>
@@ -434,9 +440,7 @@ export default function RecordList({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (record.id != null) {
-                            handleDelete(record.id);
-                          }
+                          handleDelete(record);
                         }}
                         className="font-medium text-red-600 hover:underline"
                       >

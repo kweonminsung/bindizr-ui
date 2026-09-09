@@ -8,6 +8,7 @@ import {
   VersionDiff,
   Zone,
 } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneVersionDiffProps {
   zone: Zone;
@@ -38,13 +39,8 @@ const CHANGE_SIGN_STYLES: Record<RecordDiffChange, string> = {
 const formatRdata = (values: RecordDiffValue[]) =>
   values.map(formatRecordRdata).join(", ");
 
-/** An RRset shares one TTL, so the first one set stands for the whole side. */
-const sideTtl = (values: RecordDiffValue[]) =>
-  values.find((value) => value.ttl != null)?.ttl ?? null;
-
-/** A record without its own TTL falls back to the zone's. */
-const formatTtl = (ttl: number | null) =>
-  ttl == null ? "inherited" : String(ttl);
+/** An RRset shares one TTL, so the first record stands for the whole side. */
+const sideTtl = (values: RecordDiffValue[]) => values[0]?.ttl ?? null;
 
 export default function ZoneVersionDiff({
   zone,
@@ -121,7 +117,7 @@ export default function ZoneVersionDiff({
       {loading ? (
         <p className="text-gray-500">Computing diff...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : !recordDiff || recordDiff.entries.length === 0 ? (
         <p className="text-gray-500">
           No record differences between these serials.
@@ -151,7 +147,7 @@ export default function ZoneVersionDiff({
                 <span className="text-gray-500">{entry.record_type}</span>
                 {ttlChanged ? (
                   <span className="text-gray-400">
-                    TTL {formatTtl(fromTtl)} → {formatTtl(toTtl)}
+                    TTL {fromTtl} → {toTtl}
                   </span>
                 ) : (
                   ttl != null && (

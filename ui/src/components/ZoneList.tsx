@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
@@ -13,10 +14,13 @@ import { Zone } from "@/lib/types";
 import { toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
+import NotifyAllZones from "./NotifyAllZones";
+import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneListProps {
   onCreateZone: () => void;
@@ -26,8 +30,8 @@ interface ZoneFilters {
   name: string;
   mname: string;
   rname: string;
-  min_ttl: string;
-  max_ttl: string;
+  min_default_ttl: string;
+  max_default_ttl: string;
   serial: string;
 }
 
@@ -35,8 +39,8 @@ const defaultFilters: ZoneFilters = {
   name: "",
   mname: "",
   rname: "",
-  min_ttl: "",
-  max_ttl: "",
+  min_default_ttl: "",
+  max_default_ttl: "",
   serial: "",
 };
 
@@ -47,7 +51,9 @@ const countActiveFilters = (filters: ZoneFilters) =>
   Object.values(filters).filter((value) => value.trim() !== "").length;
 
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
+  const toast = useToast();
   const navigate = useNavigate();
+  const { globalAccess } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -112,8 +118,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           name: filters.name,
           mname: filters.mname,
           rname: filters.rname,
-          min_ttl: toFilterNumber(filters.min_ttl),
-          max_ttl: toFilterNumber(filters.max_ttl),
+          min_default_ttl: toFilterNumber(filters.min_default_ttl),
+          max_default_ttl: toFilterNumber(filters.max_default_ttl),
           serial: toFilterNumber(filters.serial),
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
@@ -153,7 +159,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
 
   // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
-    if (zones.length === 0) {
+    // The status endpoint needs a global token.
+    if (!globalAccess || zones.length === 0) {
       return;
     }
 
@@ -194,19 +201,21 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [zones]);
+  }, [zones, globalAccess]);
 
   const handleDelete = async (zone: Zone) => {
-    if (window.confirm("Are you sure you want to delete this zone?")) {
+    if (
+      window.confirm(`Delete "${zone.name}"? All of its records go with it.`)
+    ) {
       try {
-        await deleteZone(zone.name);
+        toast.success(await deleteZone(zone.name));
         if (zones.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
           setRefreshKey((prev) => prev + 1);
         }
       } catch (error) {
-        alert(getErrorMessage(error, "Failed to delete zone"));
+        toast.error(getErrorMessage(error, "Failed to delete zone"));
       }
     }
   };
@@ -251,9 +260,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           }}
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
-        <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
-          Create Zone
-        </button>
+        {globalAccess && (
+          <div className="flex flex-col sm:flex-row gap-2">
+            <NotifyAllZones />
+            <button
+              onClick={onCreateZone}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Create Zone
+            </button>
+          </div>
+        )}
       </div>
       <FilterPanel
         activeCount={activeFilterCount}
@@ -281,18 +298,18 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("rname", value)}
         />
         <FilterField
-          id="filter_zone_min_ttl"
-          label="Min TTL"
+          id="filter_zone_min_default_ttl"
+          label="Min Default TTL"
           type="number"
-          value={filters.min_ttl}
-          onChange={(value) => handleFilterChange("min_ttl", value)}
+          value={filters.min_default_ttl}
+          onChange={(value) => handleFilterChange("min_default_ttl", value)}
         />
         <FilterField
-          id="filter_zone_max_ttl"
-          label="Max TTL"
+          id="filter_zone_max_default_ttl"
+          label="Max Default TTL"
           type="number"
-          value={filters.max_ttl}
-          onChange={(value) => handleFilterChange("max_ttl", value)}
+          value={filters.max_default_ttl}
+          onChange={(value) => handleFilterChange("max_default_ttl", value)}
         />
         <FilterField
           id="filter_zone_serial"
@@ -304,10 +321,10 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       </FilterPanel>
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
-        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Notice tone="error" className="mx-4 mb-4">
           {error}
           {zones.length > 0 && " — showing the last results that loaded."}
-        </p>
+        </Notice>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
@@ -373,15 +390,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Records
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImportingZone(zone);
-                      }}
-                      className="font-medium text-purple-600 hover:underline"
-                    >
-                      Import
-                    </button>
+                    {globalAccess && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImportingZone(zone);
+                        }}
+                        className="font-medium text-purple-600 hover:underline"
+                      >
+                        Import
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -391,15 +410,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Export
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(zone);
-                      }}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    {globalAccess && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(zone);
+                        }}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

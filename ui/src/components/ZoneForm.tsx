@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { createZone, importZoneFile, updateZone } from "@/lib/api";
+import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneFormProps {
   zone: Zone | null;
@@ -38,6 +39,7 @@ const toFormString = (value: unknown, fallback: string) =>
   value === null || value === undefined ? fallback : String(value);
 
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
 
@@ -80,7 +82,8 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         mname: formData.mname,
         rname: formData.rname,
         default_ttl: toRequiredNumber(formData.default_ttl, "Default TTL"),
-        serial: toOptionalNumber(formData.serial, "Serial"),
+        // Only settable at creation.
+        serial: zone ? undefined : toOptionalNumber(formData.serial, "Serial"),
         refresh: toOptionalNumber(formData.refresh, "Refresh"),
         retry: toOptionalNumber(formData.retry, "Retry"),
         expire: toOptionalNumber(formData.expire, "Expire"),
@@ -97,35 +100,32 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         const content = zoneFileContent.trim();
         if (content) {
           try {
-            const result = await importZoneFile(payload.name, {
+            const result = await importZone(payload.name, {
               content,
               mode: "append",
             });
             if (result.errors.length > 0) {
-              alert(
+              toast.warning(
                 `Zone created, but no records were imported:\n${result.errors.join("\n")}`,
               );
             }
           } catch (error) {
-            alert(
-              `Zone created, but importing the zone file failed: ${getErrorMessage(
-                error,
-                "unknown error",
-              )}`,
+            toast.warning(
+              `Zone created, but importing the zone file failed: ${getErrorMessage(error, "unknown error")}`,
             );
           }
         }
       }
       onSuccess(savedZone);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to save zone"));
+      toast.error(getErrorMessage(error, "Failed to save zone"));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {zone ? "Edit Zone" : "Create New Zone"}
+        {zone ? "Edit Zone" : "Create Zone"}
       </h2>
 
       <div className="space-y-4">
@@ -290,6 +290,10 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.serial}
               onChange={handleChange}
               placeholder="Automatic"
+              disabled={zone !== null}
+              title={
+                zone ? "The serial can only be set at creation" : undefined
+              }
               className="w-full"
             />
           </div>
