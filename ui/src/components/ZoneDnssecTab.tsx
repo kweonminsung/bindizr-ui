@@ -106,7 +106,7 @@ export default function ZoneDnssecTab({
   const [skipDsCheckOnDsSeen, setSkipDsCheckOnDsSeen] = useState(false);
   const [skipHolddown, setSkipHolddown] = useState(false);
   const [parentNsAddrs, setParentNsAddrs] = useState("");
-  // The last parent check; a plain status refresh must not drop it.
+  // Separate from status so a refresh keeps the last check.
   const [delegation, setDelegation] = useState<DnssecDelegationInfo | null>(
     null,
   );
@@ -302,12 +302,11 @@ export default function ZoneDnssecTab({
       "Failed to set the parent nameservers",
     );
 
-  // A failed refresh must not report a mutation that already succeeded as failed.
   const refreshStatus = async () => {
     try {
       setStatus(await getDnssecStatus(zone.name));
     } catch {
-      /* the tab re-fetches on the next open */
+      /* the mutation already succeeded; the tab re-fetches on the next open */
     }
   };
 
@@ -477,7 +476,7 @@ export default function ZoneDnssecTab({
 
   const publishedKeys = status.keys.filter((key) => key.state === "published");
   const rolloverInProgress = publishedKeys.length > 0;
-  // The server rejects ds-seen for a ZSK-only rollover; those promote on a hold-down.
+  // ZSK-only rollovers promote on a hold-down, not on ds-seen.
   const awaitingDsSeen = publishedKeys.some((key) => key.role !== "zsk");
   // The server refuses a new rollover until every key is active again.
   const retiringKeys = status.keys.some((key) => key.state === "retired");
@@ -494,7 +493,7 @@ export default function ZoneDnssecTab({
       )
     : [];
 
-  // ZSKs have no DS; for the others the answer is known after a parent check.
+  // ZSKs have no DS; the rest need a parent check.
   const atParent = (key: DnssecKey) => {
     if (!delegation || key.role === "zsk") {
       return "-";
