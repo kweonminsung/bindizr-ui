@@ -14,6 +14,7 @@ import { Zone } from "@/lib/types";
 import { toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
+import NotifyAllZones from "./NotifyAllZones";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
@@ -260,12 +261,15 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
         {globalAccess && (
-          <button
-            onClick={onCreateZone}
-            className="btn-primary w-full sm:w-auto"
-          >
-            Create Zone
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <NotifyAllZones />
+            <button
+              onClick={onCreateZone}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Create Zone
+            </button>
+          </div>
         )}
       </div>
       <FilterPanel

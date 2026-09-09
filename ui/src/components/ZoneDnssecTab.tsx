@@ -379,7 +379,7 @@ export default function ZoneDnssecTab({
   }
 
   const policiesLink = (
-    <Link to="/dns/dnssec-policies" className="text-blue-600 hover:underline">
+    <Link to="/dnssec-policies" className="text-blue-600 hover:underline">
       DNSSEC policies
     </Link>
   );

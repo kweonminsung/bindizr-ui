@@ -14,11 +14,6 @@ interface NavLink {
   label: string;
 }
 
-const DNS_LINKS: NavLink[] = [
-  { to: "/dns/dnssec-policies", label: "DNSSEC Policies" },
-  { to: "/dns/notify", label: "Notify" },
-];
-
 const ACCESS_LINKS: NavLink[] = [
   { to: "/access/tokens", label: "API Tokens" },
   { to: "/access/tsig-keys", label: "TSIG Keys" },
@@ -93,7 +88,7 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { pathname } = useLocation();
-  // Both groups need a global token.
+  // The admin entries need a global token.
   const { globalAccess } = useBindizrToken();
 
   return (
@@ -136,12 +131,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </li>
             {globalAccess && (
               <>
-                <NavGroup
-                  label="DNS"
-                  basePath="/dns"
-                  links={DNS_LINKS}
-                  onNavigate={onClose}
-                />
+                <li>
+                  <Link
+                    to="/dnssec-policies"
+                    className={linkClasses(pathname, "/dnssec-policies")}
+                    onClick={onClose}
+                  >
+                    DNSSEC Policies
+                  </Link>
+                </li>
                 <NavGroup
                   label="Access"
                   basePath="/access"

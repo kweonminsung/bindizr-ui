@@ -17,7 +17,6 @@ import TsigKeysPage from "@/pages/TsigKeysPage";
 import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
-import NotifyPage from "@/pages/NotifyPage";
 
 /** Pages a scoped token is refused. */
 function GlobalOnly({ children }: { children: ReactElement }) {
@@ -31,7 +30,7 @@ function App() {
   const showSidebar = [
     "/records",
     "/zones",
-    "/dns",
+    "/dnssec-policies",
     "/access",
     "/settings",
   ].some((path) => location.pathname.startsWith(path));
@@ -65,11 +64,7 @@ function App() {
                   <Route path="/zones" element={<ZonesPage />} />
                   <Route path="/records" element={<RecordsPage />} />
                   <Route
-                    path="/dns"
-                    element={<Navigate to="/dns/dnssec-policies" replace />}
-                  />
-                  <Route
-                    path="/dns/dnssec-policies"
+                    path="/dnssec-policies"
                     element={
                       <GlobalOnly>
                         <DnssecPoliciesPage />
@@ -77,12 +72,16 @@ function App() {
                     }
                   />
                   <Route
+                    path="/dns"
+                    element={<Navigate to="/dnssec-policies" replace />}
+                  />
+                  <Route
+                    path="/dns/dnssec-policies"
+                    element={<Navigate to="/dnssec-policies" replace />}
+                  />
+                  <Route
                     path="/dns/notify"
-                    element={
-                      <GlobalOnly>
-                        <NotifyPage />
-                      </GlobalOnly>
-                    }
+                    element={<Navigate to="/zones" replace />}
                   />
                   <Route
                     path="/dns/tsig-keys"
@@ -115,7 +114,7 @@ function App() {
                   />
                   <Route
                     path="/settings/dns"
-                    element={<Navigate to="/dns/notify" replace />}
+                    element={<Navigate to="/zones" replace />}
                   />
                 </Routes>
               </main>
