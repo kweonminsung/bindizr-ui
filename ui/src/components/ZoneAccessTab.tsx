@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { focusLink } from "@/lib/focusName";
 import { Zone, ZoneGrant } from "@/lib/types";
 import Notice from "./Notice";
+import { isTokenExpired } from "./TokenDetails";
 
 interface ZoneAccessTabProps {
   zone: Zone;
@@ -18,6 +19,8 @@ interface ZoneAccessTabProps {
 
 interface AccessRow extends ZoneGrant {
   holder: string;
+  /** The holder can no longer use this grant. */
+  expired?: boolean;
 }
 
 interface AccessSectionProps {
@@ -28,7 +31,7 @@ interface AccessSectionProps {
   managePath: string;
   manageLabel: string;
   rows: AccessRow[];
-  /** Global holders need no grant, so they never appear in `rows`. */
+  /** Unexpired global holders need no grant, so they never appear in `rows`. */
   globals: string[];
 }
 
@@ -83,6 +86,11 @@ function AccessSection({
                     >
                       {row.holder}
                     </Link>
+                    {row.expired && (
+                      <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                        Expired
+                      </span>
+                    )}
                   </td>
                   <td
                     className="truncate px-3 py-2 font-mono text-gray-600"
@@ -157,14 +165,23 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
           getTsigKeys(),
         ]);
         if (active) {
+          const expiredTokens = new Set(
+            tokens.filter(isTokenExpired).map((token) => token.name),
+          );
           setTokenRows(
-            tokenGrants.map((grant) => ({ ...grant, holder: grant.api_token })),
+            tokenGrants.map((grant) => ({
+              ...grant,
+              holder: grant.api_token,
+              expired: expiredTokens.has(grant.api_token),
+            })),
           );
           setTsigRows(
             tsigGrants.map((grant) => ({ ...grant, holder: grant.tsig_key })),
           );
           setGlobalTokens(
-            tokens.filter((token) => token.global).map((token) => token.name),
+            tokens
+              .filter((token) => token.global && !isTokenExpired(token))
+              .map((token) => token.name),
           );
           setGlobalKeys(
             tsigKeys.filter((key) => key.global).map((key) => key.name),
