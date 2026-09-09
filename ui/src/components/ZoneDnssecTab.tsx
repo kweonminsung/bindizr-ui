@@ -62,6 +62,8 @@ const DS_CHECK_HINTS: Record<string, string> = {
     "Register the new DS at the parent, then use Check Parent DS to confirm it before retrying.",
   DNSSEC_DS_UNVERIFIED:
     "Set the parent nameservers below, or skip the check to proceed on your own word.",
+  DNSSEC_STATE_CHANGED:
+    "The zone's keys or parent nameservers changed while the parent was being asked. Retry.",
 };
 
 const describePolicy = (policy: DnssecPolicy) =>
@@ -71,13 +73,13 @@ const describePolicy = (policy: DnssecPolicy) =>
 
 /** The detail beside the state pill. */
 const describeDelegation = ({
-  parent_servers,
+  parent_ns_addrs,
   discovered,
   ds_state,
   ds_key_tags,
   ds_ttl,
 }: DnssecDelegationInfo) => {
-  const servers = `${parent_servers.join(", ")}${discovered ? " (discovered)" : ""}`;
+  const servers = `${parent_ns_addrs.join(", ")}${discovered ? " (discovered)" : ""}`;
   if (ds_state !== "published") {
     return `nothing served by ${servers}`;
   }

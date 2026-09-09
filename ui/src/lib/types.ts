@@ -375,10 +375,11 @@ export type DnssecDsState = "published" | "hidden";
 
 /** One of the zone's SEP keys against the parent's DS records. */
 export interface DnssecDelegationKeyInfo {
+  id: number;
   key_tag: number;
   role: Exclude<DnssecKeyRole, "zsk">;
   state: DnssecKeyState;
-  /** Whether the parent serves a DS for this key. */
+  /** Whether every parent server serves this key's DS (matched whole). */
   ds_published: boolean;
   /** When a `published` key's hold-down ends. */
   eligible_at?: string | null;
@@ -387,7 +388,7 @@ export interface DnssecDelegationKeyInfo {
 /** What the parent zone's servers answered when asked for the zone's DS. */
 export interface DnssecDelegationInfo {
   /** The zone's `parent_ns_addrs`, or the discovered parent's nameservers. */
-  parent_servers: string[];
+  parent_ns_addrs: string[];
   /** Whether the servers were discovered rather than configured on the zone. */
   discovered: boolean;
   ds_state: DnssecDsState;
