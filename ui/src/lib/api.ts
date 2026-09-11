@@ -589,7 +589,7 @@ export async function getDnssecStatus(zoneName: string): Promise<DnssecStatus> {
 
 export async function enableDnssec(
   zoneName: string,
-  payload: EnableDnssecPayload = {},
+  payload: EnableDnssecPayload,
 ): Promise<DnssecStatus> {
   const response = await apiFetch(
     `/zones/${encodeURIComponent(zoneName)}/dnssec`,

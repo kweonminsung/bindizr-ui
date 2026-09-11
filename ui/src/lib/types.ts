@@ -168,6 +168,9 @@ export interface ImportZonePayload {
   from_server?: string;
   mode?: ImportMode;
   dry_run?: boolean;
+  /** Pass over record types Bindizr does not store instead of failing the
+   * whole file; they are counted as skipped and listed in `skipped_records`. */
+  skip_unsupported?: boolean;
 }
 
 export interface ImportSummary {
@@ -185,6 +188,8 @@ export interface ImportZoneResult {
   summary: ImportSummary;
   diff: RecordDiff;
   errors: string[];
+  /** Records passed over under `skip_unsupported`. */
+  skipped_records?: string[];
 }
 
 export const TSIG_ALGORITHMS = [
@@ -381,16 +386,17 @@ export interface DnssecDelegationKeyInfo {
   state: DnssecKeyState;
   /** Whether every parent server serves this key's DS (matched whole). */
   ds_published: boolean;
+  /** Whether a parent serves the DS only in a digest type Bindizr cannot
+   * compute, leaving `ds_published` undecided rather than answered. */
+  ds_digest_unsupported: boolean;
   /** When a `published` key's hold-down ends. */
   eligible_at?: string | null;
 }
 
 /** What the parent zone's servers answered when asked for the zone's DS. */
 export interface DnssecDelegationInfo {
-  /** The zone's `parent_ns_addrs`, or the discovered parent's nameservers. */
+  /** The nameservers asked, from the zone's `parent_ns_addrs`. */
   parent_ns_addrs: string[];
-  /** Whether the servers were discovered rather than configured on the zone. */
-  discovered: boolean;
   ds_state: DnssecDsState;
   /** Key tags of the DS records the parent serves. */
   ds_key_tags: number[];
@@ -412,7 +418,14 @@ export interface DnssecStatus {
   withdrawing: boolean;
   serial: number;
   earliest_signature_expires_at?: string | null;
-  /** The parent nameservers configured on the zone; absent when discovered. */
+  /** Signatures the zone serves. */
+  signatures: number;
+  /** Signatures already past their expiration; any at all mean resolvers are
+   * failing to validate part of the zone. */
+  expired_signatures: number;
+  /** When the re-signer next has work; absent for an unsigned zone. */
+  next_resign_at?: string | null;
+  /** The parent nameservers configured on the zone; absent until DNSSEC is enabled. */
   parent_ns_addrs?: string | null;
   /** Present only when the status comes from a parent DS check. */
   delegation?: DnssecDelegationInfo | null;
@@ -421,8 +434,9 @@ export interface DnssecStatus {
 export interface EnableDnssecPayload {
   /** Name of the policy to sign under; defaults to `default`. */
   policy?: string | null;
-  /** Comma-separated `host[:port]` asked for the DS before disabling; omitted keeps the zone's setting, empty returns it to discovery. */
-  parent_ns_addrs?: string | null;
+  /** Comma-separated `host[:port]` asked for the zone's DS by every later
+   * check. Required: Bindizr does not discover the parent. */
+  parent_ns_addrs: string;
 }
 
 /** An omitted field keeps its value; an empty `parent_ns_addrs` returns the zone to discovery. */

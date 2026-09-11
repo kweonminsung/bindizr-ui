@@ -74,12 +74,11 @@ const describePolicy = (policy: DnssecPolicy) =>
 /** The detail beside the state pill. */
 const describeDelegation = ({
   parent_ns_addrs,
-  discovered,
   ds_state,
   ds_key_tags,
   ds_ttl,
 }: DnssecDelegationInfo) => {
-  const servers = `${parent_ns_addrs.join(", ")}${discovered ? " (discovered)" : ""}`;
+  const servers = parent_ns_addrs.join(", ");
   if (ds_state !== "published") {
     return `nothing served by ${servers}`;
   }
@@ -188,12 +187,9 @@ export default function ZoneDnssecTab({
     runAction(
       "enable",
       async () => {
-        const parentNs = parentNsAddrs.trim();
         const data = await enableDnssec(zone.name, {
           policy: policyName,
-          // Omitted keeps the zone's setting; given, even empty, replaces it.
-          parent_ns_addrs:
-            parentNs === (status?.parent_ns_addrs ?? "") ? undefined : parentNs,
+          parent_ns_addrs: parentNsAddrs.trim(),
         });
         setStatus(data);
         setParentNsAddrs(data.parent_ns_addrs ?? "");
@@ -293,11 +289,7 @@ export default function ZoneDnssecTab({
         setParentNsAddrs(data.parent_ns_addrs ?? "");
         // Checked against the old servers.
         setDelegation(null);
-        toast.success(
-          data.parent_ns_addrs
-            ? `Parent nameservers set to ${data.parent_ns_addrs}.`
-            : "Parent nameservers cleared; the parent is discovered.",
-        );
+        toast.success(`Parent nameservers set to ${data.parent_ns_addrs}.`);
       },
       "Failed to set the parent nameservers",
     );
@@ -451,12 +443,12 @@ export default function ZoneDnssecTab({
             id="dnssec_parent_ns_addrs"
             value={parentNsAddrs}
             onChange={(e) => setParentNsAddrs(e.target.value)}
-            placeholder="Discovered through the system resolver"
+            placeholder="a.gtld-servers.net, b.gtld-servers.net"
             className="w-full"
           />
           <p className="text-sm text-gray-500 mt-1">
-            Optional. Comma-separated host[:port] asked for the DS before
-            disabling; empty discovers the parent.
+            Required. Comma-separated host[:port] asked for this zone's DS by
+            every later check; Bindizr does not discover the parent.
           </p>
         </div>
 
@@ -464,7 +456,7 @@ export default function ZoneDnssecTab({
           <button
             type="button"
             onClick={handleEnable}
-            disabled={busy}
+            disabled={busy || parentNsAddrs.trim() === ""}
             className="btn-primary"
           >
             {pending === "enable" ? "Enabling..." : "Enable DNSSEC"}
@@ -547,6 +539,34 @@ export default function ZoneDnssecTab({
               {status.earliest_signature_expires_at
                 ? formatDateTime(status.earliest_signature_expires_at)
                 : "-"}
+            </p>
+          </div>
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-sm text-gray-500">Next Re-signing</p>
+            <p className="text-base text-gray-900">
+              {status.next_resign_at
+                ? formatDateTime(status.next_resign_at)
+                : "-"}
+            </p>
+          </div>
+          <div
+            className={`p-2.5 rounded-md border ${
+              status.expired_signatures > 0
+                ? "bg-red-50 border-red-200"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <p className="text-sm text-gray-500">Signatures</p>
+            <p
+              className={`text-base ${
+                status.expired_signatures > 0
+                  ? "text-red-700 font-semibold"
+                  : "text-gray-900"
+              }`}
+            >
+              {status.expired_signatures > 0
+                ? `${status.signatures} (${status.expired_signatures} expired)`
+                : status.signatures}
             </p>
           </div>
         </div>
