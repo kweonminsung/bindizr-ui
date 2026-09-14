@@ -36,18 +36,6 @@ const TIMING_FIELDS = [
     placeholder: "0",
     hint: "0 disables scheduled ZSK rollovers.",
   },
-  {
-    key: "rollover_publish_holddown_secs",
-    label: "Publish Hold-down (seconds)",
-    placeholder: "86400",
-    hint: "Wait before a pre-published key may start signing.",
-  },
-  {
-    key: "rollover_retire_holddown_secs",
-    label: "Retire Hold-down (seconds)",
-    placeholder: "172800",
-    hint: "Wait before a retired key leaves the zone.",
-  },
 ] as const;
 
 type TimingKey = (typeof TIMING_FIELDS)[number]["key"];
@@ -69,8 +57,6 @@ export default function DnssecPolicyForm({
     signature_validity_days: "",
     signature_refresh_days: "",
     zsk_lifetime_days: "",
-    rollover_publish_holddown_secs: "",
-    rollover_retire_holddown_secs: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -95,14 +81,6 @@ export default function DnssecPolicyForm({
         zsk_lifetime_days: toOptionalNumber(
           timing.zsk_lifetime_days,
           "ZSK lifetime",
-        ),
-        rollover_publish_holddown_secs: toOptionalNumber(
-          timing.rollover_publish_holddown_secs,
-          "Publish hold-down",
-        ),
-        rollover_retire_holddown_secs: toOptionalNumber(
-          timing.rollover_retire_holddown_secs,
-          "Retire hold-down",
         ),
       });
       onSuccess(policy);

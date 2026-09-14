@@ -104,6 +104,9 @@ export default function ConnectedTokenDetails({
                     <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Types
                     </th>
+                    <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Access
+                    </th>
                     <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Granted
                     </th>
@@ -134,6 +137,9 @@ export default function ConnectedTokenDetails({
                         title={grant.record_types}
                       >
                         {grant.record_types}
+                      </td>
+                      <td className="truncate px-3 py-2 text-gray-600">
+                        {grant.can_write ? "read-write" : "read-only"}
                       </td>
                       <td className="hidden sm:table-cell truncate px-3 py-2 text-gray-500">
                         {formatDateTime(grant.created_at)}

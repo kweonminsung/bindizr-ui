@@ -71,6 +71,20 @@ interface ListResponse<T> {
   pagination: Pagination;
 }
 
+/** The most one call returns; the HTTP API refuses more. */
+const MAX_PAGE_LIMIT = 1000;
+
+/** A listing the UI shows whole — keys, tokens, grants, policies, zones — asks
+ * for the largest page, since the HTTP API pages at 50 when asked for nothing. */
+const wholeListParams = () => {
+  const params = new URLSearchParams();
+  params.set("limit", String(MAX_PAGE_LIMIT));
+  return params;
+};
+
+const listItems = <T>(response: unknown): T[] =>
+  (response as ListResponse<T>).items;
+
 const toListResult = <T>(response: ListResponse<T>): ListResult<T> => ({
   items: response.items,
   pagination: response.pagination,
@@ -127,6 +141,7 @@ async function getZoneListResult(
   appendQueryParam(params, "min_default_ttl", queryParams.min_default_ttl);
   appendQueryParam(params, "max_default_ttl", queryParams.max_default_ttl);
   appendQueryParam(params, "serial", queryParams.serial);
+  appendQueryParam(params, "enabled", queryParams.enabled);
 
   const response = await apiFetch(
     withQuery("/zones", params),
@@ -135,11 +150,12 @@ async function getZoneListResult(
   return toListResult((await response.json()) as ListResponse<Zone>);
 }
 
-/** Without a limit the server returns every zone. */
+/** Every zone the token may see, in one page. */
 export async function getZones(
   queryParams: ZoneListQuery = {},
 ): Promise<Zone[]> {
-  return (await getZoneListResult(queryParams)).items;
+  return (await getZoneListResult({ limit: MAX_PAGE_LIMIT, ...queryParams }))
+    .items;
 }
 
 export async function getZonesPage(
@@ -386,8 +402,11 @@ export async function getZoneStatus(zoneName: string): Promise<ZoneStatus> {
 }
 
 export async function getTsigKeys(): Promise<TsigKey[]> {
-  const response = await apiFetch(`/tsig-keys`, "Failed to fetch TSIG keys");
-  return (await response.json()).tsig_keys as TsigKey[];
+  const response = await apiFetch(
+    withQuery(`/tsig-keys`, wholeListParams()),
+    "Failed to fetch TSIG keys",
+  );
+  return listItems<TsigKey>(await response.json());
 }
 
 interface TsigKeyEnvelope {
@@ -430,10 +449,13 @@ export async function deleteTsigKey(name: string): Promise<string> {
 
 export async function getTsigGrants(keyName: string): Promise<TsigGrant[]> {
   const response = await apiFetch(
-    `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
+    withQuery(
+      `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
+      wholeListParams(),
+    ),
     "Failed to fetch TSIG key grants",
   );
-  return (await response.json()).tsig_grants as TsigGrant[];
+  return listItems<TsigGrant>(await response.json());
 }
 
 export async function createTsigGrant(
@@ -468,15 +490,21 @@ export async function getZoneTsigGrants(
   zoneName: string,
 ): Promise<TsigGrant[]> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/tsig-grants`,
+    withQuery(
+      `/zones/${encodeURIComponent(zoneName)}/tsig-grants`,
+      wholeListParams(),
+    ),
     "Failed to fetch the zone's TSIG grants",
   );
-  return (await response.json()).tsig_grants as TsigGrant[];
+  return listItems<TsigGrant>(await response.json());
 }
 
 export async function getTokens(): Promise<ApiToken[]> {
-  const response = await apiFetch(`/tokens`, "Failed to fetch API tokens");
-  return (await response.json()).tokens as ApiToken[];
+  const response = await apiFetch(
+    withQuery(`/tokens`, wholeListParams()),
+    "Failed to fetch API tokens",
+  );
+  return listItems<ApiToken>(await response.json());
 }
 
 /** The calling token; 401 when Bindizr runs without auth. */
@@ -491,10 +519,10 @@ export async function getSelfToken(): Promise<ApiToken> {
 /** The calling token's grants; empty for a global token, 401 without auth. */
 export async function getSelfTokenGrants(): Promise<TokenGrant[]> {
   const response = await apiFetch(
-    `/tokens/self/grants`,
+    withQuery(`/tokens/self/grants`, wholeListParams()),
     "Failed to fetch the API token's zone access",
   );
-  return (await response.json()).token_grants as TokenGrant[];
+  return listItems<TokenGrant>(await response.json());
 }
 
 /** The secret is returned this once. */
@@ -519,10 +547,13 @@ export async function deleteToken(name: string): Promise<string> {
 
 export async function getTokenGrants(tokenName: string): Promise<TokenGrant[]> {
   const response = await apiFetch(
-    `/tokens/${encodeURIComponent(tokenName)}/grants`,
+    withQuery(
+      `/tokens/${encodeURIComponent(tokenName)}/grants`,
+      wholeListParams(),
+    ),
     "Failed to fetch API token grants",
   );
-  return (await response.json()).token_grants as TokenGrant[];
+  return listItems<TokenGrant>(await response.json());
 }
 
 export async function createTokenGrant(
@@ -557,10 +588,13 @@ export async function getZoneTokenGrants(
   zoneName: string,
 ): Promise<TokenGrant[]> {
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/token-grants`,
+    withQuery(
+      `/zones/${encodeURIComponent(zoneName)}/token-grants`,
+      wholeListParams(),
+    ),
     "Failed to fetch the zone's token grants",
   );
-  return (await response.json()).token_grants as TokenGrant[];
+  return listItems<TokenGrant>(await response.json());
 }
 
 /** Bumping the serial first makes secondaries transfer even when nothing changed. */
@@ -716,10 +750,10 @@ export async function cancelDnssecWithdrawal(
 
 export async function getDnssecPolicies(): Promise<DnssecPolicy[]> {
   const response = await apiFetch(
-    `/dnssec-policies`,
+    withQuery(`/dnssec-policies`, wholeListParams()),
     "Failed to fetch DNSSEC policies",
   );
-  return (await response.json()).dnssec_policies as DnssecPolicy[];
+  return listItems<DnssecPolicy>(await response.json());
 }
 
 export async function getDnssecPolicy(name: string): Promise<DnssecPolicy> {

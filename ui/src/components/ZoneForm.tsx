@@ -21,6 +21,9 @@ interface ZoneFormData {
   retry: string;
   expire: string;
   minimum_ttl: string;
+  description: string;
+  /** Edit only; a new zone is always served. */
+  enabled: boolean;
 }
 
 const defaultFormData: ZoneFormData = {
@@ -33,6 +36,8 @@ const defaultFormData: ZoneFormData = {
   retry: "3600",
   expire: "604800",
   minimum_ttl: "3600",
+  description: "",
+  enabled: true,
 };
 
 const toFormString = (value: unknown, fallback: string) =>
@@ -61,6 +66,8 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           zone.minimum_ttl,
           defaultFormData.minimum_ttl,
         ),
+        description: zone.description ?? "",
+        enabled: zone.enabled,
       });
       return;
     }
@@ -88,12 +95,16 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         retry: toOptionalNumber(formData.retry, "Retry"),
         expire: toOptionalNumber(formData.expire, "Expire"),
         minimum_ttl: toOptionalNumber(formData.minimum_ttl, "Minimum TTL"),
+        description: formData.description.trim(),
       };
 
       let savedZone: Zone;
 
       if (zone) {
-        savedZone = await updateZone(zone.name, payload);
+        savedZone = await updateZone(zone.name, {
+          ...payload,
+          enabled: formData.enabled,
+        });
       } else {
         savedZone = await createZone(payload);
 
@@ -298,6 +309,52 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-600 mb-1"
+          >
+            Description
+          </label>
+          <input
+            type="text"
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            maxLength={255}
+            placeholder="Free-text note for operators"
+            className="w-full"
+          />
+        </div>
+        {zone && (
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="enabled"
+              checked={formData.enabled}
+              onChange={(e) =>
+                setFormData((previous) => ({
+                  ...previous,
+                  enabled: e.target.checked,
+                }))
+              }
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-600">
+                Enabled
+              </span>
+              <span className="block text-sm text-gray-500">
+                Disabled, the secondaries drop the zone. Its records stay here,
+                editable.
+              </span>
+            </span>
+          </label>
+        )}
       </div>
 
       {!zone && (

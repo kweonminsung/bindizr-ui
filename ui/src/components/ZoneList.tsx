@@ -370,6 +370,14 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                       DNSSEC
                     </span>
                   )}
+                  {!zone.enabled && (
+                    <span
+                      className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                      title="The secondaries have dropped this zone. Its records stay here, editable."
+                    >
+                      Disabled
+                    </span>
+                  )}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {zone.mname}

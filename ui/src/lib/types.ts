@@ -11,6 +11,11 @@ export interface Zone {
   retry: number;
   expire: number;
   minimum_ttl: number;
+  /** Whether the DNS plane serves the zone. A disabled one stays editable but
+   * leaves the catalog and answers no transfer, so secondaries drop it. */
+  enabled: boolean;
+  /** Free-text note for operators; Bindizr never reads it. */
+  description: string | null;
 }
 
 export interface ZonePayload {
@@ -23,10 +28,15 @@ export interface ZonePayload {
   retry?: number | null;
   expire?: number | null;
   minimum_ttl?: number | null;
+  /** At most 255 characters; empty clears it. */
+  description?: string | null;
 }
 
 /** An omitted field keeps its value; a different `name` renames the zone. */
-export type UpdateZonePayload = Partial<Omit<ZonePayload, "serial">>;
+export type UpdateZonePayload = Partial<Omit<ZonePayload, "serial">> & {
+  /** `false` stops the DNS plane serving the zone without deleting it. */
+  enabled?: boolean | null;
+};
 
 export type RecordValue = string | string[];
 
@@ -219,22 +229,27 @@ export interface CreateTsigKeyPayload {
   global?: boolean;
 }
 
-/** One zone granted to a token or TSIG key; the pattern and types narrow writes only. */
+/** One zone granted to a token or TSIG key; the pattern and types narrow it. */
 export interface ZoneGrant {
   id: number;
   zone_name: string;
-  /** Writes only: `*` any name, `@` apex, `*.sub` subtree, or an exact relative name. */
+  /** `*` any name, `@` apex, `*.sub` subtree, or an exact relative name. */
   record_name_pattern: string;
-  /** Writes only: `*` or a comma-separated list of record types. */
+  /** `*` or a comma-separated list of record types. */
   record_types: string;
+  /** A read-only grant narrows reads the same way and writes nothing: for a
+   * token the zone stays visible, for a TSIG key the whole zone still
+   * transfers. */
+  can_write: boolean;
   created_at: string;
 }
 
-/** The pattern and types default to `*`. */
+/** The pattern and types default to `*`, and the grant to read-write. */
 export interface CreateZoneGrantPayload {
   zone_name: string;
   record_name_pattern?: string | null;
   record_types?: string | null;
+  can_write?: boolean;
 }
 
 export interface TsigGrant extends ZoneGrant {
@@ -320,8 +335,6 @@ export interface DnssecPolicy {
   signature_refresh_days: number;
   /** 0 disables scheduled ZSK rollovers. */
   zsk_lifetime_days: number;
-  rollover_publish_holddown_secs: number;
-  rollover_retire_holddown_secs: number;
   created_at: string;
 }
 
@@ -330,8 +343,6 @@ export interface DnssecPolicyTiming {
   signature_validity_days?: number | null;
   signature_refresh_days?: number | null;
   zsk_lifetime_days?: number | null;
-  rollover_publish_holddown_secs?: number | null;
-  rollover_retire_holddown_secs?: number | null;
 }
 
 /** Algorithm, denial and key layout are fixed once the policy exists. */
@@ -538,6 +549,8 @@ export interface ZoneListQuery extends PageQuery {
   min_default_ttl?: number;
   max_default_ttl?: number;
   serial?: number;
+  /** `true` keeps the zones the DNS plane serves, `false` the disabled ones. */
+  enabled?: boolean;
 }
 
 export interface RecordListQuery extends PageQuery {
