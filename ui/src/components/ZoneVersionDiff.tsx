@@ -133,7 +133,7 @@ export default function ZoneVersionDiff({
 
             return (
               <li
-                key={`${entry.name}-${entry.record_type}-${index}`}
+                key={`${entry.name}-${entry.type}-${index}`}
                 className={`flex items-baseline gap-2 rounded-md border px-2 py-1 text-sm ${CHANGE_STYLES[entry.change]}`}
               >
                 <span
@@ -144,7 +144,7 @@ export default function ZoneVersionDiff({
                 <span className="font-medium text-gray-900 break-all">
                   {entry.name}
                 </span>
-                <span className="text-gray-500">{entry.record_type}</span>
+                <span className="text-gray-500">{entry.type}</span>
                 {ttlChanged ? (
                   <span className="text-gray-400">
                     TTL {fromTtl} → {toTtl}

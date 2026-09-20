@@ -138,7 +138,7 @@ export default function RecordList({
         const data = await fetchPage({
           zone_name: zoneName,
           search: searchQuery,
-          record_type: requestedType,
+          type: requestedType,
           name: filters.name,
           value: filters.value,
           min_ttl: toFilterNumber(filters.min_ttl),
@@ -184,9 +184,10 @@ export default function RecordList({
     if (record.id == null) {
       return;
     }
-    if (window.confirm(`Delete ${record.name} ${record.record_type}?`)) {
+    if (window.confirm(`Delete ${record.name} ${record.type}?`)) {
       try {
-        toast.success(await deleteRecord(record.id));
+        await deleteRecord(record.id);
+        toast.success(`Deleted ${record.name} ${record.type}`);
         if (records.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
@@ -417,7 +418,7 @@ export default function RecordList({
                   )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                  {record.record_type}
+                  {record.type}
                 </td>
                 <td
                   className="hidden md:table-cell truncate px-6 py-4 text-gray-500"

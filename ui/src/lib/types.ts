@@ -63,7 +63,7 @@ export const PRIORITY_RECORD_TYPES: readonly RecordType[] = ["MX", "SRV"];
 export interface Record {
   id: number;
   name: string;
-  record_type: RecordType;
+  type: RecordType;
   value: RecordValue;
   zone_id: number;
   zone_name: string;
@@ -73,25 +73,21 @@ export interface Record {
 
 export interface CreateRecordPayload {
   name: string;
-  record_type: RecordType;
+  type: RecordType;
   value: RecordValue;
   zone_name: string;
   ttl?: number | null;
+  /** Only MX and SRV take one; omitted, it is served and compared as 10. */
   priority?: number | null;
 }
 
-/** An omitted field keeps its value; `value` is required when `record_type` changes. */
+/** An omitted field keeps its value; `value` is required when `type` changes. */
 export interface UpdateRecordPayload {
   name?: string;
-  record_type?: RecordType;
+  type?: RecordType;
   value?: RecordValue;
   ttl?: number | null;
   priority?: number | null;
-}
-
-export interface ZoneDetail {
-  zone: Zone;
-  records: Record[];
 }
 
 /** Types only the signer emits; they mark the derived rows. */
@@ -111,7 +107,7 @@ export interface SignedRecord {
   id?: number | null;
   name: string;
   /** A RecordType, or a derived DNSSEC type on derived rows. */
-  record_type: string;
+  type: string;
   value: RecordValue;
   zone_id: number;
   zone_name: string;
@@ -134,7 +130,7 @@ export interface RecordDiffValue {
 export interface RecordDiffEntry {
   change: RecordDiffChange;
   name: string;
-  record_type: string;
+  type: string;
   /** Empty for `added`. */
   from: RecordDiffValue[];
   /** Empty for `removed`. */
@@ -152,9 +148,48 @@ export interface RecordDiff {
   summary: RecordDiffSummary;
 }
 
+/** A record a write reports back; a dry run writes nothing to carry an id. */
+export interface WrittenRecord extends Omit<Record, "id"> {
+  id?: number | null;
+}
+
+/** A record write: the record it left, and the change as a diff. */
+export interface RecordWriteResult {
+  applied: boolean;
+  dry_run: boolean;
+  record: WrittenRecord;
+  diff: RecordDiff;
+}
+
+/** What a delete removed, or would have. Matching nothing is not an error. */
+export interface DeleteRecordsResult {
+  applied: boolean;
+  dry_run: boolean;
+  deleted: number;
+  records: WrittenRecord[];
+  diff: RecordDiff;
+}
+
+/** A zone write: its fields are the change, so there is no diff. */
+export interface ZoneWriteResult {
+  applied: boolean;
+  dry_run: boolean;
+  zone: Zone;
+}
+
+/** What deleting a zone takes with it; a dry run reports the counts only. */
+export interface DeleteZoneResult {
+  applied: boolean;
+  dry_run: boolean;
+  zone: Zone;
+  /** Counts of what goes with the zone, not the rows themselves. */
+  records: number;
+  versions: number;
+}
+
 export interface BulkRecordItem {
   name: string;
-  record_type: RecordType;
+  type: RecordType;
   value: RecordValue;
   ttl?: number | null;
   priority?: number | null;
@@ -164,7 +199,7 @@ export interface BulkRecordsResult {
   applied: boolean;
   dry_run: boolean;
   inserted: number;
-  records: Record[];
+  records: WrittenRecord[];
   diff: RecordDiff;
 }
 
@@ -178,6 +213,8 @@ export interface ImportZonePayload {
   from_server?: string;
   mode?: ImportMode;
   dry_run?: boolean;
+  /** Create the zone from the file's SOA; without it a miss is an error. */
+  create?: boolean;
   /** Pass over record types Bindizr does not store instead of failing the
    * whole file; they are counted as skipped and listed in `skipped_records`. */
   skip_unsupported?: boolean;
@@ -273,7 +310,7 @@ export interface ZoneVersion {
 /** Reconstructed from the zone's journal, so it has no id. */
 export interface VersionRecord {
   name: string;
-  record_type: string;
+  type: string;
   value: RecordValue;
   ttl: number;
   priority?: number | null;
@@ -558,7 +595,7 @@ export interface RecordListQuery extends PageQuery {
   search?: string;
   name?: string;
   /** A RecordType; signed listings also accept a derived DNSSEC type. */
-  record_type?: string;
+  type?: string;
   value?: string;
   ttl?: number;
   min_ttl?: number;

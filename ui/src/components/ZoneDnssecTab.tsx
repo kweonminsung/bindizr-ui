@@ -62,8 +62,6 @@ const DS_CHECK_HINTS: Record<string, string> = {
     "Register the new DS at the parent, then use Check Parent DS to confirm it before retrying.",
   DNSSEC_DS_UNVERIFIED:
     "Set the parent nameservers below, or skip the check to proceed on your own word.",
-  DNSSEC_STATE_CHANGED:
-    "The zone's keys or parent nameservers changed while the parent was being asked. Retry.",
 };
 
 const describePolicy = (policy: DnssecPolicy) =>

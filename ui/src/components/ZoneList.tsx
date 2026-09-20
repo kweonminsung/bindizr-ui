@@ -208,7 +208,10 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       window.confirm(`Delete "${zone.name}"? All of its records go with it.`)
     ) {
       try {
-        toast.success(await deleteZone(zone.name));
+        const removed = await deleteZone(zone.name);
+        toast.success(
+          `Deleted ${zone.name}: ${removed.records} records, ${removed.versions} versions`,
+        );
         if (zones.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {

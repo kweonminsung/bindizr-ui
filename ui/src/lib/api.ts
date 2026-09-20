@@ -9,6 +9,8 @@ import {
   CreateTsigGrantPayload,
   CreateTsigKeyPayload,
   CreatedToken,
+  DeleteRecordsResult,
+  DeleteZoneResult,
   DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
@@ -20,6 +22,7 @@ import {
   Pagination,
   Record,
   RecordListQuery,
+  RecordWriteResult,
   RollbackZoneResult,
   SignedRecord,
   TokenGrant,
@@ -32,10 +35,10 @@ import {
   VersionDetail,
   VersionDiff,
   Zone,
-  ZoneDetail,
   ZoneListQuery,
   ZonePayload,
   ZoneStatus,
+  ZoneWriteResult,
   ZoneVersion,
   ZoneVersionListQuery,
 } from "./types";
@@ -115,12 +118,14 @@ async function apiFetch(
   path: string,
   fallbackError: string,
   init: RequestInit = {},
+  /** Statuses whose body the caller reads itself instead of an error throwing. */
+  passThroughStatuses: number[] = [],
 ): Promise<Response> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: getLocalApiHeaders(),
   });
-  if (!response.ok) {
+  if (!response.ok && !passThroughStatuses.includes(response.status)) {
     const { message, code } = await parseJsonError(response, fallbackError);
     console.error(`${fallbackError}:`, message);
     throw new ApiError(message, response.status, code);
@@ -172,7 +177,7 @@ const recordListParams = (queryParams: RecordListQuery) => {
   appendQueryParam(params, "zone_name", queryParams.zone_name);
   appendQueryParam(params, "search", queryParams.search?.trim());
   appendQueryParam(params, "name", queryParams.name?.trim());
-  appendQueryParam(params, "record_type", queryParams.record_type);
+  appendQueryParam(params, "type", queryParams.type);
   appendQueryParam(params, "value", queryParams.value?.trim());
   appendQueryParam(params, "ttl", queryParams.ttl);
   appendQueryParam(params, "min_ttl", queryParams.min_ttl);
@@ -212,19 +217,13 @@ export async function getRecord(id: number): Promise<Record> {
   return (await response.json()).record as Record;
 }
 
-export async function getZone(
-  name: string,
-  includeRecords = false,
-): Promise<ZoneDetail> {
-  const params = new URLSearchParams();
-  appendQueryParam(params, "records", includeRecords || undefined);
-
+/** The zone's SOA metadata alone; its records are a `getRecordsPage` call. */
+export async function getZone(name: string): Promise<Zone> {
   const response = await apiFetch(
-    withQuery(`/zones/${encodeURIComponent(name)}`, params),
+    `/zones/${encodeURIComponent(name)}`,
     "Failed to fetch zone",
   );
-  const data = (await response.json()) as ZoneDetail;
-  return { zone: data.zone, records: data.records ?? [] };
+  return (await response.json()).zone as Zone;
 }
 
 export async function createZone(zone: ZonePayload): Promise<Zone> {
@@ -232,7 +231,7 @@ export async function createZone(zone: ZonePayload): Promise<Zone> {
     method: "POST",
     body: JSON.stringify(zone),
   });
-  return (await response.json()).zone as Zone;
+  return ((await response.json()) as ZoneWriteResult).zone;
 }
 
 export async function createRecord(
@@ -242,7 +241,8 @@ export async function createRecord(
     method: "POST",
     body: JSON.stringify(record),
   });
-  return (await response.json()).record as Record;
+  // An applied write carries the id only a dry run would have left out.
+  return ((await response.json()) as RecordWriteResult).record as Record;
 }
 
 export async function updateZone(
@@ -257,16 +257,17 @@ export async function updateZone(
       body: JSON.stringify(zone),
     },
   );
-  return (await response.json()).zone as Zone;
+  return ((await response.json()) as ZoneWriteResult).zone;
 }
 
-export async function deleteZone(name: string): Promise<string> {
+/** Answers with what went: the zone, and the records and versions it took. */
+export async function deleteZone(name: string): Promise<DeleteZoneResult> {
   const response = await apiFetch(
     `/zones/${encodeURIComponent(name)}`,
     "Failed to delete zone",
     { method: "DELETE" },
   );
-  return (await response.json()).message as string;
+  return (await response.json()) as DeleteZoneResult;
 }
 
 export async function updateRecord(
@@ -277,14 +278,14 @@ export async function updateRecord(
     method: "PUT",
     body: JSON.stringify(record),
   });
-  return (await response.json()).record as Record;
+  return ((await response.json()) as RecordWriteResult).record as Record;
 }
 
-export async function deleteRecord(id: number): Promise<string> {
+export async function deleteRecord(id: number): Promise<DeleteRecordsResult> {
   const response = await apiFetch(`/records/${id}`, "Failed to delete record", {
     method: "DELETE",
   });
-  return (await response.json()).message as string;
+  return (await response.json()) as DeleteRecordsResult;
 }
 
 export async function importZone(
@@ -298,6 +299,7 @@ export async function importZone(
       method: "POST",
       body: JSON.stringify(payload),
     },
+    [422],
   );
   return (await response.json()) as ImportZoneResult;
 }

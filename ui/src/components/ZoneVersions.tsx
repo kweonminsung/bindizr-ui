@@ -223,11 +223,9 @@ export default function ZoneVersions({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {records.map((record, index) => (
-                  <tr key={`${record.name}-${record.record_type}-${index}`}>
+                  <tr key={`${record.name}-${record.type}-${index}`}>
                     <td className="px-3 py-2 text-gray-900">{record.name}</td>
-                    <td className="px-3 py-2 text-gray-500">
-                      {record.record_type}
-                    </td>
+                    <td className="px-3 py-2 text-gray-500">{record.type}</td>
                     <td className="px-3 py-2 text-gray-500 break-all">
                       {formatRecordValue(record.value)}
                     </td>
