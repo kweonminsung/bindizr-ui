@@ -30,7 +30,7 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
       if (bumpSerial && onZoneChanged) {
         // Best-effort: the NOTIFY already went out either way.
         try {
-          onZoneChanged((await getZone(zone.name)).zone);
+          onZoneChanged(await getZone(zone.name));
         } catch {
           /* the list refetches on close */
         }

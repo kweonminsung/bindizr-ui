@@ -1,7 +1,5 @@
 import {
   ApiToken,
-  BulkRecordItem,
-  BulkRecordsResult,
   CreateDnssecPolicyPayload,
   CreateRecordPayload,
   CreateTokenGrantPayload,
@@ -9,6 +7,8 @@ import {
   CreateTsigGrantPayload,
   CreateTsigKeyPayload,
   CreatedToken,
+  DeleteRecordsResult,
+  DeleteZoneResult,
   DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
@@ -20,6 +20,7 @@ import {
   Pagination,
   Record,
   RecordListQuery,
+  RecordWriteResult,
   RollbackZoneResult,
   SignedRecord,
   TokenGrant,
@@ -32,10 +33,10 @@ import {
   VersionDetail,
   VersionDiff,
   Zone,
-  ZoneDetail,
   ZoneListQuery,
   ZonePayload,
   ZoneStatus,
+  ZoneWriteResult,
   ZoneVersion,
   ZoneVersionListQuery,
 } from "./types";
@@ -71,6 +72,34 @@ interface ListResponse<T> {
   pagination: Pagination;
 }
 
+/** The most one call returns; the HTTP API refuses more. */
+const MAX_PAGE_LIMIT = 1000;
+
+/** Every item of a listing the UI shows whole; the API caps one call at
+ * MAX_PAGE_LIMIT, so keep asking until the reported total is in hand. */
+async function getAllItems<T>(
+  path: string,
+  fallbackError: string,
+  baseParams: URLSearchParams = new URLSearchParams(),
+): Promise<T[]> {
+  const items: T[] = [];
+
+  for (;;) {
+    const params = new URLSearchParams(baseParams);
+    params.set("limit", String(MAX_PAGE_LIMIT));
+    params.set("offset", String(items.length));
+
+    const response = await apiFetch(withQuery(path, params), fallbackError);
+    const page = (await response.json()) as ListResponse<T>;
+    items.push(...page.items);
+
+    // An empty page ends it too, so a shrinking total cannot spin.
+    if (page.items.length === 0 || items.length >= page.pagination.total) {
+      return items;
+    }
+  }
+}
+
 const toListResult = <T>(response: ListResponse<T>): ListResult<T> => ({
   items: response.items,
   pagination: response.pagination,
@@ -101,12 +130,14 @@ async function apiFetch(
   path: string,
   fallbackError: string,
   init: RequestInit = {},
+  /** Statuses whose body the caller reads itself instead of an error throwing. */
+  passThroughStatuses: number[] = [],
 ): Promise<Response> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: getLocalApiHeaders(),
   });
-  if (!response.ok) {
+  if (!response.ok && !passThroughStatuses.includes(response.status)) {
     const { message, code } = await parseJsonError(response, fallbackError);
     console.error(`${fallbackError}:`, message);
     throw new ApiError(message, response.status, code);
@@ -114,9 +145,7 @@ async function apiFetch(
   return response;
 }
 
-async function getZoneListResult(
-  queryParams: ZoneListQuery = {},
-): Promise<ListResult<Zone>> {
+const zoneListParams = (queryParams: ZoneListQuery) => {
   const params = pageParams(queryParams);
   appendQueryParam(params, "search", queryParams.search?.trim());
   appendQueryParam(params, "name", queryParams.name?.trim());
@@ -127,19 +156,37 @@ async function getZoneListResult(
   appendQueryParam(params, "min_default_ttl", queryParams.min_default_ttl);
   appendQueryParam(params, "max_default_ttl", queryParams.max_default_ttl);
   appendQueryParam(params, "serial", queryParams.serial);
+  appendQueryParam(params, "enabled", queryParams.enabled);
+  appendQueryParam(params, "signed", queryParams.signed);
+  appendQueryParam(params, "min_serial", queryParams.min_serial);
+  appendQueryParam(params, "max_serial", queryParams.max_serial);
+  appendQueryParam(params, "created_after", queryParams.created_after);
+  appendQueryParam(params, "created_before", queryParams.created_before);
+  appendQueryParam(params, "sort", queryParams.sort);
+  appendQueryParam(params, "order", queryParams.order);
+  return params;
+};
 
+async function getZoneListResult(
+  queryParams: ZoneListQuery = {},
+): Promise<ListResult<Zone>> {
   const response = await apiFetch(
-    withQuery("/zones", params),
+    withQuery("/zones", zoneListParams(queryParams)),
     "Failed to fetch zones",
   );
   return toListResult((await response.json()) as ListResponse<Zone>);
 }
 
-/** Without a limit the server returns every zone. */
+/** Every zone the token may see; the paging is this call's, so it takes
+ * filters alone. */
 export async function getZones(
-  queryParams: ZoneListQuery = {},
+  queryParams: Omit<ZoneListQuery, keyof PageQuery> = {},
 ): Promise<Zone[]> {
-  return (await getZoneListResult(queryParams)).items;
+  return getAllItems<Zone>(
+    "/zones",
+    "Failed to fetch zones",
+    zoneListParams(queryParams),
+  );
 }
 
 export async function getZonesPage(
@@ -156,7 +203,7 @@ const recordListParams = (queryParams: RecordListQuery) => {
   appendQueryParam(params, "zone_name", queryParams.zone_name);
   appendQueryParam(params, "search", queryParams.search?.trim());
   appendQueryParam(params, "name", queryParams.name?.trim());
-  appendQueryParam(params, "record_type", queryParams.record_type);
+  appendQueryParam(params, "type", queryParams.type);
   appendQueryParam(params, "value", queryParams.value?.trim());
   appendQueryParam(params, "ttl", queryParams.ttl);
   appendQueryParam(params, "min_ttl", queryParams.min_ttl);
@@ -164,6 +211,8 @@ const recordListParams = (queryParams: RecordListQuery) => {
   appendQueryParam(params, "priority", queryParams.priority);
   appendQueryParam(params, "min_priority", queryParams.min_priority);
   appendQueryParam(params, "max_priority", queryParams.max_priority);
+  appendQueryParam(params, "sort", queryParams.sort);
+  appendQueryParam(params, "order", queryParams.order);
   return params;
 };
 
@@ -191,24 +240,13 @@ export async function getSignedRecordsPage(
   return toListResult((await response.json()) as ListResponse<SignedRecord>);
 }
 
-export async function getRecord(id: number): Promise<Record> {
-  const response = await apiFetch(`/records/${id}`, "Failed to fetch record");
-  return (await response.json()).record as Record;
-}
-
-export async function getZone(
-  name: string,
-  includeRecords = false,
-): Promise<ZoneDetail> {
-  const params = new URLSearchParams();
-  appendQueryParam(params, "records", includeRecords || undefined);
-
+/** The zone's SOA metadata alone; its records are a `getRecordsPage` call. */
+export async function getZone(name: string): Promise<Zone> {
   const response = await apiFetch(
-    withQuery(`/zones/${encodeURIComponent(name)}`, params),
+    `/zones/${encodeURIComponent(name)}`,
     "Failed to fetch zone",
   );
-  const data = (await response.json()) as ZoneDetail;
-  return { zone: data.zone, records: data.records ?? [] };
+  return (await response.json()).zone as Zone;
 }
 
 export async function createZone(zone: ZonePayload): Promise<Zone> {
@@ -216,7 +254,7 @@ export async function createZone(zone: ZonePayload): Promise<Zone> {
     method: "POST",
     body: JSON.stringify(zone),
   });
-  return (await response.json()).zone as Zone;
+  return ((await response.json()) as ZoneWriteResult).zone;
 }
 
 export async function createRecord(
@@ -226,7 +264,8 @@ export async function createRecord(
     method: "POST",
     body: JSON.stringify(record),
   });
-  return (await response.json()).record as Record;
+  // An applied write carries the id only a dry run would have left out.
+  return ((await response.json()) as RecordWriteResult).record as Record;
 }
 
 export async function updateZone(
@@ -241,16 +280,24 @@ export async function updateZone(
       body: JSON.stringify(zone),
     },
   );
-  return (await response.json()).zone as Zone;
+  return ((await response.json()) as ZoneWriteResult).zone;
 }
 
-export async function deleteZone(name: string): Promise<string> {
+/** What went: the zone, and the records and versions it took. A dry run
+ * reports the counts and removes nothing. */
+export async function deleteZone(
+  name: string,
+  dryRun = false,
+): Promise<DeleteZoneResult> {
+  const params = new URLSearchParams();
+  appendQueryParam(params, "dry_run", dryRun || undefined);
+
   const response = await apiFetch(
-    `/zones/${encodeURIComponent(name)}`,
+    withQuery(`/zones/${encodeURIComponent(name)}`, params),
     "Failed to delete zone",
     { method: "DELETE" },
   );
-  return (await response.json()).message as string;
+  return (await response.json()) as DeleteZoneResult;
 }
 
 export async function updateRecord(
@@ -261,14 +308,14 @@ export async function updateRecord(
     method: "PUT",
     body: JSON.stringify(record),
   });
-  return (await response.json()).record as Record;
+  return ((await response.json()) as RecordWriteResult).record as Record;
 }
 
-export async function deleteRecord(id: number): Promise<string> {
+export async function deleteRecord(id: number): Promise<DeleteRecordsResult> {
   const response = await apiFetch(`/records/${id}`, "Failed to delete record", {
     method: "DELETE",
   });
-  return (await response.json()).message as string;
+  return (await response.json()) as DeleteRecordsResult;
 }
 
 export async function importZone(
@@ -282,6 +329,7 @@ export async function importZone(
       method: "POST",
       body: JSON.stringify(payload),
     },
+    [422],
   );
   return (await response.json()) as ImportZoneResult;
 }
@@ -298,22 +346,6 @@ export async function exportZone(
     "Failed to export zone",
   );
   return response.text();
-}
-
-export async function createRecordsBulk(
-  zoneName: string,
-  records: BulkRecordItem[],
-  dryRun = false,
-): Promise<BulkRecordsResult> {
-  const response = await apiFetch(
-    "/records/bulk",
-    "Failed to bulk create records",
-    {
-      method: "POST",
-      body: JSON.stringify({ zone_name: zoneName, records, dry_run: dryRun }),
-    },
-  );
-  return (await response.json()) as BulkRecordsResult;
 }
 
 export async function getZoneVersionsPage(
@@ -386,8 +418,7 @@ export async function getZoneStatus(zoneName: string): Promise<ZoneStatus> {
 }
 
 export async function getTsigKeys(): Promise<TsigKey[]> {
-  const response = await apiFetch(`/tsig-keys`, "Failed to fetch TSIG keys");
-  return (await response.json()).tsig_keys as TsigKey[];
+  return getAllItems<TsigKey>("/tsig-keys", "Failed to fetch TSIG keys");
 }
 
 interface TsigKeyEnvelope {
@@ -429,11 +460,10 @@ export async function deleteTsigKey(name: string): Promise<string> {
 }
 
 export async function getTsigGrants(keyName: string): Promise<TsigGrant[]> {
-  const response = await apiFetch(
+  return getAllItems<TsigGrant>(
     `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
     "Failed to fetch TSIG key grants",
   );
-  return (await response.json()).tsig_grants as TsigGrant[];
 }
 
 export async function createTsigGrant(
@@ -467,16 +497,14 @@ export async function deleteTsigGrant(
 export async function getZoneTsigGrants(
   zoneName: string,
 ): Promise<TsigGrant[]> {
-  const response = await apiFetch(
+  return getAllItems<TsigGrant>(
     `/zones/${encodeURIComponent(zoneName)}/tsig-grants`,
     "Failed to fetch the zone's TSIG grants",
   );
-  return (await response.json()).tsig_grants as TsigGrant[];
 }
 
 export async function getTokens(): Promise<ApiToken[]> {
-  const response = await apiFetch(`/tokens`, "Failed to fetch API tokens");
-  return (await response.json()).tokens as ApiToken[];
+  return getAllItems<ApiToken>("/tokens", "Failed to fetch API tokens");
 }
 
 /** The calling token; 401 when Bindizr runs without auth. */
@@ -490,11 +518,10 @@ export async function getSelfToken(): Promise<ApiToken> {
 
 /** The calling token's grants; empty for a global token, 401 without auth. */
 export async function getSelfTokenGrants(): Promise<TokenGrant[]> {
-  const response = await apiFetch(
+  return getAllItems<TokenGrant>(
     `/tokens/self/grants`,
     "Failed to fetch the API token's zone access",
   );
-  return (await response.json()).token_grants as TokenGrant[];
 }
 
 /** The secret is returned this once. */
@@ -518,11 +545,10 @@ export async function deleteToken(name: string): Promise<string> {
 }
 
 export async function getTokenGrants(tokenName: string): Promise<TokenGrant[]> {
-  const response = await apiFetch(
+  return getAllItems<TokenGrant>(
     `/tokens/${encodeURIComponent(tokenName)}/grants`,
     "Failed to fetch API token grants",
   );
-  return (await response.json()).token_grants as TokenGrant[];
 }
 
 export async function createTokenGrant(
@@ -556,11 +582,10 @@ export async function deleteTokenGrant(
 export async function getZoneTokenGrants(
   zoneName: string,
 ): Promise<TokenGrant[]> {
-  const response = await apiFetch(
+  return getAllItems<TokenGrant>(
     `/zones/${encodeURIComponent(zoneName)}/token-grants`,
     "Failed to fetch the zone's token grants",
   );
-  return (await response.json()).token_grants as TokenGrant[];
 }
 
 /** Bumping the serial first makes secondaries transfer even when nothing changed. */
@@ -589,7 +614,7 @@ export async function getDnssecStatus(zoneName: string): Promise<DnssecStatus> {
 
 export async function enableDnssec(
   zoneName: string,
-  payload: EnableDnssecPayload = {},
+  payload: EnableDnssecPayload,
 ): Promise<DnssecStatus> {
   const response = await apiFetch(
     `/zones/${encodeURIComponent(zoneName)}/dnssec`,
@@ -715,19 +740,10 @@ export async function cancelDnssecWithdrawal(
 }
 
 export async function getDnssecPolicies(): Promise<DnssecPolicy[]> {
-  const response = await apiFetch(
-    `/dnssec-policies`,
+  return getAllItems<DnssecPolicy>(
+    "/dnssec-policies",
     "Failed to fetch DNSSEC policies",
   );
-  return (await response.json()).dnssec_policies as DnssecPolicy[];
-}
-
-export async function getDnssecPolicy(name: string): Promise<DnssecPolicy> {
-  const response = await apiFetch(
-    `/dnssec-policies/${encodeURIComponent(name)}`,
-    "Failed to fetch DNSSEC policy",
-  );
-  return (await response.json()).dnssec_policy as DnssecPolicy;
 }
 
 export async function createDnssecPolicy(

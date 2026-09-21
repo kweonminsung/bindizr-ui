@@ -3,16 +3,21 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
+import { toDayEnd, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
+  getOrderFromSearchParams,
   getPageFromSearchParams,
   getPageSizeFromSearchParams,
+  getSortFromSearchParams,
   updatePageSizeSearchParam,
   updatePageSearchParam,
+  updateSortSearchParams,
 } from "@/lib/pageQuery";
-import { Zone } from "@/lib/types";
-import { toFilterNumber } from "@/lib/form";
-import FilterPanel, { FilterField } from "./FilterPanel";
+import { SortOrder, Zone, ZONE_SORT_FIELDS, ZoneSortField } from "@/lib/types";
+import { countActiveFilters, toFilterNumber } from "@/lib/form";
+import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
+import SortControl from "./SortControl";
 import Modal from "./Modal";
 import NotifyAllZones from "./NotifyAllZones";
 import Notice from "./Notice";
@@ -33,6 +38,12 @@ interface ZoneFilters {
   min_default_ttl: string;
   max_default_ttl: string;
   serial: string;
+  min_serial: string;
+  max_serial: string;
+  /** "" any, "true" signed, "false" unsigned. */
+  signed: string;
+  created_after: string;
+  created_before: string;
 }
 
 const defaultFilters: ZoneFilters = {
@@ -42,13 +53,30 @@ const defaultFilters: ZoneFilters = {
   min_default_ttl: "",
   max_default_ttl: "",
   serial: "",
+  min_serial: "",
+  max_serial: "",
+  signed: "",
+  created_after: "",
+  created_before: "",
 };
+
+const SIGNED_OPTIONS = [
+  { value: "", label: "Any" },
+  { value: "true", label: "Signed" },
+  { value: "false", label: "Unsigned" },
+] as const;
+
+const ZONE_SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "serial", label: "Serial" },
+  { value: "default_ttl", label: "Default TTL" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+const DEFAULT_ZONE_SORT: ZoneSortField = "name";
 
 /** Badge probes per batch, so a large page is not one burst. */
 const DNSSEC_PROBE_BATCH = 6;
-
-const countActiveFilters = (filters: ZoneFilters) =>
-  Object.values(filters).filter((value) => value.trim() !== "").length;
 
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const toast = useToast();
@@ -66,6 +94,12 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
+  const sort = getSortFromSearchParams(
+    searchParams,
+    ZONE_SORT_FIELDS,
+    DEFAULT_ZONE_SORT,
+  );
+  const order = getOrderFromSearchParams(searchParams);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   // Names of the listed zones that are DNSSEC-signed, for the name badge.
@@ -106,6 +140,18 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     handlePageChange(1);
   };
 
+  // URL-backed like the page: a sorted listing stays shareable.
+  const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
+    setSearchParams(
+      updateSortSearchParams(
+        searchParams,
+        nextSort,
+        nextOrder,
+        DEFAULT_ZONE_SORT,
+      ),
+    );
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -121,6 +167,13 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           min_default_ttl: toFilterNumber(filters.min_default_ttl),
           max_default_ttl: toFilterNumber(filters.max_default_ttl),
           serial: toFilterNumber(filters.serial),
+          min_serial: toFilterNumber(filters.min_serial),
+          max_serial: toFilterNumber(filters.max_serial),
+          signed: filters.signed === "" ? undefined : filters.signed === "true",
+          created_after: toDayStart(filters.created_after),
+          created_before: toDayEnd(filters.created_before),
+          sort,
+          order,
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
         });
@@ -150,7 +203,15 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
+  }, [
+    currentPage,
+    filters,
+    order,
+    refreshKey,
+    searchQuery,
+    sort,
+    zonesPerPage,
+  ]);
 
   // An explicit refresh re-probes; paging and filtering reuse the cache.
   useEffect(() => {
@@ -204,19 +265,42 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   }, [zones, globalAccess]);
 
   const handleDelete = async (zone: Zone) => {
+    // A zone delete cannot be undone, so the counts go in the prompt rather
+    // than in a toast once everything is already gone.
+    let preview;
+    try {
+      preview = await deleteZone(zone.name, true);
+    } catch (error) {
+      toast.error(
+        getErrorMessage(
+          error,
+          "Failed to check what deleting the zone removes",
+        ),
+      );
+      return;
+    }
+
+    const goesWithIt = `${preview.records} record${preview.records === 1 ? "" : "s"} and ${preview.versions} saved version${preview.versions === 1 ? "" : "s"}`;
     if (
-      window.confirm(`Delete "${zone.name}"? All of its records go with it.`)
+      !window.confirm(
+        `Delete "${zone.name}"?\n\n${goesWithIt} go with it. This cannot be undone.`,
+      )
     ) {
-      try {
-        toast.success(await deleteZone(zone.name));
-        if (zones.length === 1 && currentPage > 1) {
-          handlePageChange(currentPage - 1);
-        } else {
-          setRefreshKey((prev) => prev + 1);
-        }
-      } catch (error) {
-        toast.error(getErrorMessage(error, "Failed to delete zone"));
+      return;
+    }
+
+    try {
+      const removed = await deleteZone(zone.name);
+      toast.success(
+        `Deleted ${zone.name}: ${removed.records} records, ${removed.versions} versions`,
+      );
+      if (zones.length === 1 && currentPage > 1) {
+        handlePageChange(currentPage - 1);
+      } else {
+        setRefreshKey((prev) => prev + 1);
       }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to delete zone"));
     }
   };
 
@@ -258,19 +342,27 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             setSearchQuery(e.target.value);
             handlePageChange(1);
           }}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
+          className="w-full sm:w-auto"
         />
-        {globalAccess && (
-          <div className="flex flex-col sm:flex-row gap-2">
-            <NotifyAllZones />
-            <button
-              onClick={onCreateZone}
-              className="btn-primary w-full sm:w-auto"
-            >
-              Create Zone
-            </button>
-          </div>
-        )}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 sm:mt-0">
+          <SortControl
+            options={ZONE_SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
+          />
+          {globalAccess && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <NotifyAllZones />
+              <button
+                onClick={onCreateZone}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Create Zone
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <FilterPanel
         activeCount={activeFilterCount}
@@ -317,6 +409,41 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           type="number"
           value={filters.serial}
           onChange={(value) => handleFilterChange("serial", value)}
+        />
+        <FilterField
+          id="filter_zone_min_serial"
+          label="Min Serial"
+          type="number"
+          value={filters.min_serial}
+          onChange={(value) => handleFilterChange("min_serial", value)}
+        />
+        <FilterField
+          id="filter_zone_max_serial"
+          label="Max Serial"
+          type="number"
+          value={filters.max_serial}
+          onChange={(value) => handleFilterChange("max_serial", value)}
+        />
+        <FilterSelect
+          id="filter_zone_signed"
+          label="DNSSEC"
+          value={filters.signed}
+          onChange={(value) => handleFilterChange("signed", value)}
+          options={SIGNED_OPTIONS}
+        />
+        <FilterField
+          id="filter_zone_created_after"
+          label="Created After"
+          type="date"
+          value={filters.created_after}
+          onChange={(value) => handleFilterChange("created_after", value)}
+        />
+        <FilterField
+          id="filter_zone_created_before"
+          label="Created Before"
+          type="date"
+          value={filters.created_before}
+          onChange={(value) => handleFilterChange("created_before", value)}
         />
       </FilterPanel>
       {/* Not an early return: a rejected filter must stay correctable. */}
@@ -368,6 +495,14 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                   {dnssecZones.has(zone.name) && (
                     <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                       DNSSEC
+                    </span>
+                  )}
+                  {!zone.enabled && (
+                    <span
+                      className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                      title="The secondaries have dropped this zone. Its records stay here, editable."
+                    >
+                      Disabled
                     </span>
                   )}
                 </td>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { Record, SignedRecord } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import RecordForm from "./RecordForm";
@@ -15,10 +16,12 @@ export default function RecordDetails({
   onRecordChanged,
   defaultEditing = false,
 }: RecordDetailsProps) {
+  const { canWriteRecord } = useBindizrToken();
   const isDerived = record.id == null;
-  const [isEditing, setIsEditing] = useState(defaultEditing && !isDerived);
+  const canEdit = !isDerived && canWriteRecord(record);
+  const [isEditing, setIsEditing] = useState(defaultEditing && canEdit);
 
-  if (isEditing && !isDerived) {
+  if (isEditing && canEdit) {
     return (
       <RecordForm
         // A row with an id is a real user record.
@@ -37,7 +40,7 @@ export default function RecordDetails({
       <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-800 mb-4">
         <span className="break-all">{record.name}</span>
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-          {record.record_type}
+          {record.type}
         </span>
         {isDerived && (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
@@ -66,7 +69,7 @@ export default function RecordDetails({
         <div className="grid grid-cols-2 gap-2">
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Type</p>
-            <p className="text-base text-gray-900">{record.record_type}</p>
+            <p className="text-base text-gray-900">{record.type}</p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">TTL</p>
@@ -85,7 +88,7 @@ export default function RecordDetails({
         </div>
       </div>
 
-      {!isDerived && (
+      {canEdit && (
         <div className="flex justify-end">
           <button
             type="button"

@@ -55,7 +55,7 @@ interface FilterFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date";
   placeholder?: string;
 }
 
@@ -84,6 +84,48 @@ export function FilterField({
         placeholder={placeholder}
         className="w-full"
       />
+    </div>
+  );
+}
+
+interface FilterSelectProps {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** The empty value is the unfiltered one and comes first. */
+  options: readonly { value: string; label: string }[];
+}
+
+/** A filter over a fixed set of values rather than free text. */
+export function FilterSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+}: FilterSelectProps) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-gray-600 mb-1"
+      >
+        {label}
+      </label>
+      <select
+        id={id}
+        name={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

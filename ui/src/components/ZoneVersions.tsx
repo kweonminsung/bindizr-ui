@@ -20,6 +20,21 @@ interface ZoneVersionsProps {
   onRolledBack: (result: RollbackZoneResult) => void;
 }
 
+const CHANGE_SOURCE_STYLES: Record<string, string> = {
+  token: "bg-blue-100 text-blue-700",
+  nsupdate: "bg-purple-100 text-purple-700",
+  system: "bg-gray-100 text-gray-600",
+  local: "bg-amber-100 text-amber-700",
+};
+
+const CHANGE_SOURCE_HINTS: Record<string, string> = {
+  token: "Written over the HTTP API under an API token.",
+  nsupdate: "Written by an RFC 2136 dynamic update, under a TSIG key.",
+  system: "Written by bindizr itself — the DNSSEC signer or its scheduler.",
+  local:
+    "Written over the daemon socket (the CLI), or by any request while API authentication is off.",
+};
+
 export default function ZoneVersions({
   zone,
   onRolledBack,
@@ -223,11 +238,9 @@ export default function ZoneVersions({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {records.map((record, index) => (
-                  <tr key={`${record.name}-${record.record_type}-${index}`}>
+                  <tr key={`${record.name}-${record.type}-${index}`}>
                     <td className="px-3 py-2 text-gray-900">{record.name}</td>
-                    <td className="px-3 py-2 text-gray-500">
-                      {record.record_type}
-                    </td>
+                    <td className="px-3 py-2 text-gray-500">{record.type}</td>
                     <td className="px-3 py-2 text-gray-500 break-all">
                       {formatRecordValue(record.value)}
                     </td>
@@ -342,6 +355,9 @@ export default function ZoneVersions({
                 <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Changed By
+                </th>
                 <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Primary NS
                 </th>
@@ -366,6 +382,20 @@ export default function ZoneVersions({
                   </td>
                   <td className="px-3 py-2 text-gray-500">
                     {formatDateTime(version.created_at)}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500">
+                    <span className="break-all">
+                      {version.changed_by ?? "—"}
+                    </span>
+                    <span
+                      className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${CHANGE_SOURCE_STYLES[version.change_source] ?? "bg-gray-100 text-gray-600"}`}
+                      title={
+                        CHANGE_SOURCE_HINTS[version.change_source] ??
+                        "An unrecognised change source."
+                      }
+                    >
+                      {version.change_source}
+                    </span>
                   </td>
                   <td className="hidden sm:table-cell px-3 py-2 text-gray-500 break-all">
                     {version.mname}

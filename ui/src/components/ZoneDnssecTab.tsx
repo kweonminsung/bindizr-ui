@@ -62,8 +62,6 @@ const DS_CHECK_HINTS: Record<string, string> = {
     "Register the new DS at the parent, then use Check Parent DS to confirm it before retrying.",
   DNSSEC_DS_UNVERIFIED:
     "Set the parent nameservers below, or skip the check to proceed on your own word.",
-  DNSSEC_STATE_CHANGED:
-    "The zone's keys or parent nameservers changed while the parent was being asked. Retry.",
 };
 
 const describePolicy = (policy: DnssecPolicy) =>
@@ -74,12 +72,11 @@ const describePolicy = (policy: DnssecPolicy) =>
 /** The detail beside the state pill. */
 const describeDelegation = ({
   parent_ns_addrs,
-  discovered,
   ds_state,
   ds_key_tags,
   ds_ttl,
 }: DnssecDelegationInfo) => {
-  const servers = `${parent_ns_addrs.join(", ")}${discovered ? " (discovered)" : ""}`;
+  const servers = parent_ns_addrs.join(", ");
   if (ds_state !== "published") {
     return `nothing served by ${servers}`;
   }
@@ -188,12 +185,9 @@ export default function ZoneDnssecTab({
     runAction(
       "enable",
       async () => {
-        const parentNs = parentNsAddrs.trim();
         const data = await enableDnssec(zone.name, {
           policy: policyName,
-          // Omitted keeps the zone's setting; given, even empty, replaces it.
-          parent_ns_addrs:
-            parentNs === (status?.parent_ns_addrs ?? "") ? undefined : parentNs,
+          parent_ns_addrs: parentNsAddrs.trim(),
         });
         setStatus(data);
         setParentNsAddrs(data.parent_ns_addrs ?? "");
@@ -293,11 +287,7 @@ export default function ZoneDnssecTab({
         setParentNsAddrs(data.parent_ns_addrs ?? "");
         // Checked against the old servers.
         setDelegation(null);
-        toast.success(
-          data.parent_ns_addrs
-            ? `Parent nameservers set to ${data.parent_ns_addrs}.`
-            : "Parent nameservers cleared; the parent is discovered.",
-        );
+        toast.success(`Parent nameservers set to ${data.parent_ns_addrs}.`);
       },
       "Failed to set the parent nameservers",
     );
@@ -451,12 +441,12 @@ export default function ZoneDnssecTab({
             id="dnssec_parent_ns_addrs"
             value={parentNsAddrs}
             onChange={(e) => setParentNsAddrs(e.target.value)}
-            placeholder="Discovered through the system resolver"
+            placeholder="a.gtld-servers.net, b.gtld-servers.net"
             className="w-full"
           />
           <p className="text-sm text-gray-500 mt-1">
-            Optional. Comma-separated host[:port] asked for the DS before
-            disabling; empty discovers the parent.
+            Required. Comma-separated host[:port] asked for this zone's DS by
+            every later check; Bindizr does not discover the parent.
           </p>
         </div>
 
@@ -464,7 +454,7 @@ export default function ZoneDnssecTab({
           <button
             type="button"
             onClick={handleEnable}
-            disabled={busy}
+            disabled={busy || parentNsAddrs.trim() === ""}
             className="btn-primary"
           >
             {pending === "enable" ? "Enabling..." : "Enable DNSSEC"}
@@ -500,13 +490,26 @@ export default function ZoneDnssecTab({
     !!selectedPolicy && selectedPolicy.algorithm !== currentPolicy?.algorithm;
   const moveBlocked = rolloverInProgress || (retiringKeys && algorithmRollover);
 
-  // ZSKs have no DS; the rest need a parent check.
-  const atParent = (key: DnssecKey) => {
+  /** How the parent answered for one key: served, absent, or undecided.
+   * ZSKs carry no DS, so only the rest are checked. */
+  const atParent = (key: DnssecKey): { label: string; hint?: string } => {
     if (!delegation || key.role === "zsk") {
-      return "-";
+      return { label: "-" };
     }
     const checked = delegation.keys.find((entry) => entry.id === key.id);
-    return checked ? (checked.ds_published ? "Yes" : "No") : "-";
+    if (!checked) {
+      return { label: "-" };
+    }
+    if (checked.ds_published) {
+      return { label: "Yes" };
+    }
+    if (checked.ds_digest_unsupported) {
+      return {
+        label: "Unknown",
+        hint: "A parent serves this key's DS only in a digest type Bindizr cannot compute, so whether it matches is undecided.",
+      };
+    }
+    return { label: "No" };
   };
 
   return (
@@ -547,6 +550,34 @@ export default function ZoneDnssecTab({
               {status.earliest_signature_expires_at
                 ? formatDateTime(status.earliest_signature_expires_at)
                 : "-"}
+            </p>
+          </div>
+          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+            <p className="text-sm text-gray-500">Next Re-signing</p>
+            <p className="text-base text-gray-900">
+              {status.next_resign_at
+                ? formatDateTime(status.next_resign_at)
+                : "-"}
+            </p>
+          </div>
+          <div
+            className={`p-2.5 rounded-md border ${
+              status.expired_signatures > 0
+                ? "bg-red-50 border-red-200"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <p className="text-sm text-gray-500">Signatures</p>
+            <p
+              className={`text-base ${
+                status.expired_signatures > 0
+                  ? "text-red-700 font-semibold"
+                  : "text-gray-900"
+              }`}
+            >
+              {status.expired_signatures > 0
+                ? `${status.signatures} (${status.expired_signatures} expired)`
+                : status.signatures}
             </p>
           </div>
         </div>
@@ -631,15 +662,15 @@ export default function ZoneDnssecTab({
           <button
             type="button"
             onClick={handleSetParentNsAddrs}
-            disabled={busy || parentNsUnchanged}
+            disabled={busy || parentNsUnchanged || parentNsAddrs.trim() === ""}
             className="btn-primary whitespace-nowrap"
           >
             {pending === "parent-ns" ? "Saving..." : "Save"}
           </button>
         </div>
         <p className="text-sm text-gray-500">
-          Comma-separated host[:port] asked for the zone&apos;s DS before
-          disabling; empty discovers the parent.
+          Required. Comma-separated host[:port] asked for the zone&apos;s DS by
+          every later check; Bindizr does not discover the parent.
         </p>
       </div>
 
@@ -742,31 +773,39 @@ export default function ZoneDnssecTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {status.keys.map((key) => (
-                <tr key={key.id}>
-                  <td className="px-3 py-2 font-medium text-gray-900 uppercase">
-                    {key.role}
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${KEY_STATE_STYLES[key.state]}`}
+              {status.keys.map((key) => {
+                const parentAnswer = atParent(key);
+                return (
+                  <tr key={key.id}>
+                    <td className="px-3 py-2 font-medium text-gray-900 uppercase">
+                      {key.role}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${KEY_STATE_STYLES[key.state]}`}
+                      >
+                        {key.state}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-gray-500">{key.key_tag}</td>
+                    <td className="px-3 py-2 text-gray-500">{key.algorithm}</td>
+                    <td className="px-3 py-2 text-gray-500">
+                      {formatDateTime(key.state_changed_at)}
+                    </td>
+                    <td className="px-3 py-2 text-gray-500">
+                      {key.eligible_at
+                        ? `${key.state === "published" ? "Promotable" : "Removable"} ${formatDateTime(key.eligible_at)}`
+                        : "-"}
+                    </td>
+                    <td
+                      className="px-3 py-2 text-gray-500"
+                      title={parentAnswer.hint}
                     >
-                      {key.state}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-gray-500">{key.key_tag}</td>
-                  <td className="px-3 py-2 text-gray-500">{key.algorithm}</td>
-                  <td className="px-3 py-2 text-gray-500">
-                    {formatDateTime(key.state_changed_at)}
-                  </td>
-                  <td className="px-3 py-2 text-gray-500">
-                    {key.eligible_at
-                      ? `${key.state === "published" ? "Promotable" : "Removable"} ${formatDateTime(key.eligible_at)}`
-                      : "-"}
-                  </td>
-                  <td className="px-3 py-2 text-gray-500">{atParent(key)}</td>
-                </tr>
-              ))}
+                      {parentAnswer.label}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

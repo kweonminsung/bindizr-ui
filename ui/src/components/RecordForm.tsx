@@ -10,6 +10,7 @@ import {
   RecordType,
   Zone,
 } from "@/lib/types";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface RecordFormProps {
@@ -23,7 +24,7 @@ interface RecordFormProps {
 
 interface RecordFormData {
   name: string;
-  record_type: RecordType;
+  type: RecordType;
   value: string;
   ttl: string;
   priority: string;
@@ -32,7 +33,7 @@ interface RecordFormData {
 
 const defaultFormData: RecordFormData = {
   name: "",
-  record_type: "A",
+  type: "A",
   value: "",
   ttl: "3600",
   priority: "",
@@ -63,6 +64,8 @@ export default function RecordForm({
   zones = [],
 }: RecordFormProps) {
   const toast = useToast();
+  const { canCreateRecords } = useBindizrToken();
+  const writableZones = zones.filter((zone) => canCreateRecords(zone.name));
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
     zone_name: zoneName ?? "",
@@ -72,7 +75,7 @@ export default function RecordForm({
     if (record) {
       setFormData({
         name: record.name,
-        record_type: record.record_type,
+        type: record.type,
         value: recordValueToInput(record.value),
         ttl: String(record.ttl),
         priority: record.priority?.toString() ?? "",
@@ -87,7 +90,7 @@ export default function RecordForm({
     });
   }, [record, zoneName]);
 
-  const supportsPriority = PRIORITY_RECORD_TYPES.includes(formData.record_type);
+  const supportsPriority = PRIORITY_RECORD_TYPES.includes(formData.type);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -99,7 +102,7 @@ export default function RecordForm({
       ...prev,
       [name]: value,
       // Drop a priority left over from MX/SRV when switching to a type without one.
-      ...(name === "record_type" &&
+      ...(name === "type" &&
       !PRIORITY_RECORD_TYPES.includes(value as RecordType)
         ? { priority: "" }
         : {}),
@@ -123,7 +126,7 @@ export default function RecordForm({
 
       const payload = {
         name: formData.name,
-        record_type: formData.record_type,
+        type: formData.type,
         value,
         ttl: toOptionalNumber(formData.ttl, "TTL"),
         priority: supportsPriority
@@ -168,15 +171,15 @@ export default function RecordForm({
         </div>
         <div>
           <label
-            htmlFor="record_type"
+            htmlFor="type"
             className="block text-sm font-medium text-gray-600 mb-1"
           >
             Type
           </label>
           <select
-            id="record_type"
-            name="record_type"
-            value={formData.record_type}
+            id="type"
+            name="type"
+            value={formData.type}
             onChange={handleChange}
             className="w-full"
           >
@@ -201,7 +204,7 @@ export default function RecordForm({
             onChange={handleChange}
             required
             rows={3}
-            placeholder={VALUE_PLACEHOLDERS[formData.record_type]}
+            placeholder={VALUE_PLACEHOLDERS[formData.type]}
             className="w-full"
           />
         </div>
@@ -257,7 +260,7 @@ export default function RecordForm({
               className="w-full"
             >
               <option value="">Select a zone</option>
-              {zones.map((zone) => (
+              {writableZones.map((zone) => (
                 <option key={zone.id} value={zone.name}>
                   {zone.name}
                 </option>

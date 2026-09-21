@@ -53,9 +53,26 @@ const HOLDER_LABEL: Record<GrantHolderKind, string> = {
 
 const GRANT_NOTE: Record<GrantHolderKind, string> = {
   token:
-    "Each grant gives this token one zone. The pattern and types limit writes only.",
+    "Each grant gives this token one zone. The pattern and types narrow what it reads and writes there.",
   "tsig-key":
-    "Each grant lets this key send dynamic updates to one zone. The pattern and types limit which updates are accepted.",
+    "Each grant gives this key one zone: dynamic updates narrowed by the pattern and types, and — over the whole zone — transfers.",
+};
+
+const WRITE_LABEL: Record<GrantHolderKind, string> = {
+  token: "read-write",
+  "tsig-key": "transfer + update",
+};
+
+const READ_LABEL: Record<GrantHolderKind, string> = {
+  token: "read-only",
+  "tsig-key": "transfer only",
+};
+
+const READ_ONLY_HINT: Record<GrantHolderKind, string> = {
+  token:
+    "The zone stays visible, narrowed the same way, but nothing is written.",
+  "tsig-key":
+    "The key may pull the whole zone but send no updates. A grant narrowed by pattern or types transfers nothing either way.",
 };
 
 const GRANT_FORM_NOTE: Record<GrantHolderKind, string> = {
@@ -84,6 +101,7 @@ export default function ZoneGrantsPanel({
   const [zoneName, setZoneName] = useState("");
   const [pattern, setPattern] = useState(DEFAULT_PATTERN);
   const [recordTypes, setRecordTypes] = useState(DEFAULT_TYPES);
+  const [canWrite, setCanWrite] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -139,11 +157,13 @@ export default function ZoneGrantsPanel({
         zone_name: zoneName,
         record_name_pattern: pattern.trim() || DEFAULT_PATTERN,
         record_types: recordTypes.trim() || DEFAULT_TYPES,
+        can_write: canWrite,
       });
       setGrants((prev) => [...prev, created]);
       setZoneName("");
       setPattern(DEFAULT_PATTERN);
       setRecordTypes(DEFAULT_TYPES);
+      setCanWrite(true);
       toast.success(`Granted access to "${created.zone_name}".`);
       setTab("grants");
     } catch (grantError) {
@@ -206,6 +226,9 @@ export default function ZoneGrantsPanel({
                     <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Types
                     </th>
+                    <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Access
+                    </th>
                     <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created
                     </th>
@@ -232,6 +255,9 @@ export default function ZoneGrantsPanel({
                         title={grant.record_types}
                       >
                         {grant.record_types}
+                      </td>
+                      <td className="truncate px-3 py-2 text-gray-600">
+                        {grant.can_write ? WRITE_LABEL[kind] : READ_LABEL[kind]}
                       </td>
                       <td className="hidden sm:table-cell truncate px-3 py-2 text-gray-500">
                         {formatDateTime(grant.created_at)}
@@ -340,6 +366,23 @@ export default function ZoneGrantsPanel({
               </p>
             </div>
           </div>
+
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={!canWrite}
+              onChange={(e) => setCanWrite(!e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-600">
+                Read-only
+              </span>
+              <span className="block text-xs text-gray-500">
+                {READ_ONLY_HINT[kind]}
+              </span>
+            </span>
+          </label>
 
           <div className="flex justify-end">
             <button

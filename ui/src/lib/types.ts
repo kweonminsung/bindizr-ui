@@ -11,6 +11,11 @@ export interface Zone {
   retry: number;
   expire: number;
   minimum_ttl: number;
+  /** Whether the DNS plane serves the zone. A disabled one stays editable but
+   * leaves the catalog and answers no transfer, so secondaries drop it. */
+  enabled: boolean;
+  /** Free-text note for operators; Bindizr never reads it. */
+  description: string | null;
 }
 
 export interface ZonePayload {
@@ -23,10 +28,15 @@ export interface ZonePayload {
   retry?: number | null;
   expire?: number | null;
   minimum_ttl?: number | null;
+  /** At most 255 characters; empty clears it. */
+  description?: string | null;
 }
 
 /** An omitted field keeps its value; a different `name` renames the zone. */
-export type UpdateZonePayload = Partial<Omit<ZonePayload, "serial">>;
+export type UpdateZonePayload = Partial<Omit<ZonePayload, "serial">> & {
+  /** `false` stops the DNS plane serving the zone without deleting it. */
+  enabled?: boolean | null;
+};
 
 export type RecordValue = string | string[];
 
@@ -53,7 +63,7 @@ export const PRIORITY_RECORD_TYPES: readonly RecordType[] = ["MX", "SRV"];
 export interface Record {
   id: number;
   name: string;
-  record_type: RecordType;
+  type: RecordType;
   value: RecordValue;
   zone_id: number;
   zone_name: string;
@@ -63,25 +73,21 @@ export interface Record {
 
 export interface CreateRecordPayload {
   name: string;
-  record_type: RecordType;
+  type: RecordType;
   value: RecordValue;
   zone_name: string;
   ttl?: number | null;
+  /** Only MX and SRV take one; omitted, it is served and compared as 10. */
   priority?: number | null;
 }
 
-/** An omitted field keeps its value; `value` is required when `record_type` changes. */
+/** An omitted field keeps its value; `value` is required when `type` changes. */
 export interface UpdateRecordPayload {
   name?: string;
-  record_type?: RecordType;
+  type?: RecordType;
   value?: RecordValue;
   ttl?: number | null;
   priority?: number | null;
-}
-
-export interface ZoneDetail {
-  zone: Zone;
-  records: Record[];
 }
 
 /** Types only the signer emits; they mark the derived rows. */
@@ -101,13 +107,36 @@ export interface SignedRecord {
   id?: number | null;
   name: string;
   /** A RecordType, or a derived DNSSEC type on derived rows. */
-  record_type: string;
+  type: string;
   value: RecordValue;
   zone_id: number;
   zone_name: string;
   ttl: number;
   priority?: number | null;
 }
+
+export const SORT_ORDERS = ["asc", "desc"] as const;
+
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+export const ZONE_SORT_FIELDS = [
+  "name",
+  "serial",
+  "default_ttl",
+  "created_at",
+] as const;
+
+export type ZoneSortField = (typeof ZONE_SORT_FIELDS)[number];
+
+export const RECORD_SORT_FIELDS = [
+  "name",
+  "type",
+  "ttl",
+  "priority",
+  "created_at",
+] as const;
+
+export type RecordSortField = (typeof RECORD_SORT_FIELDS)[number];
 
 export const RECORD_DIFF_CHANGES = ["added", "removed", "changed"] as const;
 
@@ -124,7 +153,7 @@ export interface RecordDiffValue {
 export interface RecordDiffEntry {
   change: RecordDiffChange;
   name: string;
-  record_type: string;
+  type: string;
   /** Empty for `added`. */
   from: RecordDiffValue[];
   /** Empty for `removed`. */
@@ -142,20 +171,43 @@ export interface RecordDiff {
   summary: RecordDiffSummary;
 }
 
-export interface BulkRecordItem {
-  name: string;
-  record_type: RecordType;
-  value: RecordValue;
-  ttl?: number | null;
-  priority?: number | null;
+/** A record a write reports back; a dry run writes nothing to carry an id. */
+export interface WrittenRecord extends Omit<Record, "id"> {
+  id?: number | null;
 }
 
-export interface BulkRecordsResult {
+/** A record write: the record it left, and the change as a diff. */
+export interface RecordWriteResult {
   applied: boolean;
   dry_run: boolean;
-  inserted: number;
-  records: Record[];
+  record: WrittenRecord;
   diff: RecordDiff;
+}
+
+/** What a delete removed, or would have. Matching nothing is not an error. */
+export interface DeleteRecordsResult {
+  applied: boolean;
+  dry_run: boolean;
+  deleted: number;
+  records: WrittenRecord[];
+  diff: RecordDiff;
+}
+
+/** A zone write: its fields are the change, so there is no diff. */
+export interface ZoneWriteResult {
+  applied: boolean;
+  dry_run: boolean;
+  zone: Zone;
+}
+
+/** What deleting a zone takes with it; a dry run reports the counts only. */
+export interface DeleteZoneResult {
+  applied: boolean;
+  dry_run: boolean;
+  zone: Zone;
+  /** Counts of what goes with the zone, not the rows themselves. */
+  records: number;
+  versions: number;
 }
 
 export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
@@ -168,6 +220,11 @@ export interface ImportZonePayload {
   from_server?: string;
   mode?: ImportMode;
   dry_run?: boolean;
+  /** Create the zone from the file's SOA; without it a miss is an error. */
+  create?: boolean;
+  /** Pass over record types Bindizr does not store instead of failing the
+   * whole file; they are counted as skipped and listed in `skipped_records`. */
+  skip_unsupported?: boolean;
 }
 
 export interface ImportSummary {
@@ -185,6 +242,8 @@ export interface ImportZoneResult {
   summary: ImportSummary;
   diff: RecordDiff;
   errors: string[];
+  /** Records passed over under `skip_unsupported`. */
+  skipped_records?: string[];
 }
 
 export const TSIG_ALGORITHMS = [
@@ -192,8 +251,6 @@ export const TSIG_ALGORITHMS = [
   "hmac-sha384",
   "hmac-sha512",
 ] as const;
-
-export type TsigAlgorithm = (typeof TSIG_ALGORITHMS)[number];
 
 export interface TsigKey {
   id: number;
@@ -214,22 +271,27 @@ export interface CreateTsigKeyPayload {
   global?: boolean;
 }
 
-/** One zone granted to a token or TSIG key; the pattern and types narrow writes only. */
+/** One zone granted to a token or TSIG key; the pattern and types narrow it. */
 export interface ZoneGrant {
   id: number;
   zone_name: string;
-  /** Writes only: `*` any name, `@` apex, `*.sub` subtree, or an exact relative name. */
+  /** `*` any name, `@` apex, `*.sub` subtree, or an exact relative name. */
   record_name_pattern: string;
-  /** Writes only: `*` or a comma-separated list of record types. */
+  /** `*` or a comma-separated list of record types. */
   record_types: string;
+  /** A read-only grant narrows reads the same way and writes nothing: for a
+   * token the zone stays visible, for a TSIG key the whole zone still
+   * transfers. */
+  can_write: boolean;
   created_at: string;
 }
 
-/** The pattern and types default to `*`. */
+/** The pattern and types default to `*`, and the grant to read-write. */
 export interface CreateZoneGrantPayload {
   zone_name: string;
   record_name_pattern?: string | null;
   record_types?: string | null;
+  can_write?: boolean;
 }
 
 export interface TsigGrant extends ZoneGrant {
@@ -237,6 +299,12 @@ export interface TsigGrant extends ZoneGrant {
 }
 
 export type CreateTsigGrantPayload = CreateZoneGrantPayload;
+
+/** Which plane asked for a change: the API, an RFC 2136 update, the DNSSEC
+ * scheduler, or the daemon socket. */
+export const CHANGE_SOURCES = ["token", "nsupdate", "system", "local"] as const;
+
+export type ChangeSource = (typeof CHANGE_SOURCES)[number];
 
 export interface ZoneVersion {
   serial: number;
@@ -247,13 +315,16 @@ export interface ZoneVersion {
   retry: number;
   expire: number;
   minimum_ttl: number;
+  change_source: ChangeSource;
+  /** The API token or TSIG key it was made under; absent where none was. */
+  changed_by?: string | null;
   created_at: string;
 }
 
 /** Reconstructed from the zone's journal, so it has no id. */
 export interface VersionRecord {
   name: string;
-  record_type: string;
+  type: string;
   value: RecordValue;
   ttl: number;
   priority?: number | null;
@@ -315,8 +386,6 @@ export interface DnssecPolicy {
   signature_refresh_days: number;
   /** 0 disables scheduled ZSK rollovers. */
   zsk_lifetime_days: number;
-  rollover_publish_holddown_secs: number;
-  rollover_retire_holddown_secs: number;
   created_at: string;
 }
 
@@ -325,8 +394,6 @@ export interface DnssecPolicyTiming {
   signature_validity_days?: number | null;
   signature_refresh_days?: number | null;
   zsk_lifetime_days?: number | null;
-  rollover_publish_holddown_secs?: number | null;
-  rollover_retire_holddown_secs?: number | null;
 }
 
 /** Algorithm, denial and key layout are fixed once the policy exists. */
@@ -381,16 +448,17 @@ export interface DnssecDelegationKeyInfo {
   state: DnssecKeyState;
   /** Whether every parent server serves this key's DS (matched whole). */
   ds_published: boolean;
+  /** Whether a parent serves the DS only in a digest type Bindizr cannot
+   * compute, leaving `ds_published` undecided rather than answered. */
+  ds_digest_unsupported: boolean;
   /** When a `published` key's hold-down ends. */
   eligible_at?: string | null;
 }
 
 /** What the parent zone's servers answered when asked for the zone's DS. */
 export interface DnssecDelegationInfo {
-  /** The zone's `parent_ns_addrs`, or the discovered parent's nameservers. */
+  /** The nameservers asked, from the zone's `parent_ns_addrs`. */
   parent_ns_addrs: string[];
-  /** Whether the servers were discovered rather than configured on the zone. */
-  discovered: boolean;
   ds_state: DnssecDsState;
   /** Key tags of the DS records the parent serves. */
   ds_key_tags: number[];
@@ -412,7 +480,14 @@ export interface DnssecStatus {
   withdrawing: boolean;
   serial: number;
   earliest_signature_expires_at?: string | null;
-  /** The parent nameservers configured on the zone; absent when discovered. */
+  /** Signatures the zone serves. */
+  signatures: number;
+  /** Signatures already past their expiration; any at all mean resolvers are
+   * failing to validate part of the zone. */
+  expired_signatures: number;
+  /** When the re-signer next has work; absent for an unsigned zone. */
+  next_resign_at?: string | null;
+  /** The parent nameservers configured on the zone; absent until DNSSEC is enabled. */
   parent_ns_addrs?: string | null;
   /** Present only when the status comes from a parent DS check. */
   delegation?: DnssecDelegationInfo | null;
@@ -421,11 +496,12 @@ export interface DnssecStatus {
 export interface EnableDnssecPayload {
   /** Name of the policy to sign under; defaults to `default`. */
   policy?: string | null;
-  /** Comma-separated `host[:port]` asked for the DS before disabling; omitted keeps the zone's setting, empty returns it to discovery. */
-  parent_ns_addrs?: string | null;
+  /** Comma-separated `host[:port]` asked for the zone's DS by every later
+   * check. Required: Bindizr does not discover the parent. */
+  parent_ns_addrs: string;
 }
 
-/** An omitted field keeps its value; an empty `parent_ns_addrs` returns the zone to discovery. */
+/** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
 export interface UpdateDnssecSettingsPayload {
   /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
   policy?: string | null;
@@ -524,6 +600,18 @@ export interface ZoneListQuery extends PageQuery {
   min_default_ttl?: number;
   max_default_ttl?: number;
   serial?: number;
+  /** `true` keeps the zones the DNS plane serves, `false` the disabled ones. */
+  enabled?: boolean;
+  /** `true` keeps the zones signing under a DNSSEC policy, `false` the rest. */
+  signed?: boolean;
+  min_serial?: number;
+  max_serial?: number;
+  /** RFC 3339; keeps zones created at or after it. */
+  created_after?: string;
+  /** RFC 3339; keeps zones created at or before it. */
+  created_before?: string;
+  sort?: ZoneSortField;
+  order?: SortOrder;
 }
 
 export interface RecordListQuery extends PageQuery {
@@ -531,7 +619,7 @@ export interface RecordListQuery extends PageQuery {
   search?: string;
   name?: string;
   /** A RecordType; signed listings also accept a derived DNSSEC type. */
-  record_type?: string;
+  type?: string;
   value?: string;
   ttl?: number;
   min_ttl?: number;
@@ -539,4 +627,6 @@ export interface RecordListQuery extends PageQuery {
   priority?: number;
   min_priority?: number;
   max_priority?: number;
+  sort?: RecordSortField;
+  order?: SortOrder;
 }

@@ -71,6 +71,9 @@ function AccessSection({
                 <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Types
                 </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Access
+                </th>
                 <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
@@ -103,6 +106,17 @@ function AccessSection({
                     title={row.record_types}
                   >
                     {row.record_types}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        row.can_write
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {row.can_write ? "Read-write" : "Read-only"}
+                    </span>
                   </td>
                   <td className="hidden sm:table-cell truncate px-3 py-2 text-gray-500">
                     {formatDateTime(row.created_at)}
@@ -218,8 +232,9 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">
-        Tokens and keys with access to this zone. The pattern and types limit
-        writes only.
+        Tokens and keys with access to this zone. The pattern and types narrow
+        what the grant reaches; a read-only grant narrows reads the same way and
+        writes nothing.
       </p>
 
       <AccessSection
@@ -234,7 +249,7 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
 
       <AccessSection
         title="TSIG Keys"
-        description="Scoped Keys that may send dynamic updates to this zone."
+        description="Scoped Keys with access to this zone; a read-write grant may send dynamic updates."
         holderLabel="Key"
         managePath="/access/tsig-keys"
         manageLabel="TSIG Keys"

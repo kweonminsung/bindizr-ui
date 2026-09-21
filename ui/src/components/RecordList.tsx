@@ -4,24 +4,32 @@ import { getRecordsPage, getSignedRecordsPage, deleteRecord } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
 import {
+  getOrderFromSearchParams,
   getPageFromSearchParams,
   getPageSizeFromSearchParams,
+  getSortFromSearchParams,
   updatePageSizeSearchParam,
   updatePageSearchParam,
+  updateSortSearchParams,
 } from "@/lib/pageQuery";
 import {
   DERIVED_RECORD_TYPES,
+  RECORD_SORT_FIELDS,
   RECORD_TYPES,
+  RecordSortField,
   SignedRecord,
+  SortOrder,
   Zone,
 } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
-import { toFilterNumber } from "@/lib/form";
+import { countActiveFilters, toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField } from "./FilterPanel";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
+import SortControl from "./SortControl";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface RecordListProps {
@@ -48,8 +56,15 @@ const defaultFilters: RecordFilters = {
   max_priority: "",
 };
 
-const countActiveFilters = (filters: RecordFilters) =>
-  Object.values(filters).filter((value) => value.trim() !== "").length;
+const RECORD_SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "type", label: "Type" },
+  { value: "ttl", label: "TTL" },
+  { value: "priority", label: "Priority" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+const DEFAULT_RECORD_SORT: RecordSortField = "name";
 
 const SIGNED_FILTER_TYPES: readonly string[] = [
   ...RECORD_TYPES,
@@ -62,7 +77,14 @@ export default function RecordList({
   onCreateRecord,
 }: RecordListProps) {
   const toast = useToast();
+  const { canCreateRecords, canWriteRecord } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
+  const sort = getSortFromSearchParams(
+    searchParams,
+    RECORD_SORT_FIELDS,
+    DEFAULT_RECORD_SORT,
+  );
+  const order = getOrderFromSearchParams(searchParams);
   const [records, setRecords] = useState<SignedRecord[]>([]);
   const [selectedRecord, setSelectedRecord] = useState<SignedRecord | null>(
     null,
@@ -112,6 +134,18 @@ export default function RecordList({
     handlePageChange(1);
   };
 
+  // URL-backed like the page: a sorted listing stays shareable.
+  const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
+    setSearchParams(
+      updateSortSearchParams(
+        searchParams,
+        nextSort,
+        nextOrder,
+        DEFAULT_RECORD_SORT,
+      ),
+    );
+  };
+
   // URL-backed filters: deep links stay shareable, the form follows the zone.
   const handleUrlFilterChange = (
     key: "zoneName" | "type" | "signed",
@@ -138,13 +172,15 @@ export default function RecordList({
         const data = await fetchPage({
           zone_name: zoneName,
           search: searchQuery,
-          record_type: requestedType,
+          type: requestedType,
           name: filters.name,
           value: filters.value,
           min_ttl: toFilterNumber(filters.min_ttl),
           max_ttl: toFilterNumber(filters.max_ttl),
           min_priority: toFilterNumber(filters.min_priority),
           max_priority: toFilterNumber(filters.max_priority),
+          sort,
+          order,
           limit: recordsPerPage,
           offset: (currentPage - 1) * recordsPerPage,
         });
@@ -171,11 +207,13 @@ export default function RecordList({
   }, [
     currentPage,
     filters,
+    order,
     recordsPerPage,
     refreshKey,
     requestedType,
     searchQuery,
     signedView,
+    sort,
     userPlaneOnly,
     zoneName,
   ]);
@@ -184,9 +222,10 @@ export default function RecordList({
     if (record.id == null) {
       return;
     }
-    if (window.confirm(`Delete ${record.name} ${record.record_type}?`)) {
+    if (window.confirm(`Delete ${record.name} ${record.type}?`)) {
       try {
-        toast.success(await deleteRecord(record.id));
+        await deleteRecord(record.id);
+        toast.success(`Deleted ${record.name} ${record.type}`);
         if (records.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
@@ -301,12 +340,22 @@ export default function RecordList({
             <span className="whitespace-nowrap">Show DNSSEC records</span>
           </label>
         </div>
-        <button
-          onClick={onCreateRecord}
-          className="btn-primary w-full sm:w-auto mt-4 sm:mt-0"
-        >
-          Create Record
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 sm:mt-0">
+          <SortControl
+            options={RECORD_SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
+          />
+          {canCreateRecords(zoneName) && (
+            <button
+              onClick={onCreateRecord}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Create Record
+            </button>
+          )}
+        </div>
       </div>
       <FilterPanel
         activeCount={activeFilterCount}
@@ -417,7 +466,7 @@ export default function RecordList({
                   )}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                  {record.record_type}
+                  {record.type}
                 </td>
                 <td
                   className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
@@ -426,7 +475,7 @@ export default function RecordList({
                   {formatRecordValue(record.value)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {record.id != null ? (
+                  {record.id != null && canWriteRecord(record) ? (
                     <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <button
                         onClick={(e) => {

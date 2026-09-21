@@ -106,6 +106,23 @@ export default function ZoneDetails({
         {activeTab === "zone" && !isEditing && (
           <div className="space-y-4">
             <div className="space-y-2">
+              {!zone.enabled && (
+                <div className="p-2.5 bg-amber-50 rounded-md border border-amber-200">
+                  <p className="text-sm font-medium text-amber-800">Disabled</p>
+                  <p className="text-sm text-amber-700">
+                    The secondaries have dropped this zone. Its records stay
+                    here, editable.
+                  </p>
+                </div>
+              )}
+              {zone.description && (
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm text-gray-500">Description</p>
+                  <p className="text-base text-gray-900 break-all">
+                    {zone.description}
+                  </p>
+                </div>
+              )}
               <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Admin Email</p>
                 <p className="text-base text-gray-900 break-all">
