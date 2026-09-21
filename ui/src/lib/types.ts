@@ -115,6 +115,29 @@ export interface SignedRecord {
   priority?: number | null;
 }
 
+export const SORT_ORDERS = ["asc", "desc"] as const;
+
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+export const ZONE_SORT_FIELDS = [
+  "name",
+  "serial",
+  "default_ttl",
+  "created_at",
+] as const;
+
+export type ZoneSortField = (typeof ZONE_SORT_FIELDS)[number];
+
+export const RECORD_SORT_FIELDS = [
+  "name",
+  "type",
+  "ttl",
+  "priority",
+  "created_at",
+] as const;
+
+export type RecordSortField = (typeof RECORD_SORT_FIELDS)[number];
+
 export const RECORD_DIFF_CHANGES = ["added", "removed", "changed"] as const;
 
 export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
@@ -187,22 +210,6 @@ export interface DeleteZoneResult {
   versions: number;
 }
 
-export interface BulkRecordItem {
-  name: string;
-  type: RecordType;
-  value: RecordValue;
-  ttl?: number | null;
-  priority?: number | null;
-}
-
-export interface BulkRecordsResult {
-  applied: boolean;
-  dry_run: boolean;
-  inserted: number;
-  records: WrittenRecord[];
-  diff: RecordDiff;
-}
-
 export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
 
 export type ImportMode = (typeof IMPORT_MODES)[number];
@@ -244,8 +251,6 @@ export const TSIG_ALGORITHMS = [
   "hmac-sha384",
   "hmac-sha512",
 ] as const;
-
-export type TsigAlgorithm = (typeof TSIG_ALGORITHMS)[number];
 
 export interface TsigKey {
   id: number;
@@ -295,6 +300,12 @@ export interface TsigGrant extends ZoneGrant {
 
 export type CreateTsigGrantPayload = CreateZoneGrantPayload;
 
+/** Which plane asked for a change: the API, an RFC 2136 update, the DNSSEC
+ * scheduler, or the daemon socket. */
+export const CHANGE_SOURCES = ["token", "nsupdate", "system", "local"] as const;
+
+export type ChangeSource = (typeof CHANGE_SOURCES)[number];
+
 export interface ZoneVersion {
   serial: number;
   mname: string;
@@ -304,6 +315,9 @@ export interface ZoneVersion {
   retry: number;
   expire: number;
   minimum_ttl: number;
+  change_source: ChangeSource;
+  /** The API token or TSIG key it was made under; absent where none was. */
+  changed_by?: string | null;
   created_at: string;
 }
 
@@ -487,7 +501,7 @@ export interface EnableDnssecPayload {
   parent_ns_addrs: string;
 }
 
-/** An omitted field keeps its value; an empty `parent_ns_addrs` returns the zone to discovery. */
+/** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
 export interface UpdateDnssecSettingsPayload {
   /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
   policy?: string | null;
@@ -588,6 +602,16 @@ export interface ZoneListQuery extends PageQuery {
   serial?: number;
   /** `true` keeps the zones the DNS plane serves, `false` the disabled ones. */
   enabled?: boolean;
+  /** `true` keeps the zones signing under a DNSSEC policy, `false` the rest. */
+  signed?: boolean;
+  min_serial?: number;
+  max_serial?: number;
+  /** RFC 3339; keeps zones created at or after it. */
+  created_after?: string;
+  /** RFC 3339; keeps zones created at or before it. */
+  created_before?: string;
+  sort?: ZoneSortField;
+  order?: SortOrder;
 }
 
 export interface RecordListQuery extends PageQuery {
@@ -603,4 +627,6 @@ export interface RecordListQuery extends PageQuery {
   priority?: number;
   min_priority?: number;
   max_priority?: number;
+  sort?: RecordSortField;
+  order?: SortOrder;
 }

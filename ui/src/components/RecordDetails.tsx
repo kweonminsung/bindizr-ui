@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { Record, SignedRecord } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import RecordForm from "./RecordForm";
@@ -15,10 +16,12 @@ export default function RecordDetails({
   onRecordChanged,
   defaultEditing = false,
 }: RecordDetailsProps) {
+  const { canWriteRecords } = useBindizrToken();
   const isDerived = record.id == null;
-  const [isEditing, setIsEditing] = useState(defaultEditing && !isDerived);
+  const canEdit = !isDerived && canWriteRecords(record.zone_name);
+  const [isEditing, setIsEditing] = useState(defaultEditing && canEdit);
 
-  if (isEditing && !isDerived) {
+  if (isEditing && canEdit) {
     return (
       <RecordForm
         // A row with an id is a real user record.
@@ -85,7 +88,7 @@ export default function RecordDetails({
         </div>
       </div>
 
-      {!isDerived && (
+      {canEdit && (
         <div className="flex justify-end">
           <button
             type="button"

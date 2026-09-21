@@ -5,8 +5,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { getSelfToken } from "@/lib/api";
-import { ApiToken } from "@/lib/types";
+import { getSelfToken, getSelfTokenGrants } from "@/lib/api";
+import { ApiToken, TokenGrant } from "@/lib/types";
 import { useAuth } from "./AuthContext";
 
 interface BindizrTokenContextType {
@@ -14,6 +14,9 @@ interface BindizrTokenContextType {
   self: ApiToken | null;
   /** Zone-plane access: a global token, no auth, or an unresolved lookup. */
   globalAccess: boolean;
+  /** Whether the token may write records in one zone, or in any when none
+   * is named. A scoped token needs a read-write grant. */
+  canWriteRecords: (zoneName?: string) => boolean;
   /** Re-read after the Bindizr settings change. */
   refresh: () => Promise<void>;
 }
@@ -43,21 +46,42 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
   const canLookup = setupComplete && (!accountEnabled || isAuthenticated);
   const [self, setSelf] = useState<ApiToken | null>(null);
   const [globalAccess, setGlobalAccess] = useState(true);
+  const [grants, setGrants] = useState<TokenGrant[]>([]);
   const [resolved, setResolved] = useState(false);
 
   const refresh = useCallback(async () => {
+    let token: ApiToken | null = null;
+
     try {
-      const token = await getSelfToken();
+      token = await getSelfToken();
       setSelf(token);
       setGlobalAccess(token.global);
     } catch {
       // 401 is auth disabled; anything else fails open.
       setSelf(null);
       setGlobalAccess(true);
+    }
+
+    // Read on its own: a failed lookup must not widen the token's scope, and
+    // unknown grants offer no write the API would refuse. Global needs no list.
+    try {
+      setGrants(token && !token.global ? await getSelfTokenGrants() : []);
+    } catch {
+      setGrants([]);
     } finally {
       setResolved(true);
     }
   }, []);
+
+  const canWriteRecords = useCallback(
+    (zoneName?: string) =>
+      globalAccess ||
+      grants.some(
+        (grant) =>
+          grant.can_write && (!zoneName || grant.zone_name === zoneName),
+      ),
+    [globalAccess, grants],
+  );
 
   useEffect(() => {
     if (!canLookup) {
@@ -77,7 +101,9 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
   }
 
   return (
-    <BindizrTokenContext.Provider value={{ self, globalAccess, refresh }}>
+    <BindizrTokenContext.Provider
+      value={{ self, globalAccess, canWriteRecords, refresh }}
+    >
       {children}
     </BindizrTokenContext.Provider>
   );
