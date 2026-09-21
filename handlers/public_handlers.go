@@ -36,7 +36,7 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.BindizrUrl == "" {
-		writeJSONError(w, "Bindizr Server URL is required.", http.StatusBadRequest)
+		writeJSONError(w, "Bindizr URL is required.", http.StatusBadRequest)
 		return
 	}
 
@@ -101,7 +101,7 @@ func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if payload.BindizrUrl == "" {
-		http.Error(w, "Bindizr Server URL is required.", http.StatusBadRequest)
+		http.Error(w, "Bindizr URL is required.", http.StatusBadRequest)
 		return
 	}
 

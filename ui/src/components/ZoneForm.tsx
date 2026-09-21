@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { createZone, importZoneFile, updateZone } from "@/lib/api";
+import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneFormProps {
   zone: Zone | null;
@@ -20,6 +21,9 @@ interface ZoneFormData {
   retry: string;
   expire: string;
   minimum_ttl: string;
+  description: string;
+  /** Edit only; a new zone is always served. */
+  enabled: boolean;
 }
 
 const defaultFormData: ZoneFormData = {
@@ -32,12 +36,15 @@ const defaultFormData: ZoneFormData = {
   retry: "3600",
   expire: "604800",
   minimum_ttl: "3600",
+  description: "",
+  enabled: true,
 };
 
 const toFormString = (value: unknown, fallback: string) =>
   value === null || value === undefined ? fallback : String(value);
 
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
 
@@ -59,6 +66,8 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           zone.minimum_ttl,
           defaultFormData.minimum_ttl,
         ),
+        description: zone.description ?? "",
+        enabled: zone.enabled,
       });
       return;
     }
@@ -80,52 +89,54 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         mname: formData.mname,
         rname: formData.rname,
         default_ttl: toRequiredNumber(formData.default_ttl, "Default TTL"),
-        serial: toOptionalNumber(formData.serial, "Serial"),
+        // Only settable at creation.
+        serial: zone ? undefined : toOptionalNumber(formData.serial, "Serial"),
         refresh: toOptionalNumber(formData.refresh, "Refresh"),
         retry: toOptionalNumber(formData.retry, "Retry"),
         expire: toOptionalNumber(formData.expire, "Expire"),
         minimum_ttl: toOptionalNumber(formData.minimum_ttl, "Minimum TTL"),
+        description: formData.description.trim(),
       };
 
       let savedZone: Zone;
 
       if (zone) {
-        savedZone = await updateZone(zone.name, payload);
+        savedZone = await updateZone(zone.name, {
+          ...payload,
+          enabled: formData.enabled,
+        });
       } else {
         savedZone = await createZone(payload);
 
         const content = zoneFileContent.trim();
         if (content) {
           try {
-            const result = await importZoneFile(payload.name, {
+            const result = await importZone(payload.name, {
               content,
               mode: "append",
             });
             if (result.errors.length > 0) {
-              alert(
+              toast.warning(
                 `Zone created, but no records were imported:\n${result.errors.join("\n")}`,
               );
             }
           } catch (error) {
-            alert(
-              `Zone created, but importing the zone file failed: ${getErrorMessage(
-                error,
-                "unknown error",
-              )}`,
+            toast.warning(
+              `Zone created, but importing the zone file failed: ${getErrorMessage(error, "unknown error")}`,
             );
           }
         }
       }
       onSuccess(savedZone);
     } catch (error) {
-      alert(getErrorMessage(error, "Failed to save zone"));
+      toast.error(getErrorMessage(error, "Failed to save zone"));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        {zone ? "Edit Zone" : "Create New Zone"}
+        {zone ? "Edit Zone" : "Create Zone"}
       </h2>
 
       <div className="space-y-4">
@@ -290,10 +301,60 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.serial}
               onChange={handleChange}
               placeholder="Automatic"
+              disabled={zone !== null}
+              title={
+                zone ? "The serial can only be set at creation" : undefined
+              }
               className="w-full"
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-600 mb-1"
+          >
+            Description
+          </label>
+          <input
+            type="text"
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            maxLength={255}
+            placeholder="Free-text note for operators"
+            className="w-full"
+          />
+        </div>
+        {zone && (
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="enabled"
+              checked={formData.enabled}
+              onChange={(e) =>
+                setFormData((previous) => ({
+                  ...previous,
+                  enabled: e.target.checked,
+                }))
+              }
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-600">
+                Enabled
+              </span>
+              <span className="block text-sm text-gray-500">
+                Disabled, the secondaries drop the zone. Its records stay here,
+                editable.
+              </span>
+            </span>
+          </label>
+        )}
       </div>
 
       {!zone && (

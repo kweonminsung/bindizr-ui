@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
+import ConnectedTokenDetails from "./ConnectedTokenDetails";
 import Modal from "./Modal";
-
-interface SettingsResult {
-  text: string;
-  failed: boolean;
-}
+import { useToast } from "@/contexts/ToastContext";
 
 export default function BindizrSettings() {
+  const toast = useToast();
+  const { self, refresh: refreshToken } = useBindizrToken();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTokenOpen, setIsTokenOpen] = useState(false);
   const [bindizrUrl, setBindizrUrl] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConnectionTested, setIsConnectionTested] = useState(false);
-  const [result, setResult] = useState<SettingsResult | null>(null);
 
   const fetchSettings = async () => {
     try {
@@ -28,7 +28,7 @@ export default function BindizrSettings() {
       }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
-      setResult({ text: "Failed to load settings.", failed: true });
+      toast.error("Failed to load settings.");
     }
   };
 
@@ -39,15 +39,13 @@ export default function BindizrSettings() {
 
   const handleOpenModal = () => {
     fetchSettings();
-    setResult(null);
     setIsConnectionTested(false);
     setIsModalOpen(true);
   };
 
   const testConnection = async () => {
-    setResult(null);
     const testResult = await testBindizrConnection(bindizrUrl, secretKey);
-    setResult({ text: testResult.message, failed: !testResult.ok });
+    toast.show(testResult.ok ? "success" : "error", testResult.message);
     if (testResult.ok) {
       setIsConnectionTested(true);
     }
@@ -55,9 +53,8 @@ export default function BindizrSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setResult(null);
     if (!isConnectionTested) {
-      setResult({ text: "Please test the connection first.", failed: true });
+      toast.error("Please test the connection first.");
       return;
     }
     setIsLoading(true);
@@ -71,22 +68,18 @@ export default function BindizrSettings() {
 
       const data = await res.json();
       if (res.ok) {
-        setResult({ text: "Settings updated successfully.", failed: false });
+        toast.success("Settings updated successfully.");
+        // The new secret may have another scope.
+        await refreshToken();
         setTimeout(() => {
           setIsModalOpen(false);
         }, 1000);
       } else {
-        setResult({
-          text: data.message || "Failed to update settings.",
-          failed: true,
-        });
+        toast.error(data.message || "Failed to update settings.");
       }
     } catch (error) {
       console.error("Failed to update settings:", error);
-      setResult({
-        text: "An error occurred while updating settings.",
-        failed: true,
-      });
+      toast.error("An error occurred while updating settings.");
     } finally {
       setIsLoading(false);
     }
@@ -94,20 +87,42 @@ export default function BindizrSettings() {
 
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-          Bindizr Settings
-        </h2>
-        <p className="text-sm text-gray-500 mt-2">
-          Configure the connection to the Bindizr server.
-        </p>
+      <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+        Bindizr Settings
+      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-sm text-gray-500">
+            Configure the connection to the Bindizr server.
+          </p>
+          {self && (
+            <p className="text-sm text-gray-500 mt-1">
+              Connected as{" "}
+              <span className="font-medium text-gray-700">{self.name}</span> (
+              {self.global ? "Global" : "Scoped"} Token).{" "}
+              <button
+                type="button"
+                onClick={() => setIsTokenOpen(true)}
+                className="font-medium text-blue-600 hover:underline"
+              >
+                Details
+              </button>
+            </p>
+          )}
+        </div>
+        <button
+          onClick={handleOpenModal}
+          className="btn-primary w-full sm:w-auto"
+        >
+          Edit Bindizr Settings
+        </button>
       </div>
-      <button
-        onClick={handleOpenModal}
-        className="btn-primary w-full sm:w-auto"
-      >
-        Edit Bindizr Settings
-      </button>
+
+      {self && isTokenOpen && (
+        <Modal isOpen wide onClose={() => setIsTokenOpen(false)}>
+          <ConnectedTokenDetails token={self} />
+        </Modal>
+      )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -139,7 +154,7 @@ export default function BindizrSettings() {
               htmlFor="secretKey"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              Secret Key (Optional)
+              API Token (optional)
             </label>
             <input
               type="password"
@@ -151,19 +166,10 @@ export default function BindizrSettings() {
               }}
               className="w-full"
             />
-          </div>
-
-          {result && (
-            <p
-              className={`p-3 rounded-md border text-sm ${
-                result.failed
-                  ? "border-red-200 bg-red-50 text-red-700"
-                  : "border-green-200 bg-green-50 text-green-800"
-              }`}
-            >
-              {result.text}
+            <p className="text-xs text-gray-500 mt-1">
+              Leave empty if Bindizr runs without authentication.
             </p>
-          )}
+          </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <button

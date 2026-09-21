@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getZoneStatus } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { SecondaryStatus, ZoneStatus } from "@/lib/types";
+import Notice from "./Notice";
 
 interface ZoneStatusPanelProps {
   zoneName: string;
@@ -82,7 +83,7 @@ export default function ZoneStatusPanel({
           Querying every secondary for its SOA serial...
         </p>
       ) : error ? (
-        <p className="text-sm text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : !status || status.secondaries.length === 0 ? (
         <p className="text-sm text-gray-500">No secondaries configured.</p>
       ) : (

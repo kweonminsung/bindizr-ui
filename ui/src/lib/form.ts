@@ -18,6 +18,14 @@ export const toRequiredNumber = (value: string, fieldName = "Value") => {
   return parseFiniteNumber(trimmed, fieldName);
 };
 
+/** How many of a list's filters are set, for the filter panel's badge. The
+ * constraint takes any filter interface whose every field is a string. */
+export const countActiveFilters = <T extends Record<keyof T, string>>(
+  filters: T,
+) =>
+  (Object.values(filters) as string[]).filter((value) => value.trim() !== "")
+    .length;
+
 /** Ignored while empty or half-typed; the fields these filter on are integers. */
 export const toFilterNumber = (value: string) => {
   const trimmed = value.trim();

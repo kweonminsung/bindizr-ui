@@ -1,22 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
+import { toDayEnd, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
+  getOrderFromSearchParams,
   getPageFromSearchParams,
   getPageSizeFromSearchParams,
+  getSortFromSearchParams,
   updatePageSizeSearchParam,
   updatePageSearchParam,
+  updateSortSearchParams,
 } from "@/lib/pageQuery";
-import { Zone } from "@/lib/types";
-import { toFilterNumber } from "@/lib/form";
-import FilterPanel, { FilterField } from "./FilterPanel";
+import { SortOrder, Zone, ZONE_SORT_FIELDS, ZoneSortField } from "@/lib/types";
+import { countActiveFilters, toFilterNumber } from "@/lib/form";
+import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
+import SortControl from "./SortControl";
 import Modal from "./Modal";
+import NotifyAllZones from "./NotifyAllZones";
+import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneDetails from "./ZoneDetails";
 import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneListProps {
   onCreateZone: () => void;
@@ -26,28 +35,53 @@ interface ZoneFilters {
   name: string;
   mname: string;
   rname: string;
-  min_ttl: string;
-  max_ttl: string;
+  min_default_ttl: string;
+  max_default_ttl: string;
   serial: string;
+  min_serial: string;
+  max_serial: string;
+  /** "" any, "true" signed, "false" unsigned. */
+  signed: string;
+  created_after: string;
+  created_before: string;
 }
 
 const defaultFilters: ZoneFilters = {
   name: "",
   mname: "",
   rname: "",
-  min_ttl: "",
-  max_ttl: "",
+  min_default_ttl: "",
+  max_default_ttl: "",
   serial: "",
+  min_serial: "",
+  max_serial: "",
+  signed: "",
+  created_after: "",
+  created_before: "",
 };
+
+const SIGNED_OPTIONS = [
+  { value: "", label: "Any" },
+  { value: "true", label: "Signed" },
+  { value: "false", label: "Unsigned" },
+] as const;
+
+const ZONE_SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "serial", label: "Serial" },
+  { value: "default_ttl", label: "Default TTL" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+const DEFAULT_ZONE_SORT: ZoneSortField = "name";
 
 /** Badge probes per batch, so a large page is not one burst. */
 const DNSSEC_PROBE_BATCH = 6;
 
-const countActiveFilters = (filters: ZoneFilters) =>
-  Object.values(filters).filter((value) => value.trim() !== "").length;
-
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
+  const toast = useToast();
   const navigate = useNavigate();
+  const { globalAccess } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -60,6 +94,12 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<ZoneFilters>(defaultFilters);
+  const sort = getSortFromSearchParams(
+    searchParams,
+    ZONE_SORT_FIELDS,
+    DEFAULT_ZONE_SORT,
+  );
+  const order = getOrderFromSearchParams(searchParams);
   const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   // Names of the listed zones that are DNSSEC-signed, for the name badge.
@@ -100,6 +140,18 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     handlePageChange(1);
   };
 
+  // URL-backed like the page: a sorted listing stays shareable.
+  const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
+    setSearchParams(
+      updateSortSearchParams(
+        searchParams,
+        nextSort,
+        nextOrder,
+        DEFAULT_ZONE_SORT,
+      ),
+    );
+  };
+
   useEffect(() => {
     let active = true;
 
@@ -112,9 +164,16 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           name: filters.name,
           mname: filters.mname,
           rname: filters.rname,
-          min_ttl: toFilterNumber(filters.min_ttl),
-          max_ttl: toFilterNumber(filters.max_ttl),
+          min_default_ttl: toFilterNumber(filters.min_default_ttl),
+          max_default_ttl: toFilterNumber(filters.max_default_ttl),
           serial: toFilterNumber(filters.serial),
+          min_serial: toFilterNumber(filters.min_serial),
+          max_serial: toFilterNumber(filters.max_serial),
+          signed: filters.signed === "" ? undefined : filters.signed === "true",
+          created_after: toDayStart(filters.created_after),
+          created_before: toDayEnd(filters.created_before),
+          sort,
+          order,
           limit: zonesPerPage,
           offset: (currentPage - 1) * zonesPerPage,
         });
@@ -144,7 +203,15 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [currentPage, filters, refreshKey, searchQuery, zonesPerPage]);
+  }, [
+    currentPage,
+    filters,
+    order,
+    refreshKey,
+    searchQuery,
+    sort,
+    zonesPerPage,
+  ]);
 
   // An explicit refresh re-probes; paging and filtering reuse the cache.
   useEffect(() => {
@@ -153,7 +220,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
 
   // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
-    if (zones.length === 0) {
+    // The status endpoint needs a global token.
+    if (!globalAccess || zones.length === 0) {
       return;
     }
 
@@ -194,20 +262,45 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [zones]);
+  }, [zones, globalAccess]);
 
   const handleDelete = async (zone: Zone) => {
-    if (window.confirm("Are you sure you want to delete this zone?")) {
-      try {
-        await deleteZone(zone.name);
-        if (zones.length === 1 && currentPage > 1) {
-          handlePageChange(currentPage - 1);
-        } else {
-          setRefreshKey((prev) => prev + 1);
-        }
-      } catch (error) {
-        alert(getErrorMessage(error, "Failed to delete zone"));
+    // A zone delete cannot be undone, so the counts go in the prompt rather
+    // than in a toast once everything is already gone.
+    let preview;
+    try {
+      preview = await deleteZone(zone.name, true);
+    } catch (error) {
+      toast.error(
+        getErrorMessage(
+          error,
+          "Failed to check what deleting the zone removes",
+        ),
+      );
+      return;
+    }
+
+    const goesWithIt = `${preview.records} record${preview.records === 1 ? "" : "s"} and ${preview.versions} saved version${preview.versions === 1 ? "" : "s"}`;
+    if (
+      !window.confirm(
+        `Delete "${zone.name}"?\n\n${goesWithIt} go with it. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const removed = await deleteZone(zone.name);
+      toast.success(
+        `Deleted ${zone.name}: ${removed.records} records, ${removed.versions} versions`,
+      );
+      if (zones.length === 1 && currentPage > 1) {
+        handlePageChange(currentPage - 1);
+      } else {
+        setRefreshKey((prev) => prev + 1);
       }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to delete zone"));
     }
   };
 
@@ -249,11 +342,27 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             setSearchQuery(e.target.value);
             handlePageChange(1);
           }}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
+          className="w-full sm:w-auto"
         />
-        <button onClick={onCreateZone} className="btn-primary w-full sm:w-auto">
-          Create Zone
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 sm:mt-0">
+          <SortControl
+            options={ZONE_SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
+          />
+          {globalAccess && (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <NotifyAllZones />
+              <button
+                onClick={onCreateZone}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Create Zone
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <FilterPanel
         activeCount={activeFilterCount}
@@ -281,18 +390,18 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           onChange={(value) => handleFilterChange("rname", value)}
         />
         <FilterField
-          id="filter_zone_min_ttl"
-          label="Min TTL"
+          id="filter_zone_min_default_ttl"
+          label="Min Default TTL"
           type="number"
-          value={filters.min_ttl}
-          onChange={(value) => handleFilterChange("min_ttl", value)}
+          value={filters.min_default_ttl}
+          onChange={(value) => handleFilterChange("min_default_ttl", value)}
         />
         <FilterField
-          id="filter_zone_max_ttl"
-          label="Max TTL"
+          id="filter_zone_max_default_ttl"
+          label="Max Default TTL"
           type="number"
-          value={filters.max_ttl}
-          onChange={(value) => handleFilterChange("max_ttl", value)}
+          value={filters.max_default_ttl}
+          onChange={(value) => handleFilterChange("max_default_ttl", value)}
         />
         <FilterField
           id="filter_zone_serial"
@@ -301,13 +410,48 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
           value={filters.serial}
           onChange={(value) => handleFilterChange("serial", value)}
         />
+        <FilterField
+          id="filter_zone_min_serial"
+          label="Min Serial"
+          type="number"
+          value={filters.min_serial}
+          onChange={(value) => handleFilterChange("min_serial", value)}
+        />
+        <FilterField
+          id="filter_zone_max_serial"
+          label="Max Serial"
+          type="number"
+          value={filters.max_serial}
+          onChange={(value) => handleFilterChange("max_serial", value)}
+        />
+        <FilterSelect
+          id="filter_zone_signed"
+          label="DNSSEC"
+          value={filters.signed}
+          onChange={(value) => handleFilterChange("signed", value)}
+          options={SIGNED_OPTIONS}
+        />
+        <FilterField
+          id="filter_zone_created_after"
+          label="Created After"
+          type="date"
+          value={filters.created_after}
+          onChange={(value) => handleFilterChange("created_after", value)}
+        />
+        <FilterField
+          id="filter_zone_created_before"
+          label="Created Before"
+          type="date"
+          value={filters.created_before}
+          onChange={(value) => handleFilterChange("created_before", value)}
+        />
       </FilterPanel>
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
-        <p className="mx-4 mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Notice tone="error" className="mx-4 mb-4">
           {error}
           {zones.length > 0 && " — showing the last results that loaded."}
-        </p>
+        </Notice>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
@@ -353,6 +497,14 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                       DNSSEC
                     </span>
                   )}
+                  {!zone.enabled && (
+                    <span
+                      className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                      title="The secondaries have dropped this zone. Its records stay here, editable."
+                    >
+                      Disabled
+                    </span>
+                  )}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {zone.mname}
@@ -373,15 +525,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Records
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImportingZone(zone);
-                      }}
-                      className="font-medium text-purple-600 hover:underline"
-                    >
-                      Import
-                    </button>
+                    {globalAccess && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImportingZone(zone);
+                        }}
+                        className="font-medium text-purple-600 hover:underline"
+                      >
+                        Import
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -391,15 +545,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Export
                     </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(zone);
-                      }}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    {globalAccess && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(zone);
+                        }}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

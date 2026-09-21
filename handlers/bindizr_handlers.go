@@ -44,7 +44,7 @@ func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if settings.BindizrUrl == "" {
-			http.Error(w, "Bindizr URL is a required field", http.StatusBadRequest)
+			http.Error(w, "Bindizr URL is required.", http.StatusBadRequest)
 			return
 		}
 		if err := db.SetSetting("bindizr_url", settings.BindizrUrl); err != nil {

@@ -1,29 +1,52 @@
 import { useEffect, useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZoneVersion, getZoneVersionsPage, rollbackZone } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
+import { formatRecordValue } from "@/lib/recordValue";
 import {
   RollbackZoneResult,
   VersionDetail,
   Zone,
   ZoneVersion,
 } from "@/lib/types";
+import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneVersionDiff from "./ZoneVersionDiff";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneVersionsProps {
   zone: Zone;
   onRolledBack: (result: RollbackZoneResult) => void;
 }
 
+const CHANGE_SOURCE_STYLES: Record<string, string> = {
+  token: "bg-blue-100 text-blue-700",
+  nsupdate: "bg-purple-100 text-purple-700",
+  system: "bg-gray-100 text-gray-600",
+  local: "bg-amber-100 text-amber-700",
+};
+
+const CHANGE_SOURCE_HINTS: Record<string, string> = {
+  token: "Written over the HTTP API under an API token.",
+  nsupdate: "Written by an RFC 2136 dynamic update, under a TSIG key.",
+  system: "Written by bindizr itself — the DNSSEC signer or its scheduler.",
+  local:
+    "Written over the daemon socket (the CLI), or by any request while API authentication is off.",
+};
+
 export default function ZoneVersions({
   zone,
   onRolledBack,
 }: ZoneVersionsProps) {
+  const toast = useToast();
+  // Rollback needs a global token.
+  const { globalAccess } = useBindizrToken();
   const [versions, setVersions] = useState<ZoneVersion[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showAll, setShowAll] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +70,7 @@ export default function ZoneVersions({
         const data = await getZoneVersionsPage(zone.name, {
           limit: pageSize,
           offset: (page - 1) * pageSize,
+          include_signer_serials: showAll,
         });
         if (active) {
           setVersions(data.items);
@@ -68,7 +92,7 @@ export default function ZoneVersions({
     return () => {
       active = false;
     };
-  }, [zone.name, page, pageSize, refreshKey]);
+  }, [zone.name, page, pageSize, showAll, refreshKey]);
 
   const handleSelect = async (serial: number) => {
     setDetailLoading(true);
@@ -77,7 +101,7 @@ export default function ZoneVersions({
     try {
       setDetail(await getZoneVersion(zone.name, serial));
     } catch (fetchError) {
-      alert(getErrorMessage(fetchError, "Failed to fetch version"));
+      toast.error(getErrorMessage(fetchError, "Failed to fetch version"));
     } finally {
       setDetailLoading(false);
     }
@@ -94,9 +118,9 @@ export default function ZoneVersions({
     setRollbackPending(true);
     setRollbackResult(null);
     try {
-      setPreview(await rollbackZone(zone.name, { serial, dry_run: true }));
+      setPreview(await rollbackZone(zone.name, serial, true));
     } catch (rollbackError) {
-      alert(getErrorMessage(rollbackError, "Failed to preview rollback"));
+      toast.error(getErrorMessage(rollbackError, "Failed to preview rollback"));
     } finally {
       setRollbackPending(false);
     }
@@ -105,13 +129,16 @@ export default function ZoneVersions({
   const handleApplyRollback = async (serial: number) => {
     setRollbackPending(true);
     try {
-      const result = await rollbackZone(zone.name, { serial, dry_run: false });
+      const result = await rollbackZone(zone.name, serial, false);
       setPreview(null);
       setRollbackResult(result);
+      toast.success(
+        `Rolled back to serial ${result.target_serial}. The zone is now at serial ${result.new_serial} (${renderSummary(result)}).`,
+      );
       setRefreshKey((prev) => prev + 1);
       onRolledBack(result);
     } catch (rollbackError) {
-      alert(getErrorMessage(rollbackError, "Failed to roll back zone"));
+      toast.error(getErrorMessage(rollbackError, "Failed to roll back zone"));
     } finally {
       setRollbackPending(false);
     }
@@ -211,17 +238,13 @@ export default function ZoneVersions({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {records.map((record, index) => (
-                  <tr key={`${record.name}-${record.record_type}-${index}`}>
+                  <tr key={`${record.name}-${record.type}-${index}`}>
                     <td className="px-3 py-2 text-gray-900">{record.name}</td>
-                    <td className="px-3 py-2 text-gray-500">
-                      {record.record_type}
-                    </td>
+                    <td className="px-3 py-2 text-gray-500">{record.type}</td>
                     <td className="px-3 py-2 text-gray-500 break-all">
-                      {record.value}
+                      {formatRecordValue(record.value)}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">
-                      {record.ttl ?? "-"}
-                    </td>
+                    <td className="px-3 py-2 text-gray-500">{record.ttl}</td>
                     <td className="px-3 py-2 text-gray-500">
                       {record.priority ?? "-"}
                     </td>
@@ -238,20 +261,25 @@ export default function ZoneVersions({
         </div>
 
         {preview && (
-          <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-sm text-amber-900 space-y-2">
-            <p className="font-medium">
-              Rolling back to serial {preview.target_serial} will apply:{" "}
-              {renderSummary(preview)}.
-            </p>
-            <p>
-              The zone serial advances to {preview.new_serial} — serials never
-              go backward. A single NOTIFY is sent.
-            </p>
-            <div className="flex justify-end space-x-2">
+          <Notice
+            tone="warning"
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+          >
+            <div className="space-y-1">
+              <p className="font-medium">
+                Rolling back to serial {preview.target_serial} will apply:{" "}
+                {renderSummary(preview)}.
+              </p>
+              <p>
+                The zone serial advances to {preview.new_serial} — serials never
+                go backward. A single NOTIFY is sent.
+              </p>
+            </div>
+            <div className="flex shrink-0 space-x-2">
               <button
                 type="button"
                 onClick={() => setPreview(null)}
-                className="btn-secondary"
+                className="btn-secondary whitespace-nowrap"
               >
                 Cancel
               </button>
@@ -259,23 +287,15 @@ export default function ZoneVersions({
                 type="button"
                 onClick={() => handleApplyRollback(preview.target_serial)}
                 disabled={rollbackPending}
-                className="btn-primary"
+                className="btn-primary whitespace-nowrap"
               >
                 {rollbackPending ? "Applying..." : "Apply Rollback"}
               </button>
             </div>
-          </div>
+          </Notice>
         )}
 
-        {rollbackResult && (
-          <div className="p-3 rounded-md border border-green-200 bg-green-50 text-sm text-green-800">
-            Rolled back to serial {rollbackResult.target_serial}. The zone is
-            now at serial {rollbackResult.new_serial} (
-            {renderSummary(rollbackResult)}).
-          </div>
-        )}
-
-        {!preview && !rollbackResult && (
+        {globalAccess && !preview && !rollbackResult && (
           <div className="flex justify-end">
             <button
               type="button"
@@ -298,17 +318,30 @@ export default function ZoneVersions({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-700">Version History</h3>
-        <p className="text-sm text-gray-500">
-          Every mutation records a version. Current serial: {zone.serial ?? "-"}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700">
+            Version History
+          </h3>
+          <p className="text-sm text-gray-500">Current serial: {zone.serial}</p>
+        </div>
+        <label className="flex items-center space-x-2 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={(e) => {
+              setShowAll(e.target.checked);
+              setPage(1);
+            }}
+          />
+          <span>Include signer-only serials</span>
+        </label>
       </div>
 
       {loading && versions.length === 0 ? (
         <p className="text-gray-500">Loading versions...</p>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <Notice tone="error">{error}</Notice>
       ) : versions.length === 0 ? (
         <p className="text-gray-500">No versions for this zone yet.</p>
       ) : (
@@ -321,6 +354,9 @@ export default function ZoneVersions({
                 </th>
                 <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
+                </th>
+                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Changed By
                 </th>
                 <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Primary NS
@@ -340,12 +376,26 @@ export default function ZoneVersions({
                     {version.serial}
                     {version.serial === zone.serial && (
                       <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        current
+                        Current
                       </span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-gray-500">
                     {formatDateTime(version.created_at)}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500">
+                    <span className="break-all">
+                      {version.changed_by ?? "—"}
+                    </span>
+                    <span
+                      className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${CHANGE_SOURCE_STYLES[version.change_source] ?? "bg-gray-100 text-gray-600"}`}
+                      title={
+                        CHANGE_SOURCE_HINTS[version.change_source] ??
+                        "An unrecognised change source."
+                      }
+                    >
+                      {version.change_source}
+                    </span>
                   </td>
                   <td className="hidden sm:table-cell px-3 py-2 text-gray-500 break-all">
                     {version.mname}

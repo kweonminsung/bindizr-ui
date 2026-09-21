@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
+import logo from "@/assets/bindizr.png";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -12,9 +14,9 @@ interface NavLink {
   label: string;
 }
 
-const DNS_LINKS: NavLink[] = [
-  { to: "/dns/tsig-keys", label: "TSIG Keys" },
-  { to: "/dns/notify", label: "Notify" },
+const ACCESS_LINKS: NavLink[] = [
+  { to: "/access/tokens", label: "API Tokens" },
+  { to: "/access/tsig-keys", label: "TSIG Keys" },
 ];
 
 const linkClasses = (pathname: string, path: string) => {
@@ -86,6 +88,8 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { pathname } = useLocation();
+  // The admin entries need a global token.
+  const { globalAccess } = useBindizrToken();
 
   return (
     <>
@@ -102,7 +106,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <header className="py-4 mb-8">
           <Link to="/zones" onClick={onClose} className="flex justify-center">
-            <img src="/bindizr.png" alt="Bindizr" className="h-10 w-10" />
+            <img src={logo} alt="Bindizr" className="h-10 w-10" />
           </Link>
         </header>
         <nav className="flex-grow">
@@ -125,12 +129,25 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Records
               </Link>
             </li>
-            <NavGroup
-              label="DNS"
-              basePath="/dns"
-              links={DNS_LINKS}
-              onNavigate={onClose}
-            />
+            {globalAccess && (
+              <>
+                <li>
+                  <Link
+                    to="/dnssec-policies"
+                    className={linkClasses(pathname, "/dnssec-policies")}
+                    onClick={onClose}
+                  >
+                    DNSSEC Policies
+                  </Link>
+                </li>
+                <NavGroup
+                  label="Access"
+                  basePath="/access"
+                  links={ACCESS_LINKS}
+                  onNavigate={onClose}
+                />
+              </>
+            )}
             <li>
               <Link
                 to="/settings"

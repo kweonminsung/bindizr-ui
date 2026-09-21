@@ -91,6 +91,12 @@ button {
 .btn-secondary:hover {
   background-color: #e5e7eb;
 }
+.btn-secondary:disabled,
+.btn-secondary[disabled] {
+  background-color: transparent;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
 
 select {
   cursor: pointer;
@@ -102,4 +108,18 @@ select {
   background-position: right 0.5rem center;
   background-size: 1.25em 1.25em;
   padding-right: 2rem;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.toast-enter {
+  animation: toast-in 150ms ease-out;
 }

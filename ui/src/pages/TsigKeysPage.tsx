@@ -18,6 +18,10 @@ export default function TsigKeysPage() {
 
   return (
     <div>
+      <p className="mb-4 text-sm text-gray-500">
+        TSIG keys authenticate nsupdate clients. Open a key to manage its zone
+        access.
+      </p>
       <TsigKeyList key={refreshKey} onCreateKey={() => setIsFormOpen(true)} />
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)}>
         <TsigKeyForm
@@ -26,7 +30,7 @@ export default function TsigKeysPage() {
         />
       </Modal>
       {createdKey && (
-        <Modal isOpen onClose={() => setCreatedKey(null)}>
+        <Modal isOpen wide onClose={() => setCreatedKey(null)}>
           <TsigKeyDetails tsigKey={createdKey} isNew />
         </Modal>
       )}

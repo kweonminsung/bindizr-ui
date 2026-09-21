@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getDnssecStatus } from "@/lib/api";
 import { Zone } from "@/lib/types";
+import TabBar from "./TabBar";
+import ZoneAccessTab from "./ZoneAccessTab";
 import ZoneDnssecTab from "./ZoneDnssecTab";
 import ZoneForm from "./ZoneForm";
 import ZoneSyncTab from "./ZoneSyncTab";
-import ZoneTsigPolicies from "./ZoneTsigPolicies";
 import ZoneVersions from "./ZoneVersions";
 
 interface ZoneDetailsProps {
@@ -17,20 +19,27 @@ const TABS = [
   { id: "zone", label: "Zone" },
   { id: "history", label: "History" },
   { id: "dnssec", label: "DNSSEC" },
-  { id: "nsupdate", label: "nsupdate" },
+  { id: "access", label: "Access" },
   { id: "sync", label: "Sync" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+/** Refused to a scoped token. */
+const GLOBAL_ONLY_TABS: readonly TabId[] = ["dnssec", "access"];
 
 export default function ZoneDetails({
   zone,
   onZoneChanged,
   onDnssecChanged,
 }: ZoneDetailsProps) {
+  const { globalAccess } = useBindizrToken();
   const [activeTab, setActiveTab] = useState<TabId>("zone");
   const [isEditing, setIsEditing] = useState(false);
   const [dnssecEnabled, setDnssecEnabled] = useState(false);
+  const tabs = globalAccess
+    ? TABS
+    : TABS.filter((tab) => !GLOBAL_ONLY_TABS.includes(tab.id));
 
   // Stable identity: the DNSSEC tab keys an effect on this callback.
   const updateDnssecEnabled = useCallback(
@@ -45,6 +54,9 @@ export default function ZoneDetails({
     let active = true;
 
     setDnssecEnabled(false);
+    if (!globalAccess) {
+      return;
+    }
     getDnssecStatus(zone.name)
       .then((status) => {
         if (active) {
@@ -57,7 +69,7 @@ export default function ZoneDetails({
     return () => {
       active = false;
     };
-  }, [zone.name]);
+  }, [zone.name, globalAccess]);
 
   const handleTabChange = (tab: TabId) => {
     setIsEditing(false);
@@ -77,23 +89,7 @@ export default function ZoneDetails({
         )}
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => handleTabChange(tab.id)}
-            aria-current={activeTab === tab.id ? "page" : undefined}
-            className={`whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === tab.id
-                ? "border-(--primary) text-(--primary)"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
 
       <div className="max-h-[65vh] overflow-y-auto">
         {activeTab === "zone" && isEditing && (
@@ -110,6 +106,23 @@ export default function ZoneDetails({
         {activeTab === "zone" && !isEditing && (
           <div className="space-y-4">
             <div className="space-y-2">
+              {!zone.enabled && (
+                <div className="p-2.5 bg-amber-50 rounded-md border border-amber-200">
+                  <p className="text-sm font-medium text-amber-800">Disabled</p>
+                  <p className="text-sm text-amber-700">
+                    The secondaries have dropped this zone. Its records stay
+                    here, editable.
+                  </p>
+                </div>
+              )}
+              {zone.description && (
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm text-gray-500">Description</p>
+                  <p className="text-base text-gray-900 break-all">
+                    {zone.description}
+                  </p>
+                </div>
+              )}
               <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Admin Email</p>
                 <p className="text-base text-gray-900 break-all">
@@ -129,9 +142,7 @@ export default function ZoneDetails({
                 </div>
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Serial</p>
-                  <p className="text-base text-gray-900">
-                    {zone.serial ?? "-"}
-                  </p>
+                  <p className="text-base text-gray-900">{zone.serial}</p>
                 </div>
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Refresh</p>
@@ -151,15 +162,17 @@ export default function ZoneDetails({
                 </div>
               </div>
             </div>
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="btn-primary"
-              >
-                Edit Zone
-              </button>
-            </div>
+            {globalAccess && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="btn-primary"
+                >
+                  Edit Zone
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -177,7 +190,7 @@ export default function ZoneDetails({
           <ZoneDnssecTab zone={zone} onEnabledChanged={updateDnssecEnabled} />
         )}
 
-        {activeTab === "nsupdate" && <ZoneTsigPolicies zone={zone} />}
+        {activeTab === "access" && <ZoneAccessTab zone={zone} />}
 
         {activeTab === "sync" && (
           <ZoneSyncTab zone={zone} onZoneChanged={onZoneChanged} />

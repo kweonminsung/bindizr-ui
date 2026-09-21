@@ -1,22 +1,23 @@
 import { useState } from "react";
-import { createTsigKey } from "@/lib/api";
+import { createToken } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { TSIG_ALGORITHMS, TsigKey } from "@/lib/types";
+import { toOptionalNumber } from "@/lib/form";
+import { CreatedToken } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
 
-interface TsigKeyFormProps {
-  onSuccess: (tsigKey: TsigKey) => void;
+interface TokenFormProps {
+  onSuccess: (created: CreatedToken) => void;
   onCancel: () => void;
 }
 
 const GLOBAL_WARNING =
-  "A Global Key can update every record of every zone without any grant. Create it anyway?";
+  "A Global Token can manage every zone and the zone plane, with no grant. Create it anyway?";
 
-export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
+export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
   const toast = useToast();
   const [name, setName] = useState("");
-  const [algorithm, setAlgorithm] = useState<string>(TSIG_ALGORITHMS[0]);
-  const [secret, setSecret] = useState("");
+  const [description, setDescription] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState("");
   const [isGlobal, setIsGlobal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,15 +30,15 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
 
     setSubmitting(true);
     try {
-      const tsigKey = await createTsigKey({
+      const created = await createToken({
         name: name.trim(),
-        algorithm,
-        secret: secret.trim() || null,
+        description: description.trim() || null,
+        expires_in_days: toOptionalNumber(expiresInDays, "Expiry"),
         global: isGlobal,
       });
-      onSuccess(tsigKey);
+      onSuccess(created);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to create TSIG key"));
+      toast.error(getErrorMessage(error, "Failed to create API token"));
     } finally {
       setSubmitting(false);
     }
@@ -46,71 +47,72 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">Create TSIG Key</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Create API Token</h2>
         <p className="text-sm text-gray-500 mt-1">
-          A Scoped Key needs zone grants before it can act.
+          A Scoped Token needs zone grants before it can act.
         </p>
       </div>
 
       <div className="space-y-4">
         <div>
           <label
-            htmlFor="name"
+            htmlFor="token_name"
             className="block text-sm font-medium text-gray-600 mb-1"
           >
             Name
           </label>
           <input
             type="text"
-            id="name"
+            id="token_name"
             name="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            placeholder="update-key"
+            pattern="[A-Za-z0-9._\-]+"
+            title="Letters, digits, '.', '_' and '-'"
+            placeholder="external-dns"
             className="w-full"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Letters, digits, <code>.</code>, <code>_</code> and <code>-</code>.
+          </p>
         </div>
         <div>
           <label
-            htmlFor="algorithm"
+            htmlFor="token_description"
             className="block text-sm font-medium text-gray-600 mb-1"
           >
-            Algorithm
-          </label>
-          <select
-            id="algorithm"
-            name="algorithm"
-            value={algorithm}
-            onChange={(e) => setAlgorithm(e.target.value)}
-            className="w-full"
-          >
-            {TSIG_ALGORITHMS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor="secret"
-            className="block text-sm font-medium text-gray-600 mb-1"
-          >
-            Secret (optional)
+            Description (optional)
           </label>
           <input
             type="text"
-            id="secret"
-            name="secret"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            placeholder="Leave empty to generate a random secret"
-            className="w-full font-mono text-sm"
+            id="token_description"
+            name="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={255}
+            placeholder="ExternalDNS in the prod cluster"
+            className="w-full"
           />
-          <p className="text-sm text-gray-500 mt-1">
-            Paste a base64 secret to import an existing key.
-          </p>
+        </div>
+        <div>
+          <label
+            htmlFor="token_expires_in_days"
+            className="block text-sm font-medium text-gray-600 mb-1"
+          >
+            Expires In (days, optional)
+          </label>
+          <input
+            type="number"
+            id="token_expires_in_days"
+            name="expires_in_days"
+            min="1"
+            max="36500"
+            value={expiresInDays}
+            onChange={(e) => setExpiresInDays(e.target.value)}
+            placeholder="Leave empty for a token that never expires"
+            className="w-full"
+          />
         </div>
         <label className="flex items-start space-x-2 text-sm text-gray-600">
           <input
@@ -120,9 +122,9 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
             className="mt-1"
           />
           <span>
-            Global Key
+            Global Token
             <span className="block text-amber-700">
-              May update every zone without grants. Cannot be changed later.
+              Manages every zone without grants. Cannot be changed later.
             </span>
           </span>
         </label>
@@ -133,7 +135,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
           Cancel
         </button>
         <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? "Creating..." : "Create TSIG Key"}
+          {submitting ? "Creating..." : "Create API Token"}
         </button>
       </div>
     </form>
