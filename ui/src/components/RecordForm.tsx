@@ -10,6 +10,7 @@ import {
   RecordType,
   Zone,
 } from "@/lib/types";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface RecordFormProps {
@@ -63,6 +64,8 @@ export default function RecordForm({
   zones = [],
 }: RecordFormProps) {
   const toast = useToast();
+  const { canCreateRecords } = useBindizrToken();
+  const writableZones = zones.filter((zone) => canCreateRecords(zone.name));
   const [formData, setFormData] = useState<RecordFormData>({
     ...defaultFormData,
     zone_name: zoneName ?? "",
@@ -257,7 +260,7 @@ export default function RecordForm({
               className="w-full"
             >
               <option value="">Select a zone</option>
-              {zones.map((zone) => (
+              {writableZones.map((zone) => (
                 <option key={zone.id} value={zone.name}>
                   {zone.name}
                 </option>

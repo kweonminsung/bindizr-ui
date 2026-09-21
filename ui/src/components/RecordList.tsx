@@ -77,7 +77,7 @@ export default function RecordList({
   onCreateRecord,
 }: RecordListProps) {
   const toast = useToast();
-  const { canWriteRecords } = useBindizrToken();
+  const { canCreateRecords, canWriteRecord } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const sort = getSortFromSearchParams(
     searchParams,
@@ -347,7 +347,7 @@ export default function RecordList({
             order={order}
             onChange={handleSortChange}
           />
-          {canWriteRecords(zoneName) && (
+          {canCreateRecords(zoneName) && (
             <button
               onClick={onCreateRecord}
               className="btn-primary w-full sm:w-auto"
@@ -475,7 +475,7 @@ export default function RecordList({
                   {formatRecordValue(record.value)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {record.id != null && canWriteRecords(record.zone_name) ? (
+                  {record.id != null && canWriteRecord(record) ? (
                     <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <button
                         onClick={(e) => {

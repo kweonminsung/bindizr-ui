@@ -7,6 +7,7 @@ export function formatDateTime(value: string) {
 export const toDayStart = (date: string) =>
   date.trim() === "" ? undefined : `${date}T00:00:00Z`;
 
-/** The last instant of that UTC day, so "created before" takes the whole day. */
+/** The last instant of that UTC day, so "created before" takes the whole day;
+ * timestamps carry sub-second precision, so the bound does too. */
 export const toDayEnd = (date: string) =>
-  date.trim() === "" ? undefined : `${date}T23:59:59Z`;
+  date.trim() === "" ? undefined : `${date}T23:59:59.999999999Z`;

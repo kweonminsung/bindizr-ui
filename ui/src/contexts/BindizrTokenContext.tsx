@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { getSelfToken, getSelfTokenGrants } from "@/lib/api";
+import { grantCoversRecord, isSameZone } from "@/lib/grants";
 import { ApiToken, TokenGrant } from "@/lib/types";
 import { useAuth } from "./AuthContext";
 
@@ -14,9 +15,17 @@ interface BindizrTokenContextType {
   self: ApiToken | null;
   /** Zone-plane access: a global token, no auth, or an unresolved lookup. */
   globalAccess: boolean;
-  /** Whether the token may write records in one zone, or in any when none
-   * is named. A scoped token needs a read-write grant. */
-  canWriteRecords: (zoneName?: string) => boolean;
+  /** Whether some read-write grant reaches part of a zone, or of any zone
+   * when none is named. The name typed in decides the rest, and only the
+   * API can settle that. */
+  canCreateRecords: (zoneName?: string) => boolean;
+  /** Whether a read-write grant's zone, name pattern and types reach this
+   * record. */
+  canWriteRecord: (record: {
+    zone_name: string;
+    name: string;
+    type: string;
+  }) => boolean;
   /** Re-read after the Bindizr settings change. */
   refresh: () => Promise<void>;
 }
@@ -73,12 +82,22 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     }
   }, []);
 
-  const canWriteRecords = useCallback(
+  const canCreateRecords = useCallback(
     (zoneName?: string) =>
       globalAccess ||
       grants.some(
         (grant) =>
-          grant.can_write && (!zoneName || grant.zone_name === zoneName),
+          grant.can_write &&
+          (!zoneName || isSameZone(grant.zone_name, zoneName)),
+      ),
+    [globalAccess, grants],
+  );
+
+  const canWriteRecord = useCallback(
+    (record: { zone_name: string; name: string; type: string }) =>
+      globalAccess ||
+      grants.some(
+        (grant) => grant.can_write && grantCoversRecord(grant, record),
       ),
     [globalAccess, grants],
   );
@@ -102,7 +121,7 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
 
   return (
     <BindizrTokenContext.Provider
-      value={{ self, globalAccess, canWriteRecords, refresh }}
+      value={{ self, globalAccess, canCreateRecords, canWriteRecord, refresh }}
     >
       {children}
     </BindizrTokenContext.Provider>

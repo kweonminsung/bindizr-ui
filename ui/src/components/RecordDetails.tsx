@@ -16,9 +16,9 @@ export default function RecordDetails({
   onRecordChanged,
   defaultEditing = false,
 }: RecordDetailsProps) {
-  const { canWriteRecords } = useBindizrToken();
+  const { canWriteRecord } = useBindizrToken();
   const isDerived = record.id == null;
-  const canEdit = !isDerived && canWriteRecords(record.zone_name);
+  const canEdit = !isDerived && canWriteRecord(record);
   const [isEditing, setIsEditing] = useState(defaultEditing && canEdit);
 
   if (isEditing && canEdit) {

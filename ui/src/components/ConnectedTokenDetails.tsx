@@ -79,8 +79,8 @@ export default function ConnectedTokenDetails({
               Zone Access
             </h3>
             <p className="text-sm text-gray-500 mt-2">
-              This token sees only the zones below. The pattern and types limit
-              what it may write.
+              This token sees only the zones below. The pattern and types narrow
+              what each grant reaches, for reads as much as writes.
             </p>
           </div>
 
