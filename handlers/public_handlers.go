@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"bindizr-ui/db"
 
@@ -46,6 +47,16 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Open for the setup wizard; afterwards the usual account gate applies
+	setupComplete, err := db.IsSetupComplete()
+	if err != nil {
+		writeJSONError(w, "Failed to check setup status", http.StatusInternalServerError)
+		return
+	}
+	if setupComplete && !requireAuth(w, r) {
+		return
+	}
+
 	req, err := http.NewRequest("GET", bindizrURL+"/zones", nil)
 	if err != nil {
 		writeJSONError(w, "Failed to create request", http.StatusInternalServerError)
@@ -56,7 +67,13 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Authorization", "Bearer "+payload.SecretKey)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		// Never follow redirects
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		writeJSONError(w, "Failed to connect to the server.", http.StatusInternalServerError)
@@ -65,6 +82,10 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	w.Header().Set("Content-Type", "application/json")
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		writeJSONError(w, "The server redirected the request. Enter the final URL instead.", http.StatusBadGateway)
+		return
+	}
 	if resp.StatusCode == http.StatusOK {
 		json.NewEncoder(w).Encode(map[string]string{"message": "Connection successful."})
 	} else {

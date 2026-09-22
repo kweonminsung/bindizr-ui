@@ -173,21 +173,28 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }
 
+// requireAuth writes the error and returns false if an enabled account rejects the request.
+func requireAuth(w http.ResponseWriter, r *http.Request) bool {
+	accountEnabled, err := db.IsAccountEnabled()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return false
+	}
+
+	if accountEnabled {
+		if _, authErr := authenticate(r); authErr != nil {
+			http.Error(w, authErr.message, authErr.status)
+			return false
+		}
+	}
+	return true
+}
+
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accountEnabled, err := db.IsAccountEnabled()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if !requireAuth(w, r) {
 			return
 		}
-
-		if accountEnabled {
-			if _, authErr := authenticate(r); authErr != nil {
-				http.Error(w, authErr.message, authErr.status)
-				return
-			}
-		}
-
 		next.ServeHTTP(w, r)
 	}
 }
