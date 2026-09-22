@@ -30,16 +30,6 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Open for the setup wizard; afterwards the usual account gate applies
-	setupComplete, err := db.IsSetupComplete()
-	if err != nil {
-		writeJSONError(w, "Failed to check setup status", http.StatusInternalServerError)
-		return
-	}
-	if setupComplete && !requireAuth(w, r) {
-		return
-	}
-
 	var payload BindizrTestPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeJSONError(w, "Invalid payload", http.StatusBadRequest)
@@ -54,6 +44,16 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 	bindizrURL, ok := normalizeBindizrURL(payload.BindizrUrl)
 	if !ok {
 		writeJSONError(w, "Invalid Bindizr URL. Only http:// and https:// URLs are supported.", http.StatusBadRequest)
+		return
+	}
+
+	// Open for the setup wizard; afterwards the usual account gate applies
+	setupComplete, err := db.IsSetupComplete()
+	if err != nil {
+		writeJSONError(w, "Failed to check setup status", http.StatusInternalServerError)
+		return
+	}
+	if setupComplete && !requireAuth(w, r) {
 		return
 	}
 
