@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"bindizr-ui/db"
 
@@ -26,6 +27,16 @@ type BindizrTestPayload struct {
 func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Anonymous use is only allowed until setup completes
+	setupComplete, err := db.IsSetupComplete()
+	if err != nil {
+		writeJSONError(w, "Failed to check setup status", http.StatusInternalServerError)
+		return
+	}
+	if setupComplete && !requireAuth(w, r) {
 		return
 	}
 
@@ -56,7 +67,7 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Authorization", "Bearer "+payload.SecretKey)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		writeJSONError(w, "Failed to connect to the server.", http.StatusInternalServerError)

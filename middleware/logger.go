@@ -3,6 +3,7 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -15,21 +16,22 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, r)
 
 		duration := time.Since(start)
-		// Truncate the auth header so tokens are not logged in full
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			authHeader = "none"
-		} else if len(authHeader) > 20 {
-			authHeader = authHeader[:20] + "..."
+		// Strip line breaks so a crafted path cannot forge log lines
+		path := strings.ReplaceAll(r.URL.Path, "\n", "")
+		path = strings.ReplaceAll(path, "\r", "")
+
+		authState := "none"
+		if r.Header.Get("Authorization") != "" {
+			authState = "present"
 		}
 
 		log.Printf("[%s] %s %s - %d (%v) [Auth: %s]",
 			r.Method,
-			r.URL.Path,
+			path,
 			r.RemoteAddr,
 			wrapped.statusCode,
 			duration,
-			authHeader,
+			authState,
 		)
 	})
 }
