@@ -30,6 +30,13 @@ $ docker compose up -d
 
 Then open <http://localhost:9000>.
 
+To build and push the amd64 and arm64 image yourself (the tag defaults to the
+version in `ui/package.json`; `IMAGE` overrides the repository):
+
+```bash
+$ ./scripts/build_image.sh
+```
+
 ## Getting Started
 
 1. **Build and install dependencies:**
@@ -52,7 +59,7 @@ Then open <http://localhost:9000>.
 
 ## Dependencies
 
-- [Go](https://golang.org/) v1.20 or higher
+- [Go](https://golang.org/) v1.26 or higher
 - [Sqlite3](https://sqlite.org/)
 - [Node.js](https://nodejs.org) v20 or higher
 - [React](https://reactjs.org/) v19
