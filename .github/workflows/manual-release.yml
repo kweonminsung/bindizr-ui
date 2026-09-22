@@ -87,7 +87,7 @@ jobs:
       - name: Create the multi-arch manifest
         working-directory: /tmp/digests
         run: |
-          VERSION=$(grep '"version"' ui/package.json | head -1 | cut -d '"' -f 4)
+          VERSION=$(grep '"version"' "$GITHUB_WORKSPACE/ui/package.json" | head -1 | cut -d '"' -f 4)
           refs=()
           for digest in *; do refs+=("kweonminsung/bindizr-ui@sha256:$digest"); done
           docker buildx imagetools create \
@@ -108,7 +108,10 @@ jobs:
       - name: Resolve version from ui/package.json
         run: |
           VERSION="v$(grep '"version"' ui/package.json | head -1 | cut -d '"' -f 4)"
-          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+          # SemVer with a prerelease part, which may contain hyphens, but no
+          # build metadata: the version is also the image tag, and a Docker tag
+          # cannot carry a '+'.
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "Malformed version '$VERSION' in ui/package.json" >&2
             exit 1
           fi
@@ -116,7 +119,8 @@ jobs:
 
       - name: Create git tag (if not exists)
         run: |
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+          # The checkout fetches no tags, so the remote is what knows.
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null; then
             echo "Tag $VERSION already exists, skipping tag creation"
           else
             git config user.name "github-actions[bot]"
