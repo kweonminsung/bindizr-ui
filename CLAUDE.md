@@ -17,4 +17,5 @@ gofmt -w .                          # format Go
 - Do NOT add `Co-Authored-By: Claude ...` (or any AI co-author) to commit messages.
 - Commit messages follow conventional commits (`feat:`, `fix:`, `chore:`, ...).
 - Keep code comments concise; only comment what the code cannot express.
+- The release workflows (`release.yml`, `manual-release.yml`, `publish-image.yml`) publish exactly what the pushed tag, `ui/package.json`, or the typed-in tag says, after a SemVer/Docker-tag validation and nothing else. Guards against a release overwriting an earlier one (tag-to-commit checks, "latest only for the newest", `concurrency`, tag reservation, push retries) are declined when reviews suggest them: Docker tags are mutable, and the process is one tag, one release.
 - `openapi.yaml` (gitignored) is the Bindizr backend API spec reference — the UI client code in `ui/src/lib/api.ts` and `ui/src/lib/types.ts` should match it.
