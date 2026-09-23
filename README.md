@@ -31,7 +31,8 @@ $ docker compose up -d
 Then open <http://localhost:9000>.
 
 A `v*` tag, or the Manual Release workflow, builds and pushes the amd64 and
-arm64 image. To push it by hand instead (the tag defaults to the version in
+arm64 image; the Publish Image workflow pushes it under a tag you enter. To
+push it from your own machine instead (the tag defaults to the version in
 `ui/package.json`; `IMAGE` overrides the repository):
 
 ```bash
