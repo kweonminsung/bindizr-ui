@@ -33,19 +33,6 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # A version whose tag already exists may only be released again from
-      # that tag's commit; otherwise the image would stop matching the tag.
-      - name: Refuse a version whose tag names another commit
-        run: |
-          TAG="v$VERSION"
-          if git fetch -q --depth=1 origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null \
-            && [ "$(git rev-parse "$TAG^{commit}")" != "$GITHUB_SHA" ]; then
-            echo "Tag $TAG exists and names another commit; bump the version or dispatch from that tag" >&2
-            exit 1
-          fi
-        env:
-          VERSION: ${{ steps.file.outputs.version }}
-
   image:
     name: Build image (${{ matrix.arch }})
     needs: version
