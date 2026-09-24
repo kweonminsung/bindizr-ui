@@ -27,6 +27,7 @@ import {
   TokenGrant,
   TsigGrant,
   Secondary,
+  SecondaryCheck,
   TsigKey,
   UpdateDnssecPolicyPayload,
   UpdateSecondaryPayload,
@@ -451,6 +452,15 @@ export async function updateSecondary(
     },
   );
   return (await response.json()).secondary as Secondary;
+}
+
+export async function checkSecondary(name: string): Promise<SecondaryCheck> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}/check`,
+    "Failed to check secondary",
+    { method: "POST" },
+  );
+  return (await response.json()) as SecondaryCheck;
 }
 
 export async function deleteSecondary(name: string): Promise<string> {
