@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { getTsigKeys, updateSecondary } from "@/lib/api";
+import { checkSecondary, getTsigKeys, updateSecondary } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
-import { Secondary, TsigKey, UpdateSecondaryPayload } from "@/lib/types";
+import {
+  Secondary,
+  SecondaryCheck,
+  TsigKey,
+  UpdateSecondaryPayload,
+} from "@/lib/types";
+import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
 
 interface SecondaryDetailsProps {
@@ -20,12 +26,26 @@ export default function SecondaryDetails({
   const [notifyKey, setNotifyKey] = useState(secondary.notify_key ?? "");
   const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [check, setCheck] = useState<SecondaryCheck | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     setAddress(secondary.address);
     setEnabled(secondary.enabled);
     setNotifyKey(secondary.notify_key ?? "");
+    setCheck(null);
   }, [secondary]);
+
+  const handleCheck = async () => {
+    setChecking(true);
+    try {
+      setCheck(await checkSecondary(secondary.name));
+    } catch (checkError) {
+      toast.error(getErrorMessage(checkError, "Failed to check secondary"));
+    } finally {
+      setChecking(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -98,6 +118,28 @@ export default function SecondaryDetails({
         </p>
       </div>
 
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-700">Check</h3>
+          <button
+            type="button"
+            onClick={handleCheck}
+            disabled={checking}
+            className="btn-secondary"
+          >
+            {checking ? "Checking..." : "Check now"}
+          </button>
+        </div>
+        {check ? (
+          <CheckReport check={check} />
+        ) : (
+          <p className="text-sm text-gray-500">
+            Resolves the address, compares the catalog zone serial with
+            Bindizr&apos;s, and sends a NOTIFY.
+          </p>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label
@@ -168,5 +210,45 @@ export default function SecondaryDetails({
         </div>
       </form>
     </div>
+  );
+}
+
+function CheckReport({ check }: { check: SecondaryCheck }) {
+  const catalog = check.catalog;
+  const catalogLine =
+    catalog.visible_serial == null
+      ? `unreachable (${catalog.error ?? "unknown error"})`
+      : catalog.status === "in_sync" || catalog.status === "reachable"
+        ? `${catalog.status === "in_sync" ? "in sync" : "reachable"} at serial ${catalog.visible_serial}`
+        : `${catalog.status} at serial ${catalog.visible_serial}, Bindizr serves ${check.catalog_serial}`;
+  const healthy =
+    !check.resolve_error &&
+    catalog.status === "in_sync" &&
+    check.notifies.every((notify) => notify.accepted);
+
+  return (
+    <Notice tone={healthy ? "success" : "warning"}>
+      <ul className="space-y-1 text-sm">
+        <li>
+          {check.resolve_error
+            ? `Resolution failed: ${check.resolve_error}`
+            : `Resolves to ${check.addresses.join(", ")}`}
+        </li>
+        {check.listener_error && (
+          <li>
+            Bindizr&apos;s own listener did not answer: {check.listener_error}
+          </li>
+        )}
+        <li>
+          Catalog zone {check.catalog_zone}: {catalogLine}
+        </li>
+        {check.notifies.map((notify) => (
+          <li key={notify.address}>
+            NOTIFY to {notify.address}:{" "}
+            {notify.accepted ? "accepted" : `rejected (${notify.error})`}
+          </li>
+        ))}
+      </ul>
+    </Notice>
   );
 }

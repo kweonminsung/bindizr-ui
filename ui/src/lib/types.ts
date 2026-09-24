@@ -297,6 +297,26 @@ export interface UpdateSecondaryPayload {
   notify_key?: string;
 }
 
+export interface NotifyCheck {
+  address: string;
+  accepted: boolean;
+  error?: string | null;
+}
+
+/** What a secondary answered when checked. */
+export interface SecondaryCheck {
+  secondary: Secondary;
+  /** Socket addresses the registered address resolves to now. */
+  addresses: string[];
+  resolve_error?: string | null;
+  catalog_zone: string;
+  /** The serial Bindizr's own listener serves the catalog zone at; absent with `listener_error`. */
+  catalog_serial?: number | null;
+  listener_error?: string | null;
+  catalog: SecondaryStatusItem;
+  notifies: NotifyCheck[];
+}
+
 /** One zone granted to a token or TSIG key; the pattern and types narrow it. */
 export interface ZoneGrant {
   id: number;
@@ -576,6 +596,7 @@ export const SECONDARY_STATUSES = [
   "in_sync",
   "lagging",
   "ahead",
+  "reachable",
   "unreachable",
 ] as const;
 
