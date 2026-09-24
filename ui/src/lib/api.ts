@@ -5,6 +5,7 @@ import {
   CreateTokenGrantPayload,
   CreateTokenPayload,
   CreateTsigGrantPayload,
+  CreateSecondaryPayload,
   CreateTsigKeyPayload,
   CreatedToken,
   DeleteRecordsResult,
@@ -25,8 +26,10 @@ import {
   SignedRecord,
   TokenGrant,
   TsigGrant,
+  Secondary,
   TsigKey,
   UpdateDnssecPolicyPayload,
+  UpdateSecondaryPayload,
   UpdateDnssecSettingsPayload,
   UpdateRecordPayload,
   UpdateZonePayload,
@@ -415,6 +418,48 @@ export async function getZoneStatus(zoneName: string): Promise<ZoneStatus> {
     "Failed to fetch zone status",
   );
   return (await response.json()) as ZoneStatus;
+}
+
+export async function getSecondaries(): Promise<Secondary[]> {
+  return getAllItems<Secondary>("/secondaries", "Failed to fetch secondaries");
+}
+
+export async function createSecondary(
+  payload: CreateSecondaryPayload,
+): Promise<Secondary> {
+  const response = await apiFetch(
+    `/secondaries`,
+    "Failed to register secondary",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).secondary as Secondary;
+}
+
+export async function updateSecondary(
+  name: string,
+  payload: UpdateSecondaryPayload,
+): Promise<Secondary> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}`,
+    "Failed to update secondary",
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).secondary as Secondary;
+}
+
+export async function deleteSecondary(name: string): Promise<string> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}`,
+    "Failed to delete secondary",
+    { method: "DELETE" },
+  );
+  return (await response.json()).message as string;
 }
 
 export async function getTsigKeys(): Promise<TsigKey[]> {

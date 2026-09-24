@@ -271,6 +271,32 @@ export interface CreateTsigKeyPayload {
   global?: boolean;
 }
 
+/** A registered secondary server. */
+export interface Secondary {
+  id: number;
+  name: string;
+  /** host[:port] */
+  address: string;
+  /** Disabled: no NOTIFY, no unsigned transfer, no probe. */
+  enabled: boolean;
+  /** TSIG key its NOTIFY is signed with, if any. */
+  notify_key: string | null;
+  created_at: string;
+}
+
+export interface CreateSecondaryPayload {
+  name: string;
+  address: string;
+  notify_key?: string | null;
+}
+
+/** An omitted field keeps its value; an empty `notify_key` clears it. */
+export interface UpdateSecondaryPayload {
+  address?: string;
+  enabled?: boolean;
+  notify_key?: string;
+}
+
 /** One zone granted to a token or TSIG key; the pattern and types narrow it. */
 export interface ZoneGrant {
   id: number;

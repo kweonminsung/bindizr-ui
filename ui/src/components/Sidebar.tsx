@@ -140,6 +140,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     DNSSEC Policies
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    to="/secondaries"
+                    className={linkClasses(pathname, "/secondaries")}
+                    onClick={onClose}
+                  >
+                    Secondaries
+                  </Link>
+                </li>
                 <NavGroup
                   label="Access"
                   basePath="/access"

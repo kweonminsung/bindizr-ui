@@ -58,6 +58,12 @@ Generate or import TSIG keys for scoped dynamic updates or whole-zone transfers.
 
 <img src="public/screenshots/tsig-key-grants.png" alt="A TSIG key with its secret masked and transfer-only grants for example.com and example.net" width="768" />
 
+### Secondaries
+
+Register the servers Bindizr feeds by name and address. Pause one without forgetting it, and pick a TSIG key to sign the NOTIFY it receives.
+
+<img src="public/screenshots/secondaries.png" alt="Secondary list: one server signing NOTIFY under a TSIG key, one registered by hostname, and a disabled standby" width="1000" />
+
 ### Secondary synchronization
 
 Check secondary serials and reachability. Send DNS NOTIFY for one or all zones, optionally bumping the serial to trigger a transfer.
