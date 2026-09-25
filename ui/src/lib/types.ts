@@ -534,7 +534,7 @@ export interface DnssecStatus {
   /** When the re-signer next has work; absent for an unsigned zone. */
   next_resign_at?: string | null;
   /** The parent nameservers configured on the zone; absent until DNSSEC is enabled. */
-  parent_ns_addrs?: string | null;
+  parent_ns_addrs?: string[] | null;
   /** Present only when the status comes from a parent DS check. */
   delegation?: DnssecDelegationInfo | null;
 }
@@ -544,14 +544,14 @@ export interface EnableDnssecPayload {
   policy?: string | null;
   /** Comma-separated `host[:port]` asked for the zone's DS by every later
    * check. Required: Bindizr does not discover the parent. */
-  parent_ns_addrs: string;
+  parent_ns_addrs: string[];
 }
 
 /** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
 export interface UpdateDnssecSettingsPayload {
   /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
   policy?: string | null;
-  parent_ns_addrs?: string | null;
+  parent_ns_addrs?: string[] | null;
 }
 
 /** Which key to roll: required for split-key zones, omitted for CSK zones. */
@@ -610,7 +610,7 @@ export interface SecondaryStatusItem {
 }
 
 export interface ZoneStatus {
-  zone: string;
+  zone_name: string;
   serial: number;
   secondaries: SecondaryStatusItem[];
 }

@@ -28,6 +28,19 @@ import {
 import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
 
+/** The comma-separated text of a parent nameserver list, as the field shows it. */
+function joinParentNsAddrs(addrs: string[] | null | undefined): string {
+  return (addrs ?? []).join(", ");
+}
+
+/** The entries typed into the field; the API trims and validates each. */
+function splitParentNsAddrs(text: string): string[] {
+  return text
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 interface ZoneDnssecTabProps {
   zone: Zone;
   /** Keeps the badge next to the zone name in sync. */
@@ -125,7 +138,7 @@ export default function ZoneDnssecTab({
           setStatus(data);
           setPolicies(policyList);
           setTargetPolicy("");
-          setParentNsAddrs(data.parent_ns_addrs ?? "");
+          setParentNsAddrs(joinParentNsAddrs(data.parent_ns_addrs));
           setDelegation(null);
         }
       } catch (fetchError) {
@@ -187,10 +200,10 @@ export default function ZoneDnssecTab({
       async () => {
         const data = await enableDnssec(zone.name, {
           policy: policyName,
-          parent_ns_addrs: parentNsAddrs.trim(),
+          parent_ns_addrs: splitParentNsAddrs(parentNsAddrs),
         });
         setStatus(data);
-        setParentNsAddrs(data.parent_ns_addrs ?? "");
+        setParentNsAddrs(joinParentNsAddrs(data.parent_ns_addrs));
         toast.success("DNSSEC enabled. Register the DS records at the parent.");
       },
       "Failed to enable DNSSEC",
@@ -281,13 +294,13 @@ export default function ZoneDnssecTab({
       "parent-ns",
       async () => {
         const data = await updateDnssecSettings(zone.name, {
-          parent_ns_addrs: parentNsAddrs.trim(),
+          parent_ns_addrs: splitParentNsAddrs(parentNsAddrs),
         });
         setStatus(data);
-        setParentNsAddrs(data.parent_ns_addrs ?? "");
+        setParentNsAddrs(joinParentNsAddrs(data.parent_ns_addrs));
         // Checked against the old servers.
         setDelegation(null);
-        toast.success(`Parent nameservers set to ${data.parent_ns_addrs}.`);
+        toast.success(`Parent nameservers set to ${joinParentNsAddrs(data.parent_ns_addrs)}.`);
       },
       "Failed to set the parent nameservers",
     );
@@ -375,7 +388,8 @@ export default function ZoneDnssecTab({
   );
 
   const parentNsUnchanged =
-    parentNsAddrs.trim() === (status.parent_ns_addrs ?? "");
+    splitParentNsAddrs(parentNsAddrs).join(",") ===
+    (status.parent_ns_addrs ?? []).join(",");
 
   if (!status.enabled) {
     const selectedPolicy = policies.find(
