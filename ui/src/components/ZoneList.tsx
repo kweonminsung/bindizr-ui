@@ -280,7 +280,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       return;
     }
 
-    const goesWithIt = `${preview.records} record${preview.records === 1 ? "" : "s"} and ${preview.versions} saved version${preview.versions === 1 ? "" : "s"}`;
+    const goesWithIt = `${preview.records_deleted} record${preview.records_deleted === 1 ? "" : "s"} and ${preview.versions_deleted} saved version${preview.versions_deleted === 1 ? "" : "s"}`;
     if (
       !window.confirm(
         `Delete "${zone.name}"?\n\n${goesWithIt} go with it. This cannot be undone.`,
@@ -292,7 +292,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     try {
       const removed = await deleteZone(zone.name);
       toast.success(
-        `Deleted ${zone.name}: ${removed.records} records, ${removed.versions} versions`,
+        `Deleted ${zone.name}: ${removed.records_deleted} records, ${removed.versions_deleted} versions`,
       );
       if (zones.length === 1 && currentPage > 1) {
         handlePageChange(currentPage - 1);

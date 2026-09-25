@@ -23,7 +23,7 @@ export default function SecondaryDetails({
   const toast = useToast();
   const [address, setAddress] = useState(secondary.address);
   const [enabled, setEnabled] = useState(secondary.enabled);
-  const [notifyKey, setNotifyKey] = useState(secondary.notify_key ?? "");
+  const [notifyKey, setNotifyKey] = useState(secondary.notify_key_name ?? "");
   const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [check, setCheck] = useState<SecondaryCheck | null>(null);
@@ -32,7 +32,7 @@ export default function SecondaryDetails({
   useEffect(() => {
     setAddress(secondary.address);
     setEnabled(secondary.enabled);
-    setNotifyKey(secondary.notify_key ?? "");
+    setNotifyKey(secondary.notify_key_name ?? "");
     setCheck(null);
   }, [secondary]);
 
@@ -75,8 +75,8 @@ export default function SecondaryDetails({
     if (enabled !== secondary.enabled) {
       payload.enabled = enabled;
     }
-    if (notifyKey !== (secondary.notify_key ?? "")) {
-      payload.notify_key = notifyKey;
+    if (notifyKey !== (secondary.notify_key_name ?? "")) {
+      payload.notify_key_name = notifyKey;
     }
     if (Object.keys(payload).length === 0) {
       toast.error("Nothing to change.");
@@ -224,7 +224,7 @@ function CheckReport({ check }: { check: SecondaryCheck }) {
   const healthy =
     !check.resolve_error &&
     catalog.status === "in_sync" &&
-    check.notifies.every((notify) => notify.accepted);
+    check.notifies.every((notify) => notify.error == null);
 
   return (
     <Notice tone={healthy ? "success" : "warning"}>
@@ -240,12 +240,12 @@ function CheckReport({ check }: { check: SecondaryCheck }) {
           </li>
         )}
         <li>
-          Catalog zone {check.catalog_zone}: {catalogLine}
+          Catalog zone {check.catalog_zone_name}: {catalogLine}
         </li>
         {check.notifies.map((notify) => (
           <li key={notify.address}>
             NOTIFY to {notify.address}:{" "}
-            {notify.accepted ? "accepted" : `rejected (${notify.error})`}
+            {notify.error == null ? "accepted" : `rejected (${notify.error})`}
           </li>
         ))}
       </ul>

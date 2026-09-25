@@ -46,7 +46,7 @@ export default function SecondaryForm({
       await createSecondary({
         name: name.trim(),
         address: address.trim(),
-        notify_key: notifyKey || null,
+        notify_key_name: notifyKey || null,
       });
       toast.success(`Registered "${name.trim()}".`);
       onSuccess();

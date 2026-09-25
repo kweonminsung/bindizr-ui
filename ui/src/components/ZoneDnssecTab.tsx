@@ -199,7 +199,7 @@ export default function ZoneDnssecTab({
       "enable",
       async () => {
         const data = await enableDnssec(zone.name, {
-          policy: policyName,
+          policy_name: policyName,
           parent_ns_addrs: splitParentNsAddrs(parentNsAddrs),
         });
         setStatus(data);
@@ -214,7 +214,7 @@ export default function ZoneDnssecTab({
       "policy",
       async () => {
         const data = await updateDnssecSettings(zone.name, {
-          policy: targetPolicy,
+          policy_name: targetPolicy,
         });
         setStatus(data);
         setTargetPolicy("");

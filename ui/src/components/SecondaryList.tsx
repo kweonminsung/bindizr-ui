@@ -196,7 +196,7 @@ export default function SecondaryList({
                   )}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {secondary.notify_key ?? "-"}
+                  {secondary.notify_key_name ?? "-"}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {formatDateTime(secondary.created_at)}
