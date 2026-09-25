@@ -145,7 +145,7 @@ export default function ZoneVersions({
   };
 
   const renderSummary = (result: RollbackZoneResult) =>
-    `${result.summary.records_added} added, ${result.summary.records_deleted} deleted, ${result.summary.records_unchanged} unchanged, SOA ${
+    `${result.summary.added} added, ${result.summary.deleted} deleted, ${result.summary.unchanged} unchanged, SOA ${
       result.summary.soa_changed ? "changed" : "unchanged"
     }`;
 
