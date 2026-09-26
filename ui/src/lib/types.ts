@@ -206,8 +206,8 @@ export interface DeleteZoneResult {
   dry_run: boolean;
   zone: Zone;
   /** Counts of what goes with the zone, not the rows themselves. */
-  records: number;
-  versions: number;
+  records_deleted: number;
+  versions_deleted: number;
 }
 
 export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
@@ -271,6 +271,51 @@ export interface CreateTsigKeyPayload {
   global?: boolean;
 }
 
+/** A registered secondary server. */
+export interface Secondary {
+  id: number;
+  name: string;
+  /** host[:port] */
+  address: string;
+  /** Disabled: no NOTIFY, no unsigned transfer, no probe. */
+  enabled: boolean;
+  /** TSIG key its NOTIFY is signed with, if any. */
+  notify_key_name: string | null;
+  created_at: string;
+}
+
+export interface CreateSecondaryPayload {
+  name: string;
+  address: string;
+  notify_key_name?: string | null;
+}
+
+/** An omitted field keeps its value; an empty `notify_key` clears it. */
+export interface UpdateSecondaryPayload {
+  address?: string;
+  enabled?: boolean;
+  notify_key_name?: string;
+}
+
+export interface NotifyCheck {
+  address: string;
+  error?: string | null;
+}
+
+/** What a secondary answered when checked. */
+export interface SecondaryCheck {
+  secondary: Secondary;
+  /** Socket addresses the registered address resolves to now. */
+  addresses: string[];
+  resolve_error?: string | null;
+  catalog_zone_name: string;
+  /** The serial Bindizr's own listener serves the catalog zone at; absent with `listener_error`. */
+  catalog_serial?: number | null;
+  listener_error?: string | null;
+  catalog: SecondaryStatusItem;
+  notifies: NotifyCheck[];
+}
+
 /** One zone granted to a token or TSIG key; the pattern and types narrow it. */
 export interface ZoneGrant {
   id: number;
@@ -295,7 +340,7 @@ export interface CreateZoneGrantPayload {
 }
 
 export interface TsigGrant extends ZoneGrant {
-  tsig_key: string;
+  tsig_key_name: string;
 }
 
 export type CreateTsigGrantPayload = CreateZoneGrantPayload;
@@ -342,9 +387,9 @@ export interface VersionDiff {
 }
 
 export interface RollbackSummary {
-  records_added: number;
-  records_deleted: number;
-  records_unchanged: number;
+  added: number;
+  deleted: number;
+  unchanged: number;
   soa_changed: boolean;
 }
 
@@ -488,24 +533,24 @@ export interface DnssecStatus {
   /** When the re-signer next has work; absent for an unsigned zone. */
   next_resign_at?: string | null;
   /** The parent nameservers configured on the zone; absent until DNSSEC is enabled. */
-  parent_ns_addrs?: string | null;
+  parent_ns_addrs?: string[] | null;
   /** Present only when the status comes from a parent DS check. */
   delegation?: DnssecDelegationInfo | null;
 }
 
 export interface EnableDnssecPayload {
   /** Name of the policy to sign under; defaults to `default`. */
-  policy?: string | null;
+  policy_name?: string | null;
   /** Comma-separated `host[:port]` asked for the zone's DS by every later
    * check. Required: Bindizr does not discover the parent. */
-  parent_ns_addrs: string;
+  parent_ns_addrs: string[];
 }
 
 /** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
 export interface UpdateDnssecSettingsPayload {
   /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
-  policy?: string | null;
-  parent_ns_addrs?: string | null;
+  policy_name?: string | null;
+  parent_ns_addrs?: string[] | null;
 }
 
 /** Which key to roll: required for split-key zones, omitted for CSK zones. */
@@ -541,7 +586,7 @@ export interface CreatedToken {
 }
 
 export interface TokenGrant extends ZoneGrant {
-  api_token: string;
+  token_name: string;
 }
 
 export type CreateTokenGrantPayload = CreateZoneGrantPayload;
@@ -550,6 +595,7 @@ export const SECONDARY_STATUSES = [
   "in_sync",
   "lagging",
   "ahead",
+  "reachable",
   "unreachable",
 ] as const;
 
@@ -563,7 +609,7 @@ export interface SecondaryStatusItem {
 }
 
 export interface ZoneStatus {
-  zone: string;
+  zone_name: string;
   serial: number;
   secondaries: SecondaryStatusItem[];
 }

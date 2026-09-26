@@ -14,6 +14,7 @@ import ZonesPage from "@/pages/ZonesPage";
 import RecordsPage from "@/pages/RecordsPage";
 import TokensPage from "@/pages/TokensPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
+import SecondariesPage from "@/pages/SecondariesPage";
 import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -31,6 +32,7 @@ function App() {
     "/records",
     "/zones",
     "/dnssec-policies",
+    "/secondaries",
     "/access",
     "/settings",
   ].some((path) => location.pathname.startsWith(path));
@@ -68,6 +70,14 @@ function App() {
                     element={
                       <GlobalOnly>
                         <DnssecPoliciesPage />
+                      </GlobalOnly>
+                    }
+                  />
+                  <Route
+                    path="/secondaries"
+                    element={
+                      <GlobalOnly>
+                        <SecondariesPage />
                       </GlobalOnly>
                     }
                   />

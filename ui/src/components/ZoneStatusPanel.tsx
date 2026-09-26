@@ -14,6 +14,7 @@ const STATUS_STYLES: Record<SecondaryStatus, string> = {
   in_sync: "bg-green-100 text-green-700",
   lagging: "bg-amber-100 text-amber-800",
   ahead: "bg-blue-100 text-blue-700",
+  reachable: "bg-gray-100 text-gray-700",
   unreachable: "bg-red-100 text-red-700",
 };
 
@@ -21,6 +22,7 @@ const STATUS_LABELS: Record<SecondaryStatus, string> = {
   in_sync: "In sync",
   lagging: "Lagging",
   ahead: "Ahead",
+  reachable: "Reachable",
   unreachable: "Unreachable",
 };
 

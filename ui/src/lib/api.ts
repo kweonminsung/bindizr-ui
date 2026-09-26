@@ -5,6 +5,7 @@ import {
   CreateTokenGrantPayload,
   CreateTokenPayload,
   CreateTsigGrantPayload,
+  CreateSecondaryPayload,
   CreateTsigKeyPayload,
   CreatedToken,
   DeleteRecordsResult,
@@ -25,8 +26,11 @@ import {
   SignedRecord,
   TokenGrant,
   TsigGrant,
+  Secondary,
+  SecondaryCheck,
   TsigKey,
   UpdateDnssecPolicyPayload,
+  UpdateSecondaryPayload,
   UpdateDnssecSettingsPayload,
   UpdateRecordPayload,
   UpdateZonePayload,
@@ -417,6 +421,57 @@ export async function getZoneStatus(zoneName: string): Promise<ZoneStatus> {
   return (await response.json()) as ZoneStatus;
 }
 
+export async function getSecondaries(): Promise<Secondary[]> {
+  return getAllItems<Secondary>("/secondaries", "Failed to fetch secondaries");
+}
+
+export async function createSecondary(
+  payload: CreateSecondaryPayload,
+): Promise<Secondary> {
+  const response = await apiFetch(
+    `/secondaries`,
+    "Failed to register secondary",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).secondary as Secondary;
+}
+
+export async function updateSecondary(
+  name: string,
+  payload: UpdateSecondaryPayload,
+): Promise<Secondary> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}`,
+    "Failed to update secondary",
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).secondary as Secondary;
+}
+
+export async function checkSecondary(name: string): Promise<SecondaryCheck> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}/check`,
+    "Failed to check secondary",
+    { method: "POST" },
+  );
+  return (await response.json()) as SecondaryCheck;
+}
+
+export async function deleteSecondary(name: string): Promise<string> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}`,
+    "Failed to delete secondary",
+    { method: "DELETE" },
+  );
+  return (await response.json()).message as string;
+}
+
 export async function getTsigKeys(): Promise<TsigKey[]> {
   return getAllItems<TsigKey>("/tsig-keys", "Failed to fetch TSIG keys");
 }
@@ -609,7 +664,7 @@ export async function getDnssecStatus(zoneName: string): Promise<DnssecStatus> {
     `/zones/${encodeURIComponent(zoneName)}/dnssec`,
     "Failed to fetch DNSSEC status",
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export async function enableDnssec(
@@ -624,7 +679,7 @@ export async function enableDnssec(
       body: JSON.stringify(payload),
     },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 /** Refused while the parent still serves a DS unless the check is skipped. */
@@ -650,7 +705,7 @@ export async function checkDnssecDs(zoneName: string): Promise<DnssecStatus> {
     "Failed to check the parent's DS",
     { method: "POST" },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export async function startDnssecRollover(
@@ -665,7 +720,7 @@ export async function startDnssecRollover(
       body: JSON.stringify({ role: role ?? null }),
     },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export interface DsSeenOptions {
@@ -692,7 +747,7 @@ export async function confirmDnssecDsSeen(
     "Failed to confirm DS seen",
     { method: "POST" },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export async function signDnssecZone(zoneName: string): Promise<string> {
@@ -716,7 +771,7 @@ export async function updateDnssecSettings(
       body: JSON.stringify(payload),
     },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export async function withdrawDnssec(zoneName: string): Promise<DnssecStatus> {
@@ -725,7 +780,7 @@ export async function withdrawDnssec(zoneName: string): Promise<DnssecStatus> {
     "Failed to publish the DS withdrawal",
     { method: "POST" },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export async function cancelDnssecWithdrawal(
@@ -736,7 +791,7 @@ export async function cancelDnssecWithdrawal(
     "Failed to cancel the DS withdrawal",
     { method: "DELETE" },
   );
-  return (await response.json()).dnssec as DnssecStatus;
+  return (await response.json()) as DnssecStatus;
 }
 
 export async function getDnssecPolicies(): Promise<DnssecPolicy[]> {

@@ -185,12 +185,12 @@ export default function ZoneAccessTab({ zone }: ZoneAccessTabProps) {
           setTokenRows(
             tokenGrants.map((grant) => ({
               ...grant,
-              holder: grant.api_token,
-              expired: expiredTokens.has(grant.api_token),
+              holder: grant.token_name,
+              expired: expiredTokens.has(grant.token_name),
             })),
           );
           setTsigRows(
-            tsigGrants.map((grant) => ({ ...grant, holder: grant.tsig_key })),
+            tsigGrants.map((grant) => ({ ...grant, holder: grant.tsig_key_name })),
           );
           setGlobalTokens(
             tokens
