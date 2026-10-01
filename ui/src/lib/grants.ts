@@ -1,4 +1,4 @@
-import { TokenGrant, ZoneGrant } from "./types";
+import { Action, RoleGrant } from "./types";
 
 const MATCH_ANY = "*";
 
@@ -82,14 +82,22 @@ interface GrantedRecord {
   type: string;
 }
 
-/** Whether a grant reaches one record: zone, name pattern and types all have
- * to cover it. Mirrors the service's matching, which stays the authority —
- * this only decides what the UI offers. */
+/** Whether a grant reaches a zone: an every-zone grant reaches them all. */
+export const grantReachesZone = (grant: RoleGrant, zoneName: string) =>
+  grant.zone_name === null || isSameZone(grant.zone_name, zoneName);
+
+/** Whether a grant permits `action` on one record: zone, name pattern and
+ * types all have to cover it. Mirrors the service's matching, which stays the
+ * authority — this only decides what the UI offers. */
 export const grantCoversRecord = (
-  grant: TokenGrant | ZoneGrant,
+  grant: RoleGrant,
+  action: Action,
   record: GrantedRecord,
 ) => {
-  if (!isSameZone(grant.zone_name, record.zone_name)) {
+  if (
+    !grant.actions.includes(action) ||
+    !grantReachesZone(grant, record.zone_name)
+  ) {
     return false;
   }
   const relative = relativeOwnerName(record.name, record.zone_name);

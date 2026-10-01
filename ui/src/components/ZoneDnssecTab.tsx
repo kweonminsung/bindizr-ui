@@ -300,7 +300,9 @@ export default function ZoneDnssecTab({
         setParentNsAddrs(joinParentNsAddrs(data.parent_ns_addrs));
         // Checked against the old servers.
         setDelegation(null);
-        toast.success(`Parent nameservers set to ${joinParentNsAddrs(data.parent_ns_addrs)}.`);
+        toast.success(
+          `Parent nameservers set to ${joinParentNsAddrs(data.parent_ns_addrs)}.`,
+        );
       },
       "Failed to set the parent nameservers",
     );
@@ -426,7 +428,7 @@ export default function ZoneDnssecTab({
             >
               {policies.map((policy) => (
                 <option key={policy.id} value={policy.name}>
-                  {policy.name}
+                  {policy.builtin ? `${policy.name} (built-in)` : policy.name}
                 </option>
               ))}
             </select>

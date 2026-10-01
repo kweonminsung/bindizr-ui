@@ -3,8 +3,9 @@ import { updateDnssecPolicy } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
-import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
+import { DnssecPolicy } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
+import BuiltinBadge from "./BuiltinBadge";
 
 interface DnssecPolicyDetailsProps {
   policy: DnssecPolicy;
@@ -84,10 +85,8 @@ export default function DnssecPolicyDetails({
         <h2 className="text-2xl font-bold text-gray-800 break-all">
           {policy.name}
         </h2>
-        {policy.name === DEFAULT_DNSSEC_POLICY_NAME && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-            Built-in
-          </span>
+        {policy.builtin && (
+          <BuiltinBadge title="The default policy cannot be deleted" />
         )}
       </div>
 

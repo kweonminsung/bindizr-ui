@@ -3,8 +3,7 @@ import { getTsigKey } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { TsigKey } from "@/lib/types";
-import Notice from "./Notice";
-import ZoneGrantsPanel from "./ZoneGrantsPanel";
+import RoleNote from "./RoleNote";
 import { useToast } from "@/contexts/ToastContext";
 
 interface TsigKeyDetailsProps {
@@ -72,20 +71,9 @@ export default function TsigKeyDetails({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-2xl font-bold text-gray-800 break-all">
-            {isNew ? "TSIG Key Created" : detail.name}
-          </h2>
-          {detail.global ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-              Global
-            </span>
-          ) : (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-              Scoped
-            </span>
-          )}
-        </div>
+        <h2 className="text-2xl font-bold text-gray-800 break-all">
+          {isNew ? "TSIG Key Created" : detail.name}
+        </h2>
 
         <div className="space-y-2">
           {isNew && (
@@ -141,13 +129,7 @@ export default function TsigKeyDetails({
         </div>
       </div>
 
-      {detail.global ? (
-        <Notice tone="warning">
-          This key is global: it may update every zone and needs no grants.
-        </Notice>
-      ) : (
-        <ZoneGrantsPanel kind="tsig-key" holderName={detail.name} />
-      )}
+      <RoleNote roleName={detail.role_name} holder="key" />
     </div>
   );
 }

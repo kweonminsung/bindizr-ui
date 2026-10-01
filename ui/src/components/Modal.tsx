@@ -34,7 +34,7 @@ export default function Modal({
           &times;
         </button>
         {/* Content scrolls; the close button stays pinned to the panel. */}
-        <div className="overflow-y-auto p-6">{children}</div>
+        <div className="overflow-y-auto scrollbar-visible p-6">{children}</div>
       </div>
     </div>
   );
