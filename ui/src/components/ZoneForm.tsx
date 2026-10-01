@@ -47,6 +47,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const toast = useToast();
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
+  const [apexNs, setApexNs] = useState(true);
 
   useEffect(() => {
     if (zone) {
@@ -106,7 +107,8 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           enabled: formData.enabled,
         });
       } else {
-        savedZone = await createZone(payload);
+        // Create only: the update payload has no such field.
+        savedZone = await createZone({ ...payload, apex_ns: apexNs });
 
         const content = zoneFileContent.trim();
         if (content) {
@@ -351,6 +353,26 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               <span className="block text-sm text-gray-500">
                 Disabled, the secondaries drop the zone. Its records stay here,
                 editable.
+              </span>
+            </span>
+          </label>
+        )}
+        {!zone && (
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="apex_ns"
+              checked={apexNs}
+              onChange={(e) => setApexNs(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-600">
+                Apex NS record
+              </span>
+              <span className="block text-sm text-gray-500">
+                Start the zone with an NS record naming the Primary NS. Clear it
+                to add every NS record yourself.
               </span>
             </span>
           </label>

@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { deleteDnssecPolicy, getDnssecPolicies } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage, getErrorStatus } from "@/lib/errors";
-import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
+import { DnssecPolicy } from "@/lib/types";
 import DnssecPolicyDetails from "./DnssecPolicyDetails";
+import BuiltinBadge from "./BuiltinBadge";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
@@ -165,7 +166,12 @@ export default function DnssecPolicyList({
                 {...clickableRowProps(() => setSelectedPolicy(policy))}
               >
                 <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {policy.name}
+                  <span className="inline-flex items-center gap-2">
+                    {policy.name}
+                    {policy.builtin && (
+                      <BuiltinBadge title="The default policy cannot be deleted" />
+                    )}
+                  </span>
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {policy.algorithm}
@@ -181,14 +187,7 @@ export default function DnssecPolicyList({
                   {policy.signature_refresh_days}d
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {policy.name === DEFAULT_DNSSEC_POLICY_NAME ? (
-                    <span
-                      className="text-gray-400"
-                      title="The built-in default policy cannot be deleted"
-                    >
-                      Built-in
-                    </span>
-                  ) : (
+                  {!policy.builtin && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

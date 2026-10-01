@@ -152,7 +152,7 @@ export default function SecondaryDetails({
 
       <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
-      <div className="max-h-[65vh] overflow-y-auto">
+      <div className="max-h-[65vh] overflow-y-auto scrollbar-visible">
         {activeTab === "settings" && (
           <div className="space-y-4">
             <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">

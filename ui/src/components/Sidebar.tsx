@@ -15,6 +15,7 @@ interface NavLink {
 }
 
 const ACCESS_LINKS: NavLink[] = [
+  { to: "/access/roles", label: "Roles" },
   { to: "/access/tokens", label: "API Tokens" },
   { to: "/access/tsig-keys", label: "TSIG Keys" },
 ];
@@ -88,8 +89,8 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { pathname } = useLocation();
-  // The admin entries need a global token.
-  const { globalAccess } = useBindizrToken();
+  // Each admin entry needs its action in every zone.
+  const { allows } = useBindizrToken();
 
   return (
     <>
@@ -129,33 +130,35 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Records
               </Link>
             </li>
-            {globalAccess && (
-              <>
-                <li>
-                  <Link
-                    to="/dnssec-policies"
-                    className={linkClasses(pathname, "/dnssec-policies")}
-                    onClick={onClose}
-                  >
-                    DNSSEC Policies
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/secondaries"
-                    className={linkClasses(pathname, "/secondaries")}
-                    onClick={onClose}
-                  >
-                    Secondaries
-                  </Link>
-                </li>
-                <NavGroup
-                  label="Access"
-                  basePath="/access"
-                  links={ACCESS_LINKS}
-                  onNavigate={onClose}
-                />
-              </>
+            {allows("dnssec:read") && (
+              <li>
+                <Link
+                  to="/dnssec-policies"
+                  className={linkClasses(pathname, "/dnssec-policies")}
+                  onClick={onClose}
+                >
+                  DNSSEC Policies
+                </Link>
+              </li>
+            )}
+            {allows("secondary:read") && (
+              <li>
+                <Link
+                  to="/secondaries"
+                  className={linkClasses(pathname, "/secondaries")}
+                  onClick={onClose}
+                >
+                  Secondaries
+                </Link>
+              </li>
+            )}
+            {allows("access:manage") && (
+              <NavGroup
+                label="Access"
+                basePath="/access"
+                links={ACCESS_LINKS}
+                onNavigate={onClose}
+              />
             )}
             <li>
               <Link

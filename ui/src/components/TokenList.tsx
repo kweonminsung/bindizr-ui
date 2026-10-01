@@ -9,12 +9,24 @@ import Modal from "./Modal";
 import Notice from "./Notice";
 import TokenDetails, { isTokenExpired } from "./TokenDetails";
 import { useToast } from "@/contexts/ToastContext";
+import RoleFilterSelect from "./RoleFilterSelect";
 
 interface TokenListProps {
   onCreateToken: () => void;
+  /** Lists only this role's; its column is then left out. */
+  roleName?: string;
+  /** Shows a role filter that reports the pick here. */
+  onRoleNameChange?: (roleName: string) => void;
+  /** Called after a delete, for a parent showing counts. */
+  onChange?: () => void;
 }
 
-export default function TokenList({ onCreateToken }: TokenListProps) {
+export default function TokenList({
+  onCreateToken,
+  roleName,
+  onRoleNameChange,
+  onChange,
+}: TokenListProps) {
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
   const [tokens, setTokens] = useState<ApiToken[]>([]);
@@ -31,7 +43,7 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
       setLoading(true);
       setError(null);
       try {
-        const data = await getTokens();
+        const data = await getTokens(roleName);
         if (active) {
           setTokens(data);
         }
@@ -51,7 +63,7 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
     return () => {
       active = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, roleName]);
 
   useEffect(() => {
     if (!focusName) {
@@ -71,7 +83,7 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
   const handleDelete = async (token: ApiToken) => {
     if (
       !window.confirm(
-        `Delete "${token.name}"? Its grants go with it, and clients using it stop working.`,
+        `Delete "${token.name}"? Clients using it stop working; its role stays.`,
       )
     ) {
       return;
@@ -80,6 +92,7 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
     try {
       toast.success(await deleteToken(token.name));
       setRefreshKey((prev) => prev + 1);
+      onChange?.();
     } catch (deleteError) {
       toast.error(getErrorMessage(deleteError, "Failed to delete API token"));
     }
@@ -104,13 +117,21 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <input
-          type="text"
-          placeholder="Search API tokens..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
-        />
+        <div className="flex flex-col sm:flex-row gap-2 mb-4 sm:mb-0">
+          <input
+            type="text"
+            placeholder="Search API tokens..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-auto"
+          />
+          {onRoleNameChange && (
+            <RoleFilterSelect
+              value={roleName ?? ""}
+              onChange={onRoleNameChange}
+            />
+          )}
+        </div>
         <button
           onClick={onCreateToken}
           className="btn-primary w-full sm:w-auto"
@@ -129,12 +150,14 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
               >
                 Name
               </th>
-              <th
-                scope="col"
-                className="w-28 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Scope
-              </th>
+              {!roleName && (
+                <th
+                  scope="col"
+                  className="w-40 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Role
+                </th>
+              )}
               <th
                 scope="col"
                 className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -175,17 +198,11 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
                     </span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  {token.global ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                      Global
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                      Scoped
-                    </span>
-                  )}
-                </td>
+                {!roleName && (
+                  <td className="truncate px-6 py-4 text-gray-700">
+                    {token.role_name}
+                  </td>
+                )}
                 <td
                   className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
                   title={token.description ?? undefined}
@@ -227,7 +244,9 @@ export default function TokenList({ onCreateToken }: TokenListProps) {
         <p className="text-sm text-gray-700">
           {visibleTokens.length > 0
             ? `${visibleTokens.length} API token${visibleTokens.length > 1 ? "s" : ""}`
-            : "No API tokens found"}
+            : roleName
+              ? "No API tokens in this role"
+              : "No API tokens found"}
         </p>
       </div>
     </div>

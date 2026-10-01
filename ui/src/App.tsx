@@ -12,17 +12,25 @@ import MenuIcon from "./components/icons/MenuIcon";
 import LoginPage from "@/pages/LoginPage";
 import ZonesPage from "@/pages/ZonesPage";
 import RecordsPage from "@/pages/RecordsPage";
+import RolesPage from "@/pages/RolesPage";
 import TokensPage from "@/pages/TokensPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SecondariesPage from "@/pages/SecondariesPage";
 import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
+import { Action } from "@/lib/types";
 
-/** Pages a scoped token is refused. */
-function GlobalOnly({ children }: { children: ReactElement }) {
-  const { globalAccess } = useBindizrToken();
-  return globalAccess ? children : <Navigate to="/zones" replace />;
+/** A page the token's role must permit `action` in every zone to open. */
+function RequireAction({
+  action,
+  children,
+}: {
+  action: Action;
+  children: ReactElement;
+}) {
+  const { allows } = useBindizrToken();
+  return allows(action) ? children : <Navigate to="/zones" replace />;
 }
 
 function App() {
@@ -68,17 +76,17 @@ function App() {
                   <Route
                     path="/dnssec-policies"
                     element={
-                      <GlobalOnly>
+                      <RequireAction action="dnssec:read">
                         <DnssecPoliciesPage />
-                      </GlobalOnly>
+                      </RequireAction>
                     }
                   />
                   <Route
                     path="/secondaries"
                     element={
-                      <GlobalOnly>
+                      <RequireAction action="secondary:read">
                         <SecondariesPage />
-                      </GlobalOnly>
+                      </RequireAction>
                     }
                   />
                   <Route
@@ -104,17 +112,25 @@ function App() {
                   <Route
                     path="/access/tokens"
                     element={
-                      <GlobalOnly>
+                      <RequireAction action="access:manage">
                         <TokensPage />
-                      </GlobalOnly>
+                      </RequireAction>
                     }
                   />
                   <Route
                     path="/access/tsig-keys"
                     element={
-                      <GlobalOnly>
+                      <RequireAction action="access:manage">
                         <TsigKeysPage />
-                      </GlobalOnly>
+                      </RequireAction>
+                    }
+                  />
+                  <Route
+                    path="/access/roles"
+                    element={
+                      <RequireAction action="access:manage">
+                        <RolesPage />
+                      </RequireAction>
                     }
                   />
                   <Route path="/settings" element={<SettingsPage />} />

@@ -99,7 +99,7 @@ export default function BindizrSettings() {
             <p className="text-sm text-gray-500 mt-1">
               Connected as{" "}
               <span className="font-medium text-gray-700">{self.name}</span> (
-              {self.global ? "Global" : "Scoped"} Token).{" "}
+              role {self.role_name}).{" "}
               <button
                 type="button"
                 onClick={() => setIsTokenOpen(true)}

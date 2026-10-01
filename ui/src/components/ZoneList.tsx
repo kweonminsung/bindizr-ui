@@ -81,7 +81,7 @@ const DNSSEC_PROBE_BATCH = 6;
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const toast = useToast();
   const navigate = useNavigate();
-  const { globalAccess } = useBindizrToken();
+  const { allows } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -220,14 +220,16 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
 
   // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
-    // The status endpoint needs a global token.
-    if (!globalAccess || zones.length === 0) {
+    // The status endpoint needs `dnssec:read` in the zone.
+    const names = zones
+      .map((zone) => zone.name)
+      .filter((name) => allows("dnssec:read", name));
+    if (names.length === 0) {
       return;
     }
 
     let active = true;
     const probes = dnssecProbes.current;
-    const names = zones.map((zone) => zone.name);
 
     const showBadges = () => {
       if (active) {
@@ -262,7 +264,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [zones, globalAccess]);
+  }, [zones, allows]);
 
   const handleDelete = async (zone: Zone) => {
     // A zone delete cannot be undone, so the counts go in the prompt rather
@@ -351,15 +353,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             order={order}
             onChange={handleSortChange}
           />
-          {globalAccess && (
+          {(allows("zone:update") || allows("zone:create")) && (
             <div className="flex flex-col sm:flex-row gap-2">
-              <NotifyAllZones />
-              <button
-                onClick={onCreateZone}
-                className="btn-primary w-full sm:w-auto"
-              >
-                Create Zone
-              </button>
+              {allows("zone:update") && <NotifyAllZones />}
+              {allows("zone:create") && (
+                <button
+                  onClick={onCreateZone}
+                  className="btn-primary w-full sm:w-auto"
+                >
+                  Create Zone
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -525,7 +529,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Records
                     </button>
-                    {globalAccess && (
+                    {allows("record:create", zone.name) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -545,7 +549,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Export
                     </button>
-                    {globalAccess && (
+                    {allows("zone:delete", zone.name) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

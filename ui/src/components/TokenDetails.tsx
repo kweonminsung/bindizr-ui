@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { formatDateTime } from "@/lib/datetime";
 import { ApiToken } from "@/lib/types";
 import Notice from "./Notice";
-import ZoneGrantsPanel from "./ZoneGrantsPanel";
+import RoleNote from "./RoleNote";
 import { useToast } from "@/contexts/ToastContext";
 
 interface TokenDetailsProps {
@@ -14,25 +14,15 @@ interface TokenDetailsProps {
 export const isTokenExpired = (token: ApiToken) =>
   !!token.expires_at && new Date(token.expires_at).getTime() < Date.now();
 
-/** Scope and expiry pills, placed beside the token's name. */
-export function TokenBadges({ token }: { token: ApiToken }) {
+/** The expiry pill placed beside the token's name, when it has expired. */
+export function ExpiredTokenBadge({ token }: { token: ApiToken }) {
+  if (!isTokenExpired(token)) {
+    return null;
+  }
   return (
-    <>
-      {token.global ? (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-          Global
-        </span>
-      ) : (
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-          Scoped
-        </span>
-      )}
-      {isTokenExpired(token) && (
-        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-          Expired
-        </span>
-      )}
-    </>
+    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+      Expired
+    </span>
   );
 }
 
@@ -113,7 +103,7 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
           <h2 className="text-2xl font-bold text-gray-800 break-all">
             {secret ? "API Token Created" : token.name}
           </h2>
-          <TokenBadges token={token} />
+          <ExpiredTokenBadge token={token} />
         </div>
 
         {secret && (
@@ -149,13 +139,7 @@ export default function TokenDetails({ token, secret }: TokenDetailsProps) {
         <TokenMetadata token={token} showName={!!secret} />
       </div>
 
-      {token.global ? (
-        <Notice tone="warning">
-          This token is global: it manages every zone and needs no grants.
-        </Notice>
-      ) : (
-        <ZoneGrantsPanel kind="token" holderName={token.name} />
-      )}
+      <RoleNote roleName={token.role_name} holder="token" />
     </div>
   );
 }

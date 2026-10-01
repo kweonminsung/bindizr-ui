@@ -1,10 +1,11 @@
 import {
   ApiToken,
   CreateDnssecPolicyPayload,
+  ErrorCode,
   CreateRecordPayload,
-  CreateTokenGrantPayload,
+  CreateRoleGrantPayload,
+  CreateRolePayload,
   CreateTokenPayload,
-  CreateTsigGrantPayload,
   CreateSecondaryPayload,
   CreateTsigKeyPayload,
   CreatedToken,
@@ -24,8 +25,8 @@ import {
   RecordWriteResult,
   RollbackZoneResult,
   SignedRecord,
-  TokenGrant,
-  TsigGrant,
+  Role,
+  RoleGrant,
   Secondary,
   SecondaryCheck,
   SecondaryTransfers,
@@ -82,6 +83,10 @@ const MAX_PAGE_LIMIT = 1000;
 
 /** Every item of a listing the UI shows whole; the API caps one call at
  * MAX_PAGE_LIMIT, so keep asking until the reported total is in hand. */
+/** The `role_name` filter the token and key listings take. */
+const roleFilterParams = (roleName?: string) =>
+  new URLSearchParams(roleName ? { role_name: roleName } : {});
+
 async function getAllItems<T>(
   path: string,
   fallbackError: string,
@@ -123,7 +128,7 @@ async function parseJsonError(response: Response, fallback: string) {
     const data = JSON.parse(text) as {
       error?: string;
       message?: string;
-      code?: string;
+      code?: ErrorCode;
     };
     return { message: data.error || data.message || text, code: data.code };
   } catch {
@@ -483,8 +488,13 @@ export async function deleteSecondary(name: string): Promise<string> {
   return (await response.json()).message as string;
 }
 
-export async function getTsigKeys(): Promise<TsigKey[]> {
-  return getAllItems<TsigKey>("/tsig-keys", "Failed to fetch TSIG keys");
+/** Every TSIG key, or only those in `roleName`. */
+export async function getTsigKeys(roleName?: string): Promise<TsigKey[]> {
+  return getAllItems<TsigKey>(
+    "/tsig-keys",
+    "Failed to fetch TSIG keys",
+    roleFilterParams(roleName),
+  );
 }
 
 interface TsigKeyEnvelope {
@@ -525,52 +535,13 @@ export async function deleteTsigKey(name: string): Promise<string> {
   return (await response.json()).message as string;
 }
 
-export async function getTsigGrants(keyName: string): Promise<TsigGrant[]> {
-  return getAllItems<TsigGrant>(
-    `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
-    "Failed to fetch TSIG key grants",
+/** Every API token, or only those in `roleName`. */
+export async function getTokens(roleName?: string): Promise<ApiToken[]> {
+  return getAllItems<ApiToken>(
+    "/tokens",
+    "Failed to fetch API tokens",
+    roleFilterParams(roleName),
   );
-}
-
-export async function createTsigGrant(
-  keyName: string,
-  payload: CreateTsigGrantPayload,
-): Promise<TsigGrant> {
-  const response = await apiFetch(
-    `/tsig-keys/${encodeURIComponent(keyName)}/grants`,
-    "Failed to grant the TSIG key zone access",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
-  return (await response.json()).tsig_grant as TsigGrant;
-}
-
-export async function deleteTsigGrant(
-  keyName: string,
-  id: number,
-): Promise<string> {
-  const response = await apiFetch(
-    `/tsig-keys/${encodeURIComponent(keyName)}/grants/${id}`,
-    "Failed to revoke the TSIG grant",
-    { method: "DELETE" },
-  );
-  return (await response.json()).message as string;
-}
-
-/** Read-only: grants are managed on the key. */
-export async function getZoneTsigGrants(
-  zoneName: string,
-): Promise<TsigGrant[]> {
-  return getAllItems<TsigGrant>(
-    `/zones/${encodeURIComponent(zoneName)}/tsig-grants`,
-    "Failed to fetch the zone's TSIG grants",
-  );
-}
-
-export async function getTokens(): Promise<ApiToken[]> {
-  return getAllItems<ApiToken>("/tokens", "Failed to fetch API tokens");
 }
 
 /** The calling token; 401 when Bindizr runs without auth. */
@@ -582,9 +553,9 @@ export async function getSelfToken(): Promise<ApiToken> {
   return (await response.json()).token as ApiToken;
 }
 
-/** The calling token's grants; empty for a global token, 401 without auth. */
-export async function getSelfTokenGrants(): Promise<TokenGrant[]> {
-  return getAllItems<TokenGrant>(
+/** The grants of the calling token's role; 401 without auth. */
+export async function getSelfTokenGrants(): Promise<RoleGrant[]> {
+  return getAllItems<RoleGrant>(
     `/tokens/self/grants`,
     "Failed to fetch the API token's zone access",
   );
@@ -610,48 +581,69 @@ export async function deleteToken(name: string): Promise<string> {
   return (await response.json()).message as string;
 }
 
-export async function getTokenGrants(tokenName: string): Promise<TokenGrant[]> {
-  return getAllItems<TokenGrant>(
-    `/tokens/${encodeURIComponent(tokenName)}/grants`,
-    "Failed to fetch API token grants",
-  );
+export async function getRoles(): Promise<Role[]> {
+  return getAllItems<Role>("/roles", "Failed to fetch roles");
 }
 
-export async function createTokenGrant(
-  tokenName: string,
-  payload: CreateTokenGrantPayload,
-): Promise<TokenGrant> {
+/** One role with its grant, token, and key counts. */
+export async function getRole(name: string): Promise<Role> {
   const response = await apiFetch(
-    `/tokens/${encodeURIComponent(tokenName)}/grants`,
-    "Failed to grant the API token zone access",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
+    `/roles/${encodeURIComponent(name)}`,
+    "Failed to fetch role",
   );
-  return (await response.json()).token_grant as TokenGrant;
+  return (await response.json()).role as Role;
 }
 
-export async function deleteTokenGrant(
-  tokenName: string,
-  id: number,
-): Promise<string> {
+export async function createRole(payload: CreateRolePayload): Promise<Role> {
+  const response = await apiFetch(`/roles`, "Failed to create role", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return (await response.json()).role as Role;
+}
+
+/** Refused for the built-in role and while a token or key holds it. */
+export async function deleteRole(name: string): Promise<string> {
   const response = await apiFetch(
-    `/tokens/${encodeURIComponent(tokenName)}/grants/${id}`,
-    "Failed to revoke the token grant",
+    `/roles/${encodeURIComponent(name)}`,
+    "Failed to delete role",
     { method: "DELETE" },
   );
   return (await response.json()).message as string;
 }
 
-/** Read-only: grants are managed on the token. */
-export async function getZoneTokenGrants(
-  zoneName: string,
-): Promise<TokenGrant[]> {
-  return getAllItems<TokenGrant>(
-    `/zones/${encodeURIComponent(zoneName)}/token-grants`,
-    "Failed to fetch the zone's token grants",
+export async function getRoleGrants(roleName: string): Promise<RoleGrant[]> {
+  return getAllItems<RoleGrant>(
+    `/roles/${encodeURIComponent(roleName)}/grants`,
+    "Failed to fetch role grants",
   );
+}
+
+export async function createRoleGrant(
+  roleName: string,
+  payload: CreateRoleGrantPayload,
+): Promise<RoleGrant> {
+  const response = await apiFetch(
+    `/roles/${encodeURIComponent(roleName)}/grants`,
+    "Failed to grant the role",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+  return (await response.json()).role_grant as RoleGrant;
+}
+
+export async function deleteRoleGrant(
+  roleName: string,
+  id: number,
+): Promise<string> {
+  const response = await apiFetch(
+    `/roles/${encodeURIComponent(roleName)}/grants/${id}`,
+    "Failed to revoke the role grant",
+    { method: "DELETE" },
+  );
+  return (await response.json()).message as string;
 }
 
 /** Bumping the serial first makes secondaries transfer even when nothing changed. */
