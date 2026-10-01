@@ -28,6 +28,7 @@ import {
   TsigGrant,
   Secondary,
   SecondaryCheck,
+  SecondaryTransfers,
   TsigKey,
   UpdateDnssecPolicyPayload,
   UpdateSecondaryPayload,
@@ -461,6 +462,16 @@ export async function checkSecondary(name: string): Promise<SecondaryCheck> {
     { method: "POST" },
   );
   return (await response.json()) as SecondaryCheck;
+}
+
+export async function getSecondaryTransfers(
+  name: string,
+): Promise<SecondaryTransfers> {
+  const response = await apiFetch(
+    `/secondaries/${encodeURIComponent(name)}/transfers?limit=100`,
+    "Failed to fetch the secondary's transfers",
+  );
+  return (await response.json()) as SecondaryTransfers;
 }
 
 export async function deleteSecondary(name: string): Promise<string> {

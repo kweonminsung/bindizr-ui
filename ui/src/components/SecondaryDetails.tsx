@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
-import { checkSecondary, getTsigKeys, updateSecondary } from "@/lib/api";
+import {
+  checkSecondary,
+  getSecondaryTransfers,
+  getTsigKeys,
+  updateSecondary,
+} from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
   Secondary,
   SecondaryCheck,
+  SecondaryTransfers,
+  Transfer,
+  TransferSummary,
   TsigKey,
   UpdateSecondaryPayload,
 } from "@/lib/types";
 import Notice from "./Notice";
+import TabBar from "./TabBar";
 import { useToast } from "@/contexts/ToastContext";
 
 interface SecondaryDetailsProps {
@@ -16,11 +25,20 @@ interface SecondaryDetailsProps {
   onUpdated: (secondary: Secondary) => void;
 }
 
+const TABS = [
+  { id: "settings", label: "Settings" },
+  { id: "check", label: "Check" },
+  { id: "transfers", label: "Transfers" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
 export default function SecondaryDetails({
   secondary,
   onUpdated,
 }: SecondaryDetailsProps) {
   const toast = useToast();
+  const [activeTab, setActiveTab] = useState<TabId>("settings");
   const [address, setAddress] = useState(secondary.address);
   const [enabled, setEnabled] = useState(secondary.enabled);
   const [notifyKey, setNotifyKey] = useState(secondary.notify_key_name ?? "");
@@ -28,12 +46,33 @@ export default function SecondaryDetails({
   const [submitting, setSubmitting] = useState(false);
   const [check, setCheck] = useState<SecondaryCheck | null>(null);
   const [checking, setChecking] = useState(false);
+  const [transfers, setTransfers] = useState<SecondaryTransfers | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSecondaryTransfers(secondary.name)
+      .then((served) => {
+        if (!cancelled) setTransfers(served);
+      })
+      .catch((fetchError) =>
+        toast.error(
+          getErrorMessage(
+            fetchError,
+            "Failed to fetch the secondary's transfers",
+          ),
+        ),
+      );
+    return () => {
+      cancelled = true;
+    };
+  }, [secondary.name, toast]);
 
   useEffect(() => {
     setAddress(secondary.address);
     setEnabled(secondary.enabled);
     setNotifyKey(secondary.notify_key_name ?? "");
     setCheck(null);
+    setActiveTab("settings");
   }, [secondary]);
 
   const handleCheck = async () => {
@@ -111,104 +150,117 @@ export default function SecondaryDetails({
         )}
       </div>
 
-      <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-        <p className="text-sm text-gray-500">Registered</p>
-        <p className="text-base text-gray-900">
-          {formatDateTime(secondary.created_at)}
-        </p>
-      </div>
+      <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-700">Check</h3>
-          <button
-            type="button"
-            onClick={handleCheck}
-            disabled={checking}
-            className="btn-secondary"
-          >
-            {checking ? "Checking..." : "Check now"}
-          </button>
-        </div>
-        {check ? (
-          <CheckReport check={check} />
-        ) : (
-          <p className="text-sm text-gray-500">
-            Resolves the address, compares the catalog zone serial with
-            Bindizr&apos;s, and sends a NOTIFY.
-          </p>
+      <div className="max-h-[65vh] overflow-y-auto">
+        {activeTab === "settings" && (
+          <div className="space-y-4">
+            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+              <p className="text-sm text-gray-500">Registered</p>
+              <p className="text-base text-gray-900">
+                {formatDateTime(secondary.created_at)}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="edit_address"
+                  className="block text-sm font-medium text-gray-600 mb-1"
+                >
+                  Address
+                </label>
+                <input
+                  type="text"
+                  id="edit_address"
+                  name="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                  className="w-full font-mono text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-1">host[:port]</p>
+              </div>
+              <div>
+                <label
+                  htmlFor="edit_notify_key"
+                  className="block text-sm font-medium text-gray-600 mb-1"
+                >
+                  NOTIFY Key
+                </label>
+                <select
+                  id="edit_notify_key"
+                  name="notify_key"
+                  value={notifyKey}
+                  onChange={(e) => setNotifyKey(e.target.value)}
+                  className="w-full"
+                >
+                  <option value="">Send NOTIFY unsigned</option>
+                  {tsigKeys.map((key) => (
+                    <option key={key.id} value={key.name}>
+                      {key.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <label className="flex items-start space-x-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => setEnabled(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Enabled
+                  <span className="block text-gray-500">
+                    Disabled: no NOTIFY, no unsigned transfer, no probe.
+                  </span>
+                </span>
+              </label>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-gray-500">
+                  Takes effect on the next NOTIFY or transfer.
+                </p>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn-primary whitespace-nowrap"
+                >
+                  {submitting ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
         )}
+
+        {activeTab === "check" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Resolves the address, compares the catalog zone serial with
+                Bindizr&apos;s, and sends a NOTIFY.
+              </p>
+              <button
+                type="button"
+                onClick={handleCheck}
+                disabled={checking}
+                className="btn-secondary whitespace-nowrap"
+              >
+                {checking ? "Checking..." : "Check now"}
+              </button>
+            </div>
+            {check && <CheckReport check={check} />}
+          </div>
+        )}
+
+        {activeTab === "transfers" &&
+          (transfers ? (
+            <TransfersReport transfers={transfers} />
+          ) : (
+            <p className="text-sm text-gray-500">Loading...</p>
+          ))}
       </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="edit_address"
-            className="block text-sm font-medium text-gray-600 mb-1"
-          >
-            Address
-          </label>
-          <input
-            type="text"
-            id="edit_address"
-            name="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            required
-            className="w-full font-mono text-sm"
-          />
-          <p className="text-xs text-gray-500 mt-1">host[:port]</p>
-        </div>
-        <div>
-          <label
-            htmlFor="edit_notify_key"
-            className="block text-sm font-medium text-gray-600 mb-1"
-          >
-            NOTIFY Key
-          </label>
-          <select
-            id="edit_notify_key"
-            name="notify_key"
-            value={notifyKey}
-            onChange={(e) => setNotifyKey(e.target.value)}
-            className="w-full"
-          >
-            <option value="">Send NOTIFY unsigned</option>
-            {tsigKeys.map((key) => (
-              <option key={key.id} value={key.name}>
-                {key.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <label className="flex items-start space-x-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-            className="mt-1"
-          />
-          <span>
-            Enabled
-            <span className="block text-gray-500">
-              Disabled: no NOTIFY, no unsigned transfer, no probe.
-            </span>
-          </span>
-        </label>
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-sm text-gray-500">
-            Takes effect on the next NOTIFY or transfer.
-          </p>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary whitespace-nowrap"
-          >
-            {submitting ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </form>
     </div>
   );
 }
@@ -248,7 +300,58 @@ function CheckReport({ check }: { check: SecondaryCheck }) {
             {notify.error == null ? "accepted" : `rejected (${notify.error})`}
           </li>
         ))}
+        <li>Transfers: {describeSummary(check.transfers)}</li>
       </ul>
     </Notice>
+  );
+}
+
+/** What a transfer was: the kind and whether a delta, or that it was refused or failed. */
+function describeTransfer(transfer: Transfer): string {
+  if (transfer.result !== "ok") return transfer.result;
+  if (transfer.kind === "ixfr")
+    return transfer.incremental ? "IXFR delta" : "IXFR full";
+  return "AXFR";
+}
+
+/** How a secondary's zones were last served. */
+function describeSummary(summary: TransferSummary): string {
+  if (summary.zones === 0) return "no transfers";
+  return `${summary.zones} zones: ${summary.ixfr_delta} IXFR delta, ${summary.ixfr_full} IXFR full, ${summary.axfr} AXFR, ${summary.refused} refused, ${summary.failed} failed`;
+}
+
+function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-gray-600">
+        {describeSummary(transfers.summary)}
+      </p>
+      {transfers.transfers.length > 0 && (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-500">
+              <th className="pr-3">Zone</th>
+              <th className="pr-3">Transfer</th>
+              <th className="pr-3">Serial</th>
+              <th className="pr-3">Address</th>
+              <th className="pr-3">At</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transfers.transfers.map((transfer) => (
+              <tr key={`${transfer.address}-${transfer.zone_name}`}>
+                <td className="pr-3 font-mono">{transfer.zone_name}</td>
+                <td className="pr-3">{describeTransfer(transfer)}</td>
+                <td className="pr-3">{transfer.serial ?? "-"}</td>
+                <td className="pr-3 font-mono">{transfer.address}</td>
+                <td className="pr-3">{formatDateTime(transfer.at)}</td>
+                <td>{transfer.error ?? "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
