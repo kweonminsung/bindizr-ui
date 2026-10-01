@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { getZoneStatus } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { SecondaryStatus, ZoneStatus } from "@/lib/types";
+import { formatDateTime } from "@/lib/datetime";
+import { SecondaryStatus, Transfer, ZoneStatus } from "@/lib/types";
 import Notice from "./Notice";
 
 interface ZoneStatusPanelProps {
@@ -102,6 +103,11 @@ export default function ZoneStatusPanel({
                 <p className="text-sm text-gray-500">
                   serial {secondary.visible_serial ?? "-"} / {status.serial}
                 </p>
+                {secondary.last_transfer && (
+                  <p className="text-sm text-gray-500">
+                    last transfer: {describeTransfer(secondary.last_transfer)}
+                  </p>
+                )}
                 {secondary.error && (
                   <p className="text-sm text-red-600 break-all">
                     {secondary.error}
@@ -121,4 +127,17 @@ export default function ZoneStatusPanel({
       )}
     </div>
   );
+}
+
+/** The latest transfer served for the zone: what it was, the serial it reached, and when. */
+function describeTransfer(transfer: Transfer): string {
+  const kind =
+    transfer.result !== "ok"
+      ? transfer.result
+      : transfer.kind === "ixfr"
+        ? transfer.incremental
+          ? "IXFR delta"
+          : "IXFR full"
+        : "AXFR";
+  return `${kind} ${transfer.serial ?? "-"} at ${formatDateTime(transfer.at)}`;
 }

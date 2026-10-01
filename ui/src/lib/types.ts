@@ -314,6 +314,48 @@ export interface SecondaryCheck {
   listener_error?: string | null;
   catalog: SecondaryStatusItem;
   notifies: NotifyCheck[];
+  /** How Bindizr served the secondary's transfers. */
+  transfers: TransferSummary;
+}
+
+/** Which transfer a secondary asked Bindizr for. */
+export type TransferKind = "axfr" | "ixfr";
+
+/** Answered, refused, or allowed and then broken off by a failure. */
+export type TransferResult = "ok" | "refused" | "failed";
+
+/** One transfer Bindizr answered, or refused, for a secondary's address. */
+export interface Transfer {
+  address: string;
+  zone_name: string;
+  kind: TransferKind;
+  result: TransferResult;
+  /** Whether the answer was a delta rather than the whole zone. */
+  incremental: boolean;
+  /** The serial the answer reached; absent when nothing was transferred. */
+  serial?: number | null;
+  at: string;
+  /** Why the transfer was refused or failed. */
+  error?: string | null;
+}
+
+/** How a secondary's zones were last served. */
+export interface TransferSummary {
+  zones: number;
+  axfr: number;
+  ixfr_full: number;
+  ixfr_delta: number;
+  refused: number;
+  /** Allowed, then broken off by a failure. */
+  failed: number;
+}
+
+/** The transfers Bindizr served one secondary. */
+export interface SecondaryTransfers {
+  secondary_name: string;
+  address: string;
+  summary: TransferSummary;
+  transfers: Transfer[];
 }
 
 /** One zone granted to a token or TSIG key; the pattern and types narrow it. */
@@ -606,6 +648,8 @@ export interface SecondaryStatusItem {
   status: SecondaryStatus;
   visible_serial?: number | null;
   error?: string | null;
+  /** The latest transfer of this zone Bindizr served the address. */
+  last_transfer?: Transfer | null;
 }
 
 export interface ZoneStatus {
