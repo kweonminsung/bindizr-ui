@@ -45,6 +45,8 @@ interface ZoneDnssecTabProps {
   zone: Zone;
   /** Keeps the badge next to the zone name in sync. */
   onEnabledChanged?: (enabled: boolean) => void;
+  /** Without `dnssec:manage`, only status, DS and parent checks show. */
+  canManage: boolean;
 }
 
 /** The button at work, so only it shows progress. */
@@ -100,6 +102,7 @@ const describeDelegation = ({
 export default function ZoneDnssecTab({
   zone,
   onEnabledChanged,
+  canManage,
 }: ZoneDnssecTabProps) {
   const toast = useToast();
   const [status, setStatus] = useState<DnssecStatus | null>(null);
@@ -393,6 +396,15 @@ export default function ZoneDnssecTab({
     splitParentNsAddrs(parentNsAddrs).join(",") ===
     (status.parent_ns_addrs ?? []).join(",");
 
+  if (!status.enabled && !canManage) {
+    return (
+      <div className="space-y-1">
+        <h3 className="text-lg font-semibold text-gray-700">DNSSEC</h3>
+        <p className="text-sm text-gray-500">Not signed.</p>
+      </div>
+    );
+  }
+
   if (!status.enabled) {
     const selectedPolicy = policies.find(
       (policy) => policy.name === policyName,
@@ -666,28 +678,38 @@ export default function ZoneDnssecTab({
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
           Parent Nameservers
         </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <input
-            type="text"
-            value={parentNsAddrs}
-            onChange={(e) => setParentNsAddrs(e.target.value)}
-            placeholder="ns1.parent.example, ns2.parent.example:5353"
-            aria-label="Parent nameservers"
-            className="flex-1"
-          />
-          <button
-            type="button"
-            onClick={handleSetParentNsAddrs}
-            disabled={busy || parentNsUnchanged || parentNsAddrs.trim() === ""}
-            className="btn-primary whitespace-nowrap"
-          >
-            {pending === "parent-ns" ? "Saving..." : "Save"}
-          </button>
-        </div>
-        <p className="text-sm text-gray-500">
-          Required. Comma-separated host[:port] asked for the zone&apos;s DS by
-          every later check; Bindizr does not discover the parent.
-        </p>
+        {canManage ? (
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <input
+                type="text"
+                value={parentNsAddrs}
+                onChange={(e) => setParentNsAddrs(e.target.value)}
+                placeholder="ns1.parent.example, ns2.parent.example:5353"
+                aria-label="Parent nameservers"
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={handleSetParentNsAddrs}
+                disabled={
+                  busy || parentNsUnchanged || parentNsAddrs.trim() === ""
+                }
+                className="btn-primary whitespace-nowrap"
+              >
+                {pending === "parent-ns" ? "Saving..." : "Save"}
+              </button>
+            </div>
+            <p className="text-sm text-gray-500">
+              Required. Comma-separated host[:port] asked for the zone&apos;s DS
+              by every later check; Bindizr does not discover the parent.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-900 break-all">
+            {(status.parent_ns_addrs ?? []).join(", ") || "-"}
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -707,47 +729,51 @@ export default function ZoneDnssecTab({
                 {currentPolicy.signature_refresh_days} days left.
               </p>
             </div>
-            {compatiblePolicies.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                No other policy matches the zone&apos;s denial and key layout.
-                See {policiesLink}.
-              </p>
-            ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <p className="text-sm text-gray-500">
-                  A different algorithm starts an algorithm rollover.
-                </p>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={targetPolicy}
-                    onChange={(e) => setTargetPolicy(e.target.value)}
-                    aria-label="Policy to move to"
-                    className="rounded"
-                  >
-                    <option value="">Select a policy</option>
-                    {compatiblePolicies.map((policy) => (
-                      <option key={policy.id} value={policy.name}>
-                        {policy.name} ({policy.algorithm})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleChangePolicy}
-                    disabled={busy || !targetPolicy || moveBlocked}
-                    className="btn-primary whitespace-nowrap"
-                  >
-                    {pending === "policy" ? "Moving..." : "Move Zone"}
-                  </button>
-                </div>
-              </div>
-            )}
-            {moveBlocked && compatiblePolicies.length > 0 && (
-              <p className="text-sm text-gray-500">
-                {rolloverInProgress
-                  ? "Finish the rollover before moving the zone."
-                  : "A new algorithm can start once the retired key is removed."}
-              </p>
+            {canManage && (
+              <>
+                {compatiblePolicies.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No other policy matches the zone&apos;s denial and key
+                    layout. See {policiesLink}.
+                  </p>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="text-sm text-gray-500">
+                      A different algorithm starts an algorithm rollover.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={targetPolicy}
+                        onChange={(e) => setTargetPolicy(e.target.value)}
+                        aria-label="Policy to move to"
+                        className="rounded"
+                      >
+                        <option value="">Select a policy</option>
+                        {compatiblePolicies.map((policy) => (
+                          <option key={policy.id} value={policy.name}>
+                            {policy.name} ({policy.algorithm})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleChangePolicy}
+                        disabled={busy || !targetPolicy || moveBlocked}
+                        className="btn-primary whitespace-nowrap"
+                      >
+                        {pending === "policy" ? "Moving..." : "Move Zone"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {moveBlocked && compatiblePolicies.length > 0 && (
+                  <p className="text-sm text-gray-500">
+                    {rolloverInProgress
+                      ? "Finish the rollover before moving the zone."
+                      : "A new algorithm can start once the retired key is removed."}
+                  </p>
+                )}
+              </>
             )}
           </>
         ) : (
@@ -839,40 +865,46 @@ export default function ZoneDnssecTab({
                 confirm to promote the key. The parent&apos;s nameservers are
                 asked for the new DS first.
               </p>
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-                <div className="space-y-1">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={skipDsCheckOnDsSeen}
-                      onChange={(e) => setSkipDsCheckOnDsSeen(e.target.checked)}
-                    />
-                    <span>
-                      Skip the parent DS check (unsafe while the DS is not
-                      published)
-                    </span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={skipHolddown}
-                      onChange={(e) => setSkipHolddown(e.target.checked)}
-                    />
-                    <span>
-                      Skip the hold-down (resolvers caching the old keys fail
-                      until it expires; for a compromised key)
-                    </span>
-                  </label>
+              {canManage && (
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                  <div className="space-y-1">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={skipDsCheckOnDsSeen}
+                        onChange={(e) =>
+                          setSkipDsCheckOnDsSeen(e.target.checked)
+                        }
+                      />
+                      <span>
+                        Skip the parent DS check (unsafe while the DS is not
+                        published)
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={skipHolddown}
+                        onChange={(e) => setSkipHolddown(e.target.checked)}
+                      />
+                      <span>
+                        Skip the hold-down (resolvers caching the old keys fail
+                        until it expires; for a compromised key)
+                      </span>
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDsSeen}
+                    disabled={busy}
+                    className="btn-primary whitespace-nowrap"
+                  >
+                    {pending === "ds-seen"
+                      ? "Confirming..."
+                      : "Confirm DS Seen"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleDsSeen}
-                  disabled={busy}
-                  className="btn-primary whitespace-nowrap"
-                >
-                  {pending === "ds-seen" ? "Confirming..." : "Confirm DS Seen"}
-                </button>
-              </div>
+              )}
             </Notice>
           ) : (
             <Notice tone="info">
@@ -885,6 +917,8 @@ export default function ZoneDnssecTab({
             The retired key is removed after the hold-down; the next rollover
             can start then.
           </Notice>
+        ) : !canManage ? (
+          <p className="text-sm text-gray-500">No rollover in progress.</p>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-gray-500">
@@ -920,85 +954,90 @@ export default function ZoneDnssecTab({
         )}
       </div>
 
-      <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-          Re-sign
-        </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-sm text-gray-500">
-            Discard stored signatures and re-sign the zone.
-          </p>
-          <button
-            type="button"
-            onClick={handleSign}
-            disabled={busy}
-            className="btn-primary whitespace-nowrap"
-          >
-            {pending === "sign" ? "Signing..." : "Re-sign Zone"}
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-red-700 border-b border-red-200 pb-2">
-          Disable DNSSEC
-        </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-sm text-gray-500">
-            Remove the DS at the parent first: publish a withdrawal for a
-            CDS-reading parent, or remove it at the registrar.
-          </p>
-          {status.withdrawing ? (
-            <button
-              type="button"
-              onClick={handleCancelWithdrawal}
-              disabled={busy}
-              className="btn-secondary whitespace-nowrap"
-            >
-              {pending === "cancel-withdrawal"
-                ? "Cancelling..."
-                : "Cancel Withdrawal"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleWithdraw}
-              disabled={busy}
-              className="btn-secondary whitespace-nowrap"
-            >
-              {pending === "withdraw"
-                ? "Publishing..."
-                : "Publish DS Withdrawal"}
-            </button>
-          )}
-        </div>
-        <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-900 space-y-3">
-          <p>
-            Deletes the keys and unsigns the zone. Refused while the parent
-            still serves a DS or cannot be reached.
-          </p>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={skipDsCheckOnDisable}
-                onChange={(e) => setSkipDsCheckOnDisable(e.target.checked)}
-              />
-              <span>
-                Skip the parent DS check (unsafe while a DS is still published)
-              </span>
-            </label>
-            <button
-              type="button"
-              onClick={handleDisable}
-              disabled={busy}
-              className="btn-danger whitespace-nowrap"
-            >
-              {pending === "disable" ? "Disabling..." : "Disable DNSSEC"}
-            </button>
+      {canManage && (
+        <>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+              Re-sign
+            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-sm text-gray-500">
+                Discard stored signatures and re-sign the zone.
+              </p>
+              <button
+                type="button"
+                onClick={handleSign}
+                disabled={busy}
+                className="btn-primary whitespace-nowrap"
+              >
+                {pending === "sign" ? "Signing..." : "Re-sign Zone"}
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
+
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-red-700 border-b border-red-200 pb-2">
+              Disable DNSSEC
+            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-sm text-gray-500">
+                Remove the DS at the parent first: publish a withdrawal for a
+                CDS-reading parent, or remove it at the registrar.
+              </p>
+              {status.withdrawing ? (
+                <button
+                  type="button"
+                  onClick={handleCancelWithdrawal}
+                  disabled={busy}
+                  className="btn-secondary whitespace-nowrap"
+                >
+                  {pending === "cancel-withdrawal"
+                    ? "Cancelling..."
+                    : "Cancel Withdrawal"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleWithdraw}
+                  disabled={busy}
+                  className="btn-secondary whitespace-nowrap"
+                >
+                  {pending === "withdraw"
+                    ? "Publishing..."
+                    : "Publish DS Withdrawal"}
+                </button>
+              )}
+            </div>
+            <div className="p-3 rounded-md border border-red-200 bg-red-50 text-sm text-red-900 space-y-3">
+              <p>
+                Deletes the keys and unsigns the zone. Refused while the parent
+                still serves a DS or cannot be reached.
+              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={skipDsCheckOnDisable}
+                    onChange={(e) => setSkipDsCheckOnDisable(e.target.checked)}
+                  />
+                  <span>
+                    Skip the parent DS check (unsafe while a DS is still
+                    published)
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDisable}
+                  disabled={busy}
+                  className="btn-danger whitespace-nowrap"
+                >
+                  {pending === "disable" ? "Disabling..." : "Disable DNSSEC"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

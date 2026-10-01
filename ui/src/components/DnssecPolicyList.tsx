@@ -7,6 +7,7 @@ import DnssecPolicyDetails from "./DnssecPolicyDetails";
 import BuiltinBadge from "./BuiltinBadge";
 import Modal from "./Modal";
 import Notice from "./Notice";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface DnssecPolicyListProps {
@@ -16,6 +17,9 @@ interface DnssecPolicyListProps {
 export default function DnssecPolicyList({
   onCreatePolicy,
 }: DnssecPolicyListProps) {
+  const { allows } = useBindizrToken();
+  // `dnssec:read` opens the page; policies change only with an every-zone manage.
+  const canManage = allows("dnssec:manage");
   const toast = useToast();
   const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<DnssecPolicy | null>(
@@ -109,12 +113,14 @@ export default function DnssecPolicyList({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
-        <button
-          onClick={onCreatePolicy}
-          className="btn-primary w-full sm:w-auto"
-        >
-          Create Policy
-        </button>
+        {canManage && (
+          <button
+            onClick={onCreatePolicy}
+            className="btn-primary w-full sm:w-auto"
+          >
+            Create Policy
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
@@ -187,7 +193,7 @@ export default function DnssecPolicyList({
                   {policy.signature_refresh_days}d
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {!policy.builtin && (
+                  {canManage && !policy.builtin && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

@@ -191,7 +191,11 @@ export default function ZoneDetails({
         )}
 
         {activeTab === "dnssec" && (
-          <ZoneDnssecTab zone={zone} onEnabledChanged={updateDnssecEnabled} />
+          <ZoneDnssecTab
+            zone={zone}
+            onEnabledChanged={updateDnssecEnabled}
+            canManage={allows("dnssec:manage", zone.name)}
+          />
         )}
 
         {activeTab === "sync" && (
