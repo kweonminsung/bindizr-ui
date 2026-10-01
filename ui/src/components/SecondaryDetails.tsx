@@ -18,6 +18,7 @@ import {
 } from "@/lib/types";
 import Notice from "./Notice";
 import TabBar from "./TabBar";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface SecondaryDetailsProps {
@@ -38,6 +39,10 @@ export default function SecondaryDetails({
   onUpdated,
 }: SecondaryDetailsProps) {
   const toast = useToast();
+  const { allows } = useBindizrToken();
+  // Editing and checking (which sends a NOTIFY) need manage; read shows the rest.
+  const canManage = allows("secondary:manage");
+  const tabs = canManage ? TABS : TABS.filter((tab) => tab.id !== "check");
   const [activeTab, setActiveTab] = useState<TabId>("settings");
   const [address, setAddress] = useState(secondary.address);
   const [enabled, setEnabled] = useState(secondary.enabled);
@@ -87,6 +92,10 @@ export default function SecondaryDetails({
   };
 
   useEffect(() => {
+    // Only the edit form lists keys, and listing them needs access:manage.
+    if (!canManage) {
+      return;
+    }
     let active = true;
     getTsigKeys()
       .then((keys) => {
@@ -102,7 +111,7 @@ export default function SecondaryDetails({
     return () => {
       active = false;
     };
-  }, []);
+  }, [canManage, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +159,7 @@ export default function SecondaryDetails({
         )}
       </div>
 
-      <TabBar tabs={TABS} active={activeTab} onChange={setActiveTab} />
+      <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       <div className="max-h-[65vh] overflow-y-auto scrollbar-visible">
         {activeTab === "settings" && (
@@ -162,75 +171,100 @@ export default function SecondaryDetails({
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="edit_address"
-                  className="block text-sm font-medium text-gray-600 mb-1"
-                >
-                  Address
-                </label>
-                <input
-                  type="text"
-                  id="edit_address"
-                  name="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  required
-                  className="w-full font-mono text-sm"
-                />
-                <p className="text-xs text-gray-500 mt-1">host[:port]</p>
+            {!canManage && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm text-gray-500">Address</p>
+                  <p className="text-base text-gray-900 font-mono break-all">
+                    {secondary.address}
+                  </p>
+                </div>
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm text-gray-500">NOTIFY Key</p>
+                  <p className="text-base text-gray-900 break-all">
+                    {secondary.notify_key_name ?? "Unsigned"}
+                  </p>
+                </div>
+                <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm text-gray-500">Enabled</p>
+                  <p className="text-base text-gray-900">
+                    {secondary.enabled ? "Yes" : "No"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <label
-                  htmlFor="edit_notify_key"
-                  className="block text-sm font-medium text-gray-600 mb-1"
-                >
-                  NOTIFY Key
-                </label>
-                <select
-                  id="edit_notify_key"
-                  name="notify_key"
-                  value={notifyKey}
-                  onChange={(e) => setNotifyKey(e.target.value)}
-                  className="w-full"
-                >
-                  <option value="">Send NOTIFY unsigned</option>
-                  {tsigKeys.map((key) => (
-                    <option key={key.id} value={key.name}>
-                      {key.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <label className="flex items-start space-x-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) => setEnabled(e.target.checked)}
-                  className="mt-1"
-                />
-                <span>
-                  Enabled
-                  <span className="block text-gray-500">
-                    Disabled: no NOTIFY, no unsigned transfer, no probe.
-                  </span>
-                </span>
-              </label>
+            )}
 
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <p className="text-sm text-gray-500">
-                  Takes effect on the next NOTIFY or transfer.
-                </p>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn-primary whitespace-nowrap"
-                >
-                  {submitting ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </form>
+            {canManage && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="edit_address"
+                    className="block text-sm font-medium text-gray-600 mb-1"
+                  >
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    id="edit_address"
+                    name="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    required
+                    className="w-full font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">host[:port]</p>
+                </div>
+                <div>
+                  <label
+                    htmlFor="edit_notify_key"
+                    className="block text-sm font-medium text-gray-600 mb-1"
+                  >
+                    NOTIFY Key
+                  </label>
+                  <select
+                    id="edit_notify_key"
+                    name="notify_key"
+                    value={notifyKey}
+                    onChange={(e) => setNotifyKey(e.target.value)}
+                    className="w-full"
+                  >
+                    <option value="">Send NOTIFY unsigned</option>
+                    {tsigKeys.map((key) => (
+                      <option key={key.id} value={key.name}>
+                        {key.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <label className="flex items-start space-x-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => setEnabled(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    Enabled
+                    <span className="block text-gray-500">
+                      Disabled: no NOTIFY, no unsigned transfer, no probe.
+                    </span>
+                  </span>
+                </label>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-sm text-gray-500">
+                    Takes effect on the next NOTIFY or transfer.
+                  </p>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn-primary whitespace-nowrap"
+                  >
+                    {submitting ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getRole } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { CreatedToken, Role, TsigKey } from "@/lib/types";
@@ -17,6 +18,7 @@ type RoleTab = RoleGrantsView | "tokens" | "keys";
 
 /** A role's metadata above its grants and the tokens and keys in it. */
 export default function RoleDetails({ role: initialRole }: { role: Role }) {
+  const { self, refresh: refreshConnectedToken } = useBindizrToken();
   const [role, setRole] = useState(initialRole);
   const [tab, setTab] = useState<RoleTab>("grants");
   const [tokenFormOpen, setTokenFormOpen] = useState(false);
@@ -31,6 +33,15 @@ export default function RoleDetails({ role: initialRole }: { role: Role }) {
     getRole(role.name)
       .then(setRole)
       .catch(() => {});
+  };
+
+  // The connected token's own grants decide which routes and buttons show,
+  // so editing its role's grants rereads them too.
+  const handleGrantsChange = () => {
+    refreshRole();
+    if (self?.role_name === role.name) {
+      refreshConnectedToken();
+    }
   };
 
   const tabs = [
@@ -77,7 +88,7 @@ export default function RoleDetails({ role: initialRole }: { role: Role }) {
           role={role}
           view={tab === "grants" || tab === "grant" ? tab : null}
           onViewChange={setTab}
-          onChange={refreshRole}
+          onChange={handleGrantsChange}
         />
 
         {tab === "tokens" && (

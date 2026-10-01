@@ -8,6 +8,7 @@ import { Secondary } from "@/lib/types";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import SecondaryDetails from "./SecondaryDetails";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface SecondaryListProps {
@@ -17,6 +18,9 @@ interface SecondaryListProps {
 export default function SecondaryList({
   onCreateSecondary,
 }: SecondaryListProps) {
+  const { allows } = useBindizrToken();
+  // `secondary:read` opens the page; changing a secondary needs manage.
+  const canManage = allows("secondary:manage");
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
   const [secondaries, setSecondaries] = useState<Secondary[]>([]);
@@ -122,12 +126,14 @@ export default function SecondaryList({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
-        <button
-          onClick={onCreateSecondary}
-          className="btn-primary w-full sm:w-auto"
-        >
-          Register Secondary
-        </button>
+        {canManage && (
+          <button
+            onClick={onCreateSecondary}
+            className="btn-primary w-full sm:w-auto"
+          >
+            Register Secondary
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
@@ -202,15 +208,17 @@ export default function SecondaryList({
                   {formatDateTime(secondary.created_at)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(secondary);
-                    }}
-                    className="font-medium text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(secondary);
+                      }}
+                      className="font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
