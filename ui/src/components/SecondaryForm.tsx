@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { createSecondary, getTsigKeys } from "@/lib/api";
+import { useState } from "react";
+import { createSecondary } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { TsigKey } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
+import NotifyKeySelect from "./NotifyKeySelect";
 
 interface SecondaryFormProps {
   onSuccess: () => void;
@@ -17,26 +17,7 @@ export default function SecondaryForm({
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [notifyKey, setNotifyKey] = useState("");
-  const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    getTsigKeys()
-      .then((keys) => {
-        if (active) {
-          setTsigKeys(keys);
-        }
-      })
-      .catch((fetchError) => {
-        if (active) {
-          toast.error(getErrorMessage(fetchError, "Failed to fetch TSIG keys"));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,20 +95,11 @@ export default function SecondaryForm({
           >
             NOTIFY Key (optional)
           </label>
-          <select
+          <NotifyKeySelect
             id="notify_key"
-            name="notify_key"
             value={notifyKey}
-            onChange={(e) => setNotifyKey(e.target.value)}
-            className="w-full"
-          >
-            <option value="">Send NOTIFY unsigned</option>
-            {tsigKeys.map((key) => (
-              <option key={key.id} value={key.name}>
-                {key.name}
-              </option>
-            ))}
-          </select>
+            onChange={setNotifyKey}
+          />
           <p className="text-sm text-gray-500 mt-1">
             Signs every NOTIFY to this server with the key.
           </p>

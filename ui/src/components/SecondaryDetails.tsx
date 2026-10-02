@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   checkSecondary,
   getSecondaryTransfers,
-  getTsigKeys,
   updateSecondary,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
@@ -13,10 +12,10 @@ import {
   SecondaryTransfers,
   Transfer,
   TransferSummary,
-  TsigKey,
   UpdateSecondaryPayload,
 } from "@/lib/types";
 import Notice from "./Notice";
+import NotifyKeySelect from "./NotifyKeySelect";
 import TabBar from "./TabBar";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -47,30 +46,35 @@ export default function SecondaryDetails({
   const [address, setAddress] = useState(secondary.address);
   const [enabled, setEnabled] = useState(secondary.enabled);
   const [notifyKey, setNotifyKey] = useState(secondary.notify_key_name ?? "");
-  const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [check, setCheck] = useState<SecondaryCheck | null>(null);
   const [checking, setChecking] = useState(false);
   const [transfers, setTransfers] = useState<SecondaryTransfers | null>(null);
+  const [transfersError, setTransfersError] = useState<string | null>(null);
+  // Reloaded after a check, whose NOTIFY may start a transfer.
+  const [transfersKey, setTransfersKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setTransfersError(null);
     getSecondaryTransfers(secondary.name)
       .then((served) => {
         if (!cancelled) setTransfers(served);
       })
-      .catch((fetchError) =>
-        toast.error(
-          getErrorMessage(
-            fetchError,
-            "Failed to fetch the secondary's transfers",
-          ),
-        ),
-      );
+      .catch((fetchError) => {
+        if (!cancelled) {
+          setTransfersError(
+            getErrorMessage(
+              fetchError,
+              "Failed to fetch the secondary's transfers",
+            ),
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [secondary.name, toast]);
+  }, [secondary.name, transfersKey]);
 
   useEffect(() => {
     setAddress(secondary.address);
@@ -84,34 +88,13 @@ export default function SecondaryDetails({
     setChecking(true);
     try {
       setCheck(await checkSecondary(secondary.name));
+      setTransfersKey((prev) => prev + 1);
     } catch (checkError) {
       toast.error(getErrorMessage(checkError, "Failed to check secondary"));
     } finally {
       setChecking(false);
     }
   };
-
-  useEffect(() => {
-    // Only the edit form lists keys, and listing them needs access:manage.
-    if (!canManage) {
-      return;
-    }
-    let active = true;
-    getTsigKeys()
-      .then((keys) => {
-        if (active) {
-          setTsigKeys(keys);
-        }
-      })
-      .catch((fetchError) => {
-        if (active) {
-          toast.error(getErrorMessage(fetchError, "Failed to fetch TSIG keys"));
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [canManage, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,20 +204,11 @@ export default function SecondaryDetails({
                   >
                     NOTIFY Key
                   </label>
-                  <select
+                  <NotifyKeySelect
                     id="edit_notify_key"
-                    name="notify_key"
                     value={notifyKey}
-                    onChange={(e) => setNotifyKey(e.target.value)}
-                    className="w-full"
-                  >
-                    <option value="">Send NOTIFY unsigned</option>
-                    {tsigKeys.map((key) => (
-                      <option key={key.id} value={key.name}>
-                        {key.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setNotifyKey}
+                  />
                 </div>
                 <label className="flex items-start space-x-2 text-sm text-gray-600">
                   <input
@@ -289,7 +263,9 @@ export default function SecondaryDetails({
         )}
 
         {activeTab === "transfers" &&
-          (transfers ? (
+          (transfersError ? (
+            <Notice tone="error">{transfersError}</Notice>
+          ) : transfers ? (
             <TransfersReport transfers={transfers} />
           ) : (
             <p className="text-sm text-gray-500">Loading...</p>
