@@ -107,3 +107,15 @@ export const grantCoversRecord = (
     matchesRecordTypes(grant.record_types, record.type)
   );
 };
+
+/** Whether a grant permits `action` across a zone with no name or type
+ * limit, as the views a zone is rebuilt from need. */
+export const grantCoversWholeZone = (
+  grant: RoleGrant,
+  action: Action,
+  zoneName: string,
+) =>
+  grant.actions.includes(action) &&
+  grantReachesZone(grant, zoneName) &&
+  grant.record_name_pattern === MATCH_ANY &&
+  grant.record_types === MATCH_ANY;

@@ -44,7 +44,9 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
 
   return (
     <div className="space-y-6">
-      <ZoneStatusPanel zoneName={zone.name} refreshToken={statusToken} />
+      {allows("zone:read", zone.name) && (
+        <ZoneStatusPanel zoneName={zone.name} refreshToken={statusToken} />
+      )}
 
       {allows("zone:update", zone.name) && (
         <div className="space-y-3">
