@@ -3,6 +3,7 @@ import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneFormProps {
@@ -45,6 +46,10 @@ const toFormString = (value: unknown, fallback: string) =>
 
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const toast = useToast();
+  const { allowsWholeZone } = useBindizrToken();
+  // A new zone has only the every-zone grants, which the import needs whole;
+  // an unlisted name reads as them.
+  const canImportFile = allowsWholeZone("record:create", "");
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
   const [apexNs, setApexNs] = useState(true);
@@ -110,7 +115,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         // Create only: the update payload has no such field.
         savedZone = await createZone({ ...payload, apex_ns: apexNs });
 
-        const content = zoneFileContent.trim();
+        const content = canImportFile ? zoneFileContent.trim() : "";
         if (content) {
           try {
             const result = await importZone(payload.name, {
@@ -379,7 +384,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         )}
       </div>
 
-      {!zone && (
+      {!zone && canImportFile && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
             Zone File (optional)
