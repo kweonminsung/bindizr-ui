@@ -52,6 +52,15 @@ const ZONE_ACTION_GROUPS = ["zone", "record", "dnssec"].map((resource) => ({
 
 const isRecordAction = (action: Action) => action.startsWith("record:");
 
+/** The read each write needs before the UI can list what it acts on. */
+const READ_FOR_WRITE: Partial<Record<Action, Action>> = {
+  "record:create": "record:read",
+  "record:update": "record:read",
+  "record:delete": "record:read",
+  "secondary:manage": "secondary:read",
+  "dnssec:manage": "dnssec:read",
+};
+
 /** A role's grants and the form adding one, shown in the parent's tabs. */
 export default function RoleGrantsPanel({
   role,
@@ -111,6 +120,19 @@ export default function RoleGrantsPanel({
   }, [role.name]);
 
   const hasRecordAction = actions.some(isRecordAction);
+  // Writes without their read stay usable through the API, as automation
+  // wants, but the UI lists nothing for them to act on.
+  const heldActions = new Set<Action>([
+    ...actions,
+    ...grants.flatMap((grant) => grant.actions),
+  ]);
+  const apiOnly = actions.filter((action) => {
+    const read = READ_FOR_WRITE[action];
+    return read !== undefined && !heldActions.has(read);
+  });
+  const missingReads = [
+    ...new Set(apiOnly.map((action) => READ_FOR_WRITE[action])),
+  ];
   const serverActions = actions.filter((action) =>
     ALL_ZONES_ACTIONS.includes(action),
   );
@@ -357,6 +379,14 @@ export default function RoleGrantsPanel({
                 </p>
               </div>
             </div>
+          )}
+
+          {apiOnly.length > 0 && (
+            <Notice tone="info">
+              Without <code>{missingReads.join(", ")}</code>,{" "}
+              <code>{apiOnly.join(", ")}</code> work through the API only: the
+              UI lists nothing for them to act on.
+            </Notice>
           )}
 
           <div className="flex items-center justify-end gap-3">

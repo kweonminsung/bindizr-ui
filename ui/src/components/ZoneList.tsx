@@ -541,15 +541,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                         Import
                       </button>
                     )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExportingZone(zone);
-                      }}
-                      className="font-medium text-teal-600 hover:underline"
-                    >
-                      Export
-                    </button>
+                    {allowsWholeZone("record:read", zone.name) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExportingZone(zone);
+                        }}
+                        className="font-medium text-teal-600 hover:underline"
+                      >
+                        Export
+                      </button>
+                    )}
                     {allows("zone:delete", zone.name) && (
                       <button
                         onClick={(e) => {

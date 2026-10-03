@@ -350,6 +350,7 @@ function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
           </thead>
           <tbody>
             {transfers.transfers.map((transfer) => (
+              // Unique: Bindizr keeps one transfer per address and zone.
               <tr key={`${transfer.address}-${transfer.zone_name}`}>
                 <td className="pr-3 font-mono">{transfer.zone_name}</td>
                 <td className="pr-3">{describeTransfer(transfer)}</td>
