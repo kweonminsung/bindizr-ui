@@ -6,7 +6,11 @@ import React, {
   useState,
 } from "react";
 import { getSelfToken, getSelfTokenGrants } from "@/lib/api";
-import { grantCoversRecord, grantReachesZone } from "@/lib/grants";
+import {
+  grantCoversRecord,
+  grantCoversWholeZone,
+  grantReachesZone,
+} from "@/lib/grants";
 import { Action, ApiToken, RoleGrant } from "@/lib/types";
 import { useAuth } from "./AuthContext";
 
@@ -27,6 +31,9 @@ interface BindizrTokenContextType {
     action: Action,
     record: { zone_name: string; name: string; type: string },
   ) => boolean;
+  /** Whether a grant permits `action` in the zone with no name or type limit:
+   * version detail, diffs and rollback need the whole zone. */
+  allowsWholeZone: (action: Action, zoneName: string) => boolean;
   /** Re-read after the Bindizr settings change. */
   refresh: () => Promise<void>;
 }
@@ -118,6 +125,13 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     [unrestricted, grants],
   );
 
+  const allowsWholeZone = useCallback(
+    (action: Action, zoneName: string) =>
+      unrestricted ||
+      grants.some((grant) => grantCoversWholeZone(grant, action, zoneName)),
+    [unrestricted, grants],
+  );
+
   useEffect(() => {
     if (!canLookup) {
       setResolved(false);
@@ -137,7 +151,14 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
 
   return (
     <BindizrTokenContext.Provider
-      value={{ self, allows, canCreateRecords, canWriteRecord, refresh }}
+      value={{
+        self,
+        allows,
+        canCreateRecords,
+        canWriteRecord,
+        allowsWholeZone,
+        refresh,
+      }}
     >
       {children}
     </BindizrTokenContext.Provider>

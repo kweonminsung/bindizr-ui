@@ -23,11 +23,12 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-/** The action a tab's reads need in the zone; the Zone tab needs none beyond seeing it. */
-const TAB_ACTIONS: Partial<Record<TabId, Action>> = {
-  history: "zone:read",
-  dnssec: "dnssec:read",
-  sync: "zone:read",
+/** The actions any one of which opens a tab; the Zone tab needs none beyond
+ * seeing the zone. Sync shows status to zone:read and NOTIFY to zone:update. */
+const TAB_ACTIONS: Partial<Record<TabId, Action[]>> = {
+  history: ["zone:read"],
+  dnssec: ["dnssec:read"],
+  sync: ["zone:read", "zone:update"],
 };
 
 export default function ZoneDetails({
@@ -41,8 +42,8 @@ export default function ZoneDetails({
   const [dnssecEnabled, setDnssecEnabled] = useState(false);
   const canReadDnssec = allows("dnssec:read", zone.name);
   const tabs = TABS.filter((tab) => {
-    const action = TAB_ACTIONS[tab.id];
-    return !action || allows(action, zone.name);
+    const actions = TAB_ACTIONS[tab.id];
+    return !actions || actions.some((action) => allows(action, zone.name));
   });
 
   // Stable identity: the DNSSEC tab keys an effect on this callback.

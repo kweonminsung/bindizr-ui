@@ -46,8 +46,14 @@ export default function ZoneVersions({
   onRolledBack,
 }: ZoneVersionsProps) {
   const toast = useToast();
-  // Rollback rewrites the zone, which is `zone:update`.
-  const { allows } = useBindizrToken();
+  const { allows, allowsWholeZone } = useBindizrToken();
+  // Listing needs zone:read; a version's records and diffs need the whole
+  // zone readable, and rollback rewrites it whole.
+  const canReadVersions = allowsWholeZone("record:read", zone.name);
+  const canRollBack =
+    allows("zone:update", zone.name) &&
+    allowsWholeZone("record:create", zone.name) &&
+    allowsWholeZone("record:delete", zone.name);
   const [versions, setVersions] = useState<ZoneVersion[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -301,7 +307,7 @@ export default function ZoneVersions({
           </Notice>
         )}
 
-        {allows("zone:update", zone.name) && !preview && !rollbackResult && (
+        {canRollBack && !preview && !rollbackResult && (
           <div className="flex justify-end">
             <button
               type="button"
@@ -409,29 +415,31 @@ export default function ZoneVersions({
                     {version.mname}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end items-center space-x-3">
-                      <button
-                        type="button"
-                        onClick={() => setDiffFrom(version.serial)}
-                        disabled={version.serial === zone.serial}
-                        title={
-                          version.serial === zone.serial
-                            ? "This is the current serial"
-                            : "Diff against the current serial"
-                        }
-                        className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                      >
-                        Diff
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSelect(version.serial)}
-                        disabled={detailLoading}
-                        className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                      >
-                        {detailLoading ? "Loading..." : "Inspect"}
-                      </button>
-                    </div>
+                    {canReadVersions && (
+                      <div className="flex justify-end items-center space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setDiffFrom(version.serial)}
+                          disabled={version.serial === zone.serial}
+                          title={
+                            version.serial === zone.serial
+                              ? "This is the current serial"
+                              : "Diff against the current serial"
+                          }
+                          className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                        >
+                          Diff
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelect(version.serial)}
+                          disabled={detailLoading}
+                          className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                        >
+                          {detailLoading ? "Loading..." : "Inspect"}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

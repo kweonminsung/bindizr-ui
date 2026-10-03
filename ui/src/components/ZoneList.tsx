@@ -81,7 +81,7 @@ const DNSSEC_PROBE_BATCH = 6;
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const toast = useToast();
   const navigate = useNavigate();
-  const { allows } = useBindizrToken();
+  const { allows, allowsWholeZone } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -529,7 +529,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Records
                     </button>
-                    {allows("record:create", zone.name) && (
+                    {/* Import applies a whole zone file, so its grant must be unrestricted. */}
+                    {allowsWholeZone("record:create", zone.name) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
