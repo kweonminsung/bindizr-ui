@@ -81,7 +81,7 @@ const DNSSEC_PROBE_BATCH = 6;
 export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const toast = useToast();
   const navigate = useNavigate();
-  const { globalAccess } = useBindizrToken();
+  const { allows, allowsWholeZone } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
@@ -220,14 +220,16 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
 
   // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
-    // The status endpoint needs a global token.
-    if (!globalAccess || zones.length === 0) {
+    // The status endpoint needs `dnssec:read` in the zone.
+    const names = zones
+      .map((zone) => zone.name)
+      .filter((name) => allows("dnssec:read", name));
+    if (names.length === 0) {
       return;
     }
 
     let active = true;
     const probes = dnssecProbes.current;
-    const names = zones.map((zone) => zone.name);
 
     const showBadges = () => {
       if (active) {
@@ -262,7 +264,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [zones, globalAccess]);
+  }, [zones, allows]);
 
   const handleDelete = async (zone: Zone) => {
     // A zone delete cannot be undone, so the counts go in the prompt rather
@@ -280,7 +282,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       return;
     }
 
-    const goesWithIt = `${preview.records} record${preview.records === 1 ? "" : "s"} and ${preview.versions} saved version${preview.versions === 1 ? "" : "s"}`;
+    const goesWithIt = `${preview.records_deleted} record${preview.records_deleted === 1 ? "" : "s"} and ${preview.versions_deleted} saved version${preview.versions_deleted === 1 ? "" : "s"}`;
     if (
       !window.confirm(
         `Delete "${zone.name}"?\n\n${goesWithIt} go with it. This cannot be undone.`,
@@ -292,7 +294,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     try {
       const removed = await deleteZone(zone.name);
       toast.success(
-        `Deleted ${zone.name}: ${removed.records} records, ${removed.versions} versions`,
+        `Deleted ${zone.name}: ${removed.records_deleted} records, ${removed.versions_deleted} versions`,
       );
       if (zones.length === 1 && currentPage > 1) {
         handlePageChange(currentPage - 1);
@@ -351,15 +353,17 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             order={order}
             onChange={handleSortChange}
           />
-          {globalAccess && (
+          {(allows("zone:update") || allows("zone:create")) && (
             <div className="flex flex-col sm:flex-row gap-2">
-              <NotifyAllZones />
-              <button
-                onClick={onCreateZone}
-                className="btn-primary w-full sm:w-auto"
-              >
-                Create Zone
-              </button>
+              {allows("zone:update") && <NotifyAllZones />}
+              {allows("zone:create") && (
+                <button
+                  onClick={onCreateZone}
+                  className="btn-primary w-full sm:w-auto"
+                >
+                  Create Zone
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -525,7 +529,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                     >
                       Records
                     </button>
-                    {globalAccess && (
+                    {/* Import applies a whole zone file, so its grant must be unrestricted. */}
+                    {allowsWholeZone("record:create", zone.name) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -536,16 +541,18 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
                         Import
                       </button>
                     )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExportingZone(zone);
-                      }}
-                      className="font-medium text-teal-600 hover:underline"
-                    >
-                      Export
-                    </button>
-                    {globalAccess && (
+                    {allowsWholeZone("record:read", zone.name) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExportingZone(zone);
+                        }}
+                        className="font-medium text-teal-600 hover:underline"
+                      >
+                        Export
+                      </button>
+                    )}
+                    {allows("zone:delete", zone.name) && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

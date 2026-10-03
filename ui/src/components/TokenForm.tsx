@@ -4,29 +4,29 @@ import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { CreatedToken } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
+import RoleSelect from "./RoleSelect";
 
 interface TokenFormProps {
   onSuccess: (created: CreatedToken) => void;
   onCancel: () => void;
+  /** Creates in this role, leaving the role picker fixed. */
+  roleName?: string;
 }
 
-const GLOBAL_WARNING =
-  "A Global Token can manage every zone and the zone plane, with no grant. Create it anyway?";
-
-export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
+export default function TokenForm({
+  onSuccess,
+  onCancel,
+  roleName: fixedRoleName,
+}: TokenFormProps) {
   const toast = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("");
-  const [isGlobal, setIsGlobal] = useState(false);
+  const [roleName, setRoleName] = useState(fixedRoleName ?? "");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (isGlobal && !window.confirm(GLOBAL_WARNING)) {
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -34,7 +34,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
         name: name.trim(),
         description: description.trim() || null,
         expires_in_days: toOptionalNumber(expiresInDays, "Expiry"),
-        global: isGlobal,
+        role_name: roleName,
       });
       onSuccess(created);
     } catch (error) {
@@ -49,7 +49,7 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Create API Token</h2>
         <p className="text-sm text-gray-500 mt-1">
-          A Scoped Token needs zone grants before it can act.
+          The token may do what its role&apos;s grants permit.
         </p>
       </div>
 
@@ -114,20 +114,13 @@ export default function TokenForm({ onSuccess, onCancel }: TokenFormProps) {
             className="w-full"
           />
         </div>
-        <label className="flex items-start space-x-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={isGlobal}
-            onChange={(e) => setIsGlobal(e.target.checked)}
-            className="mt-1"
-          />
-          <span>
-            Global Token
-            <span className="block text-amber-700">
-              Manages every zone without grants. Cannot be changed later.
-            </span>
-          </span>
-        </label>
+        <RoleSelect
+          id="token_role_name"
+          value={roleName}
+          onChange={setRoleName}
+          fixed={fixedRoleName !== undefined}
+          hint="Fixed at creation; the built-in admin role permits everything."
+        />
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">

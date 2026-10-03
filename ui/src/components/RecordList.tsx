@@ -475,26 +475,32 @@ export default function RecordList({
                   {formatRecordValue(record.value)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {record.id != null && canWriteRecord(record) ? (
+                  {record.id != null &&
+                  (canWriteRecord("record:update", record) ||
+                    canWriteRecord("record:delete", record)) ? (
                     <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShowDetails(record, true);
-                        }}
-                        className="font-medium text-blue-600 hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(record);
-                        }}
-                        className="font-medium text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      {canWriteRecord("record:update", record) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShowDetails(record, true);
+                          }}
+                          className="font-medium text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {canWriteRecord("record:delete", record) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(record);
+                          }}
+                          className="font-medium text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400">read-only</span>

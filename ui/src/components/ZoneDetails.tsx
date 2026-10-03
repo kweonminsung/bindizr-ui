@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getDnssecStatus } from "@/lib/api";
-import { Zone } from "@/lib/types";
+import { Action, Zone } from "@/lib/types";
 import TabBar from "./TabBar";
-import ZoneAccessTab from "./ZoneAccessTab";
 import ZoneDnssecTab from "./ZoneDnssecTab";
 import ZoneForm from "./ZoneForm";
 import ZoneSyncTab from "./ZoneSyncTab";
@@ -19,27 +18,33 @@ const TABS = [
   { id: "zone", label: "Zone" },
   { id: "history", label: "History" },
   { id: "dnssec", label: "DNSSEC" },
-  { id: "access", label: "Access" },
   { id: "sync", label: "Sync" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
-/** Refused to a scoped token. */
-const GLOBAL_ONLY_TABS: readonly TabId[] = ["dnssec", "access"];
+/** The actions any one of which opens a tab; the Zone tab needs none beyond
+ * seeing the zone. Sync shows status to zone:read and NOTIFY to zone:update. */
+const TAB_ACTIONS: Partial<Record<TabId, Action[]>> = {
+  history: ["zone:read"],
+  dnssec: ["dnssec:read"],
+  sync: ["zone:read", "zone:update"],
+};
 
 export default function ZoneDetails({
   zone,
   onZoneChanged,
   onDnssecChanged,
 }: ZoneDetailsProps) {
-  const { globalAccess } = useBindizrToken();
+  const { allows } = useBindizrToken();
   const [activeTab, setActiveTab] = useState<TabId>("zone");
   const [isEditing, setIsEditing] = useState(false);
   const [dnssecEnabled, setDnssecEnabled] = useState(false);
-  const tabs = globalAccess
-    ? TABS
-    : TABS.filter((tab) => !GLOBAL_ONLY_TABS.includes(tab.id));
+  const canReadDnssec = allows("dnssec:read", zone.name);
+  const tabs = TABS.filter((tab) => {
+    const actions = TAB_ACTIONS[tab.id];
+    return !actions || actions.some((action) => allows(action, zone.name));
+  });
 
   // Stable identity: the DNSSEC tab keys an effect on this callback.
   const updateDnssecEnabled = useCallback(
@@ -54,7 +59,7 @@ export default function ZoneDetails({
     let active = true;
 
     setDnssecEnabled(false);
-    if (!globalAccess) {
+    if (!canReadDnssec) {
       return;
     }
     getDnssecStatus(zone.name)
@@ -69,7 +74,7 @@ export default function ZoneDetails({
     return () => {
       active = false;
     };
-  }, [zone.name, globalAccess]);
+  }, [zone.name, canReadDnssec]);
 
   const handleTabChange = (tab: TabId) => {
     setIsEditing(false);
@@ -91,7 +96,7 @@ export default function ZoneDetails({
 
       <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
 
-      <div className="max-h-[65vh] overflow-y-auto">
+      <div className="max-h-[65vh] overflow-y-auto scrollbar-visible">
         {activeTab === "zone" && isEditing && (
           <ZoneForm
             zone={zone}
@@ -162,7 +167,7 @@ export default function ZoneDetails({
                 </div>
               </div>
             </div>
-            {globalAccess && (
+            {allows("zone:update", zone.name) && (
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -187,10 +192,12 @@ export default function ZoneDetails({
         )}
 
         {activeTab === "dnssec" && (
-          <ZoneDnssecTab zone={zone} onEnabledChanged={updateDnssecEnabled} />
+          <ZoneDnssecTab
+            zone={zone}
+            onEnabledChanged={updateDnssecEnabled}
+            canManage={allows("dnssec:manage", zone.name)}
+          />
         )}
-
-        {activeTab === "access" && <ZoneAccessTab zone={zone} />}
 
         {activeTab === "sync" && (
           <ZoneSyncTab zone={zone} onZoneChanged={onZoneChanged} />

@@ -3,8 +3,10 @@ import { updateDnssecPolicy } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
-import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
+import { DnssecPolicy } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
+import BuiltinBadge from "./BuiltinBadge";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 
 interface DnssecPolicyDetailsProps {
   policy: DnssecPolicy;
@@ -41,6 +43,8 @@ export default function DnssecPolicyDetails({
   onUpdated,
 }: DnssecPolicyDetailsProps) {
   const toast = useToast();
+  const { allows } = useBindizrToken();
+  const canManage = allows("dnssec:manage");
   const [timing, setTiming] = useState(() => toFormState(policy));
   const [submitting, setSubmitting] = useState(false);
 
@@ -84,10 +88,8 @@ export default function DnssecPolicyDetails({
         <h2 className="text-2xl font-bold text-gray-800 break-all">
           {policy.name}
         </h2>
-        {policy.name === DEFAULT_DNSSEC_POLICY_NAME && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-            Built-in
-          </span>
+        {policy.builtin && (
+          <BuiltinBadge title="The default policy cannot be deleted" />
         )}
       </div>
 
@@ -126,7 +128,11 @@ export default function DnssecPolicyDetails({
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
           Timing
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Read-only without manage: the values show, nothing submits. */}
+        <fieldset
+          disabled={!canManage}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        >
           {TIMING_FIELDS.map((field) => (
             <div key={field.key}>
               <label
@@ -153,20 +159,22 @@ export default function DnssecPolicyDetails({
               <p className="text-xs text-gray-500 mt-1">{field.hint}</p>
             </div>
           ))}
-        </div>
+        </fieldset>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-sm text-gray-500">
-            Applies on the next signing pass.
-          </p>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary whitespace-nowrap"
-          >
-            {submitting ? "Saving..." : "Save Timing"}
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-gray-500">
+              Applies on the next signing pass.
+            </p>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary whitespace-nowrap"
+            >
+              {submitting ? "Saving..." : "Save Timing"}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

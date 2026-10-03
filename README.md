@@ -46,17 +46,23 @@ Apply reusable signing policies, monitor signatures, and manage key rollovers. C
 
 <img src="public/screenshots/dnssec.png" alt="DNSSEC status for example.com with signature counts, expiry, next re-signing time, and a DS record to copy" width="768" />
 
-### API tokens and zone permissions
+### Roles, API tokens and zone permissions
 
-Create global or scoped tokens with optional expiry. Grant read-only or read-write access by zone, record-name pattern, and record type, and revoke grants when needed.
+Group permissions into roles: grant actions such as `record:create` or `zone:transfer` in one zone or every zone, narrowing record actions by record-name pattern and record type. API tokens, with optional expiry, act under the role they are created in.
 
 <img src="public/screenshots/api-token-grants.png" alt="A scoped deployment token with expiry metadata and per-zone record-type permissions" width="768" />
 
 ### TSIG keys for updates and transfers
 
-Generate or import TSIG keys for scoped dynamic updates or whole-zone transfers. Manage zone grants and reveal or copy existing secrets when needed.
+Generate or import TSIG keys for dynamic updates or zone transfers, each acting under a role, and reveal or copy existing secrets when needed.
 
 <img src="public/screenshots/tsig-key-grants.png" alt="A TSIG key with its secret masked and transfer-only grants for example.com and example.net" width="768" />
+
+### Secondaries
+
+Register the servers Bindizr feeds by name and address. Pause one without forgetting it, and pick a TSIG key to sign the NOTIFY it receives.
+
+<img src="public/screenshots/secondaries.png" alt="Secondary list: one server signing NOTIFY under a TSIG key, one registered by hostname, and a disabled standby" width="1000" />
 
 ### Secondary synchronization
 

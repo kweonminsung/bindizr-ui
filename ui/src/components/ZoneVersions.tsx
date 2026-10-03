@@ -5,6 +5,8 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRecordValue } from "@/lib/recordValue";
 import {
+  ChangeActor,
+  ChangeSource,
   RollbackZoneResult,
   VersionDetail,
   Zone,
@@ -20,28 +22,38 @@ interface ZoneVersionsProps {
   onRolledBack: (result: RollbackZoneResult) => void;
 }
 
-const CHANGE_SOURCE_STYLES: Record<string, string> = {
-  token: "bg-blue-100 text-blue-700",
+const CHANGE_SOURCE_STYLES: Record<ChangeSource, string> = {
+  api: "bg-blue-100 text-blue-700",
+  socket: "bg-amber-100 text-amber-700",
   nsupdate: "bg-purple-100 text-purple-700",
   system: "bg-gray-100 text-gray-600",
-  local: "bg-amber-100 text-amber-700",
 };
 
-const CHANGE_SOURCE_HINTS: Record<string, string> = {
-  token: "Written over the HTTP API under an API token.",
-  nsupdate: "Written by an RFC 2136 dynamic update, under a TSIG key.",
+const CHANGE_SOURCE_HINTS: Record<ChangeSource, string> = {
+  api: "Written over the HTTP API.",
+  socket: "Written over the daemon socket (the CLI).",
+  nsupdate: "Written by an RFC 2136 dynamic update.",
   system: "Written by bindizr itself — the DNSSEC signer or its scheduler.",
-  local:
-    "Written over the daemon socket (the CLI), or by any request while API authentication is off.",
 };
+
+/** The credential behind a change, by kind and name. */
+function describeActor(actor: ChangeActor): string {
+  return `${actor.kind === "token" ? "token" : "TSIG key"} ${actor.name}`;
+}
 
 export default function ZoneVersions({
   zone,
   onRolledBack,
 }: ZoneVersionsProps) {
   const toast = useToast();
-  // Rollback needs a global token.
-  const { globalAccess } = useBindizrToken();
+  const { allows, allowsWholeZone } = useBindizrToken();
+  // Listing needs zone:read; a version's records and diffs need the whole
+  // zone readable, and rollback rewrites it whole.
+  const canReadVersions = allowsWholeZone("record:read", zone.name);
+  const canRollBack =
+    allows("zone:update", zone.name) &&
+    allowsWholeZone("record:create", zone.name) &&
+    allowsWholeZone("record:delete", zone.name);
   const [versions, setVersions] = useState<ZoneVersion[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -145,7 +157,7 @@ export default function ZoneVersions({
   };
 
   const renderSummary = (result: RollbackZoneResult) =>
-    `${result.summary.records_added} added, ${result.summary.records_deleted} deleted, ${result.summary.records_unchanged} unchanged, SOA ${
+    `${result.summary.added} added, ${result.summary.deleted} deleted, ${result.summary.unchanged} unchanged, SOA ${
       result.summary.soa_changed ? "changed" : "unchanged"
     }`;
 
@@ -295,7 +307,7 @@ export default function ZoneVersions({
           </Notice>
         )}
 
-        {globalAccess && !preview && !rollbackResult && (
+        {canRollBack && !preview && !rollbackResult && (
           <div className="flex justify-end">
             <button
               type="button"
@@ -385,7 +397,9 @@ export default function ZoneVersions({
                   </td>
                   <td className="px-3 py-2 text-gray-500">
                     <span className="break-all">
-                      {version.changed_by ?? "—"}
+                      {version.changed_by
+                        ? describeActor(version.changed_by)
+                        : "—"}
                     </span>
                     <span
                       className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${CHANGE_SOURCE_STYLES[version.change_source] ?? "bg-gray-100 text-gray-600"}`}
@@ -401,29 +415,31 @@ export default function ZoneVersions({
                     {version.mname}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end items-center space-x-3">
-                      <button
-                        type="button"
-                        onClick={() => setDiffFrom(version.serial)}
-                        disabled={version.serial === zone.serial}
-                        title={
-                          version.serial === zone.serial
-                            ? "This is the current serial"
-                            : "Diff against the current serial"
-                        }
-                        className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                      >
-                        Diff
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSelect(version.serial)}
-                        disabled={detailLoading}
-                        className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                      >
-                        {detailLoading ? "Loading..." : "Inspect"}
-                      </button>
-                    </div>
+                    {canReadVersions && (
+                      <div className="flex justify-end items-center space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setDiffFrom(version.serial)}
+                          disabled={version.serial === zone.serial}
+                          title={
+                            version.serial === zone.serial
+                              ? "This is the current serial"
+                              : "Diff against the current serial"
+                          }
+                          className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                        >
+                          Diff
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelect(version.serial)}
+                          disabled={detailLoading}
+                          className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                        >
+                          {detailLoading ? "Loading..." : "Inspect"}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

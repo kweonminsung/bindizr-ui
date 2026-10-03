@@ -3,6 +3,7 @@ import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
 import { Zone, ZonePayload } from "@/lib/types";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneFormProps {
@@ -45,8 +46,13 @@ const toFormString = (value: unknown, fallback: string) =>
 
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const toast = useToast();
+  const { allowsWholeZone } = useBindizrToken();
+  // A new zone has only the every-zone grants, which the import needs whole;
+  // an unlisted name reads as them.
+  const canImportFile = allowsWholeZone("record:create", "");
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
+  const [apexNs, setApexNs] = useState(true);
 
   useEffect(() => {
     if (zone) {
@@ -106,9 +112,10 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
           enabled: formData.enabled,
         });
       } else {
-        savedZone = await createZone(payload);
+        // Create only: the update payload has no such field.
+        savedZone = await createZone({ ...payload, apex_ns: apexNs });
 
-        const content = zoneFileContent.trim();
+        const content = canImportFile ? zoneFileContent.trim() : "";
         if (content) {
           try {
             const result = await importZone(payload.name, {
@@ -355,9 +362,29 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
             </span>
           </label>
         )}
+        {!zone && (
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="apex_ns"
+              checked={apexNs}
+              onChange={(e) => setApexNs(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-600">
+                Apex NS record
+              </span>
+              <span className="block text-sm text-gray-500">
+                Start the zone with an NS record naming the Primary NS. Clear it
+                to add every NS record yourself.
+              </span>
+            </span>
+          </label>
+        )}
       </div>
 
-      {!zone && (
+      {!zone && canImportFile && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
             Zone File (optional)
