@@ -75,6 +75,8 @@ export interface Record {
   zone_name: string;
   ttl: number;
   priority?: number | null;
+  /** The record actions this caller may take on it; empty on a derived row. */
+  actions: Action[];
 }
 
 export interface CreateRecordPayload {
@@ -119,6 +121,8 @@ export interface SignedRecord {
   zone_name: string;
   ttl: number;
   priority?: number | null;
+  /** The record actions this caller may take on it; empty on a derived row. */
+  actions: Action[];
 }
 
 export const SORT_ORDERS = ["asc", "desc"] as const;
