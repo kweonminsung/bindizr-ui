@@ -12,9 +12,15 @@ const toLabels = (name: string) =>
     .split(".")
     .filter((label) => label !== "");
 
+/** A zone name's lookup key, ignoring case and a trailing dot. */
+export const zoneKey = (name: string) =>
+  toLabels(name)
+    .map((label) => label.toLowerCase())
+    .join(".");
+
 /** Whether two rendered names are the same zone. A zone listing drops the
  * trailing dot and a record carries it, so neither compares as plain text. */
-export const isSameZone = (a: string, b: string) => {
+const isSameZone = (a: string, b: string) => {
   const left = toLabels(a);
   const right = toLabels(b);
   return (
@@ -83,7 +89,7 @@ interface GrantedRecord {
 }
 
 /** Whether a grant reaches a zone: an every-zone grant reaches them all. */
-export const grantReachesZone = (grant: RoleGrant, zoneName: string) =>
+const grantReachesZone = (grant: RoleGrant, zoneName: string) =>
   grant.zone_name === null || isSameZone(grant.zone_name, zoneName);
 
 /** Whether a grant permits `action` on one record: zone, name pattern and
@@ -107,15 +113,3 @@ export const grantCoversRecord = (
     matchesRecordTypes(grant.record_types, record.type)
   );
 };
-
-/** Whether a grant permits `action` across a zone with no name or type
- * limit, as the views a zone is rebuilt from need. */
-export const grantCoversWholeZone = (
-  grant: RoleGrant,
-  action: Action,
-  zoneName: string,
-) =>
-  grant.actions.includes(action) &&
-  grantReachesZone(grant, zoneName) &&
-  grant.record_name_pattern === MATCH_ANY &&
-  grant.record_types === MATCH_ANY;
