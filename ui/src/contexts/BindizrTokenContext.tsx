@@ -6,15 +6,9 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { getPermissions, getSelfToken, getSelfTokenGrants } from "@/lib/api";
-import { grantCoversRecord, zoneKey } from "@/lib/grants";
-import {
-  Action,
-  ApiToken,
-  Permissions,
-  PermittedActions,
-  RoleGrant,
-} from "@/lib/types";
+import { getPermissions, getSelfToken } from "@/lib/api";
+import { zoneKey } from "@/lib/grants";
+import { Action, ApiToken, Permissions, PermittedActions } from "@/lib/types";
 import { useAuth } from "./AuthContext";
 
 interface BindizrTokenContextType {
@@ -26,12 +20,6 @@ interface BindizrTokenContextType {
   /** Whether `record:create` reaches part of a zone, or of any zone when none
    * is named. */
   canCreateRecords: (zoneName?: string) => boolean;
-  /** Whether a grant permits `action` on this record by zone, name pattern
-   * and types. */
-  canWriteRecord: (
-    action: Action,
-    record: { zone_name: string; name: string; type: string },
-  ) => boolean;
   /** Whether the caller may do `action` in the zone with no name or type
    * limit. */
   allowsWholeZone: (action: Action, zoneName: string) => boolean;
@@ -65,16 +53,11 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
   const [self, setSelf] = useState<ApiToken | null>(null);
   /** Null when the lookup failed: everything is offered, the API decides. */
   const [permissions, setPermissions] = useState<Permissions | null>(null);
-  /** Only the record-level check reads grants; empty without a token. */
-  const [grants, setGrants] = useState<RoleGrant[]>([]);
   const [resolved, setResolved] = useState(false);
 
   const refresh = useCallback(async () => {
-    let token: ApiToken | null = null;
-
     try {
-      token = await getSelfToken();
-      setSelf(token);
+      setSelf(await getSelfToken());
     } catch {
       // 401 is auth disabled; anything else fails open.
       setSelf(null);
@@ -84,14 +67,6 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
       setPermissions(await getPermissions());
     } catch {
       setPermissions(null);
-    }
-
-    // Read on its own: a failed lookup must not widen the token's scope, and
-    // unknown grants offer no write the API would refuse.
-    try {
-      setGrants(token ? await getSelfTokenGrants() : []);
-    } catch {
-      setGrants([]);
     } finally {
       setResolved(true);
     }
@@ -128,16 +103,6 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     [allows, permissions],
   );
 
-  const canWriteRecord = useCallback(
-    (
-      action: Action,
-      record: { zone_name: string; name: string; type: string },
-    ) =>
-      self === null ||
-      grants.some((grant) => grantCoversRecord(grant, action, record)),
-    [self, grants],
-  );
-
   const allowsWholeZone = useCallback(
     (action: Action, zoneName: string) => {
       const permitted = zonePermissions(zoneName);
@@ -169,7 +134,6 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
         self,
         allows,
         canCreateRecords,
-        canWriteRecord,
         allowsWholeZone,
         refresh,
       }}

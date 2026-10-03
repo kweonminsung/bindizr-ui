@@ -6,6 +6,7 @@ import {
   getZones,
 } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
+import { zoneKey } from "@/lib/grants";
 import {
   ACTION_DESCRIPTIONS,
   ACTIONS,
@@ -121,14 +122,24 @@ export default function RoleGrantsPanel({
 
   const hasRecordAction = actions.some(isRecordAction);
   // Writes without their read stay usable through the API, as automation
-  // wants, but the UI lists nothing for them to act on.
-  const heldActions = new Set<Action>([
-    ...actions,
-    ...grants.flatMap((grant) => grant.actions),
-  ]);
+  // wants, but the UI lists nothing for them to act on. Name and type
+  // coverage is the server's to decide, so only an unconstrained read in
+  // this zone settles it here; anything narrower keeps the hint.
+  const coversNewGrant = (grant: RoleGrant, read: Action) =>
+    grant.actions.includes(read) &&
+    (grant.zone_name === null ||
+      (zoneName !== EVERY_ZONE &&
+        zoneKey(grant.zone_name) === zoneKey(zoneName))) &&
+    (!isRecordAction(read) ||
+      (grant.record_name_pattern === DEFAULT_PATTERN &&
+        grant.record_types === DEFAULT_TYPES));
   const apiOnly = actions.filter((action) => {
     const read = READ_FOR_WRITE[action];
-    return read !== undefined && !heldActions.has(read);
+    return (
+      read !== undefined &&
+      !actions.includes(read) &&
+      !grants.some((grant) => coversNewGrant(grant, read))
+    );
   });
   const missingReads = [
     ...new Set(apiOnly.map((action) => READ_FOR_WRITE[action])),
@@ -383,9 +394,9 @@ export default function RoleGrantsPanel({
 
           {apiOnly.length > 0 && (
             <Notice tone="info">
-              Without <code>{missingReads.join(", ")}</code>,{" "}
-              <code>{apiOnly.join(", ")}</code> work through the API only: the
-              UI lists nothing for them to act on.
+              Unless another grant gives <code>{missingReads.join(", ")}</code>{" "}
+              over the same records, <code>{apiOnly.join(", ")}</code> work
+              through the API only: the UI lists nothing for them to act on.
             </Notice>
           )}
 

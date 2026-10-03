@@ -77,7 +77,7 @@ export default function RecordList({
   onCreateRecord,
 }: RecordListProps) {
   const toast = useToast();
-  const { canCreateRecords, canWriteRecord } = useBindizrToken();
+  const { canCreateRecords } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const sort = getSortFromSearchParams(
     searchParams,
@@ -476,10 +476,10 @@ export default function RecordList({
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   {record.id != null &&
-                  (canWriteRecord("record:update", record) ||
-                    canWriteRecord("record:delete", record)) ? (
+                  (record.actions.includes("record:update") ||
+                    record.actions.includes("record:delete")) ? (
                     <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                      {canWriteRecord("record:update", record) && (
+                      {record.actions.includes("record:update") && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -490,7 +490,7 @@ export default function RecordList({
                           Edit
                         </button>
                       )}
-                      {canWriteRecord("record:delete", record) && (
+                      {record.actions.includes("record:delete") && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
