@@ -3,27 +3,28 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
-import { getSelfToken, getSelfTokenGrants } from "@/lib/api";
+import { getPermissions, getSelfToken, getSelfTokenGrants } from "@/lib/api";
+import { grantCoversRecord, zoneKey } from "@/lib/grants";
 import {
-  grantCoversRecord,
-  grantCoversWholeZone,
-  grantReachesZone,
-} from "@/lib/grants";
-import { Action, ApiToken, RoleGrant } from "@/lib/types";
+  Action,
+  ApiToken,
+  Permissions,
+  PermittedActions,
+  RoleGrant,
+} from "@/lib/types";
 import { useAuth } from "./AuthContext";
 
 interface BindizrTokenContextType {
   /** The UI's own token; null when Bindizr runs without auth or the lookup failed. */
   self: ApiToken | null;
-  /** Whether the token's role permits `action` in the named zone, or — with
-   * no zone named — in every zone, as actions no zone owns need. Always true
-   * without auth or when the lookup failed. */
+  /** Whether the caller may do `action` in the named zone, or in every zone
+   * when none is named; true if the lookup failed, as the API decides. */
   allows: (action: Action, zoneName?: string) => boolean;
-  /** Whether some `record:create` grant reaches part of a zone, or of any zone
-   * when none is named. The name typed in decides the rest, and only the API
-   * can settle that. */
+  /** Whether `record:create` reaches part of a zone, or of any zone when none
+   * is named. */
   canCreateRecords: (zoneName?: string) => boolean;
   /** Whether a grant permits `action` on this record by zone, name pattern
    * and types. */
@@ -31,8 +32,8 @@ interface BindizrTokenContextType {
     action: Action,
     record: { zone_name: string; name: string; type: string },
   ) => boolean;
-  /** Whether a grant permits `action` in the zone with no name or type limit:
-   * version detail, diffs and rollback need the whole zone. */
+  /** Whether the caller may do `action` in the zone with no name or type
+   * limit. */
   allowsWholeZone: (action: Action, zoneName: string) => boolean;
   /** Re-read after the Bindizr settings change. */
   refresh: () => Promise<void>;
@@ -62,8 +63,9 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
   const { isAuthenticated, setupComplete, accountEnabled } = useAuth();
   const canLookup = setupComplete && (!accountEnabled || isAuthenticated);
   const [self, setSelf] = useState<ApiToken | null>(null);
-  /** No token to scope by: auth is off, or the lookup failed open. */
-  const [unrestricted, setUnrestricted] = useState(true);
+  /** Null when the lookup failed: everything is offered, the API decides. */
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
+  /** Only the record-level check reads grants; empty without a token. */
   const [grants, setGrants] = useState<RoleGrant[]>([]);
   const [resolved, setResolved] = useState(false);
 
@@ -73,11 +75,15 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     try {
       token = await getSelfToken();
       setSelf(token);
-      setUnrestricted(false);
     } catch {
       // 401 is auth disabled; anything else fails open.
       setSelf(null);
-      setUnrestricted(true);
+    }
+
+    try {
+      setPermissions(await getPermissions());
+    } catch {
+      setPermissions(null);
     }
 
     // Read on its own: a failed lookup must not widen the token's scope, and
@@ -91,28 +97,35 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     }
   }, []);
 
+  /** A zone's permissions: its own entry, or the every-zone ones. */
+  const zonePermissions = useMemo(() => {
+    const byZone = new Map(
+      (permissions?.zones ?? []).map((zone) => [zoneKey(zone.zone_name), zone]),
+    );
+    return (zoneName: string): PermittedActions | undefined =>
+      byZone.get(zoneKey(zoneName)) ?? permissions?.all_zones;
+  }, [permissions]);
+
   const allows = useCallback(
-    (action: Action, zoneName?: string) =>
-      unrestricted ||
-      grants.some(
-        (grant) =>
-          grant.actions.includes(action) &&
-          (zoneName === undefined
-            ? grant.zone_name === null
-            : grantReachesZone(grant, zoneName)),
-      ),
-    [unrestricted, grants],
+    (action: Action, zoneName?: string) => {
+      const permitted =
+        zoneName === undefined
+          ? permissions?.all_zones
+          : zonePermissions(zoneName);
+      return !permitted || permitted.actions.includes(action);
+    },
+    [permissions, zonePermissions],
   );
 
   const canCreateRecords = useCallback(
     (zoneName?: string) =>
-      unrestricted ||
-      grants.some(
-        (grant) =>
-          grant.actions.includes("record:create") &&
-          (!zoneName || grantReachesZone(grant, zoneName)),
-      ),
-    [unrestricted, grants],
+      zoneName !== undefined
+        ? allows("record:create", zoneName)
+        : !permissions ||
+          [permissions.all_zones, ...permissions.zones].some((permitted) =>
+            permitted.actions.includes("record:create"),
+          ),
+    [allows, permissions],
   );
 
   const canWriteRecord = useCallback(
@@ -120,16 +133,17 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
       action: Action,
       record: { zone_name: string; name: string; type: string },
     ) =>
-      unrestricted ||
+      self === null ||
       grants.some((grant) => grantCoversRecord(grant, action, record)),
-    [unrestricted, grants],
+    [self, grants],
   );
 
   const allowsWholeZone = useCallback(
-    (action: Action, zoneName: string) =>
-      unrestricted ||
-      grants.some((grant) => grantCoversWholeZone(grant, action, zoneName)),
-    [unrestricted, grants],
+    (action: Action, zoneName: string) => {
+      const permitted = zonePermissions(zoneName);
+      return !permitted || permitted.whole_zone.includes(action);
+    },
+    [zonePermissions],
   );
 
   useEffect(() => {

@@ -1,40 +1,41 @@
 import {
   ApiToken,
   CreateDnssecPolicyPayload,
-  ErrorCode,
+  CreatedToken,
   CreateRecordPayload,
   CreateRoleGrantPayload,
   CreateRolePayload,
-  CreateTokenPayload,
   CreateSecondaryPayload,
+  CreateTokenPayload,
   CreateTsigKeyPayload,
-  CreatedToken,
   DeleteRecordsResult,
   DeleteZoneResult,
   DnssecPolicy,
   DnssecRolloverRole,
   DnssecStatus,
   EnableDnssecPayload,
+  ErrorCode,
   ImportZonePayload,
   ImportZoneResult,
   ListResult,
   PageQuery,
   Pagination,
+  Permissions,
   Record,
   RecordListQuery,
   RecordWriteResult,
-  RollbackZoneResult,
-  SignedRecord,
   Role,
   RoleGrant,
+  RollbackZoneResult,
   Secondary,
   SecondaryCheck,
   SecondaryTransfers,
+  SignedRecord,
   TsigKey,
   UpdateDnssecPolicyPayload,
-  UpdateSecondaryPayload,
   UpdateDnssecSettingsPayload,
   UpdateRecordPayload,
+  UpdateSecondaryPayload,
   UpdateZonePayload,
   VersionDetail,
   VersionDiff,
@@ -42,9 +43,9 @@ import {
   ZoneListQuery,
   ZonePayload,
   ZoneStatus,
-  ZoneWriteResult,
   ZoneVersion,
   ZoneVersionListQuery,
+  ZoneWriteResult,
 } from "./types";
 import { ApiError } from "./errors";
 import { getLocalApiHeaders } from "./localApi";
@@ -551,6 +552,15 @@ export async function getSelfToken(): Promise<ApiToken> {
     "Failed to describe the API token",
   );
   return (await response.json()).token as ApiToken;
+}
+
+/** What the caller may do, computed by Bindizr from its role's grants. */
+export async function getPermissions(): Promise<Permissions> {
+  const response = await apiFetch(
+    `/permissions`,
+    "Failed to fetch permissions",
+  );
+  return (await response.json()) as Permissions;
 }
 
 /** The grants of the calling token's role; 401 without auth. */

@@ -841,3 +841,16 @@ export const ERROR_CODES = [
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/** Actions held, and record actions held with no name or type limit. */
+export interface PermittedActions {
+  actions: Action[];
+  whole_zone: Action[];
+}
+
+/** What the caller may do: `all_zones` for unlisted zones, `zones` where
+ * zone grants add to it. */
+export interface Permissions {
+  all_zones: PermittedActions;
+  zones: (PermittedActions & { zone_name: string })[];
+}
