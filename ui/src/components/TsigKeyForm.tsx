@@ -125,7 +125,12 @@ export default function TsigKeyForm({
         <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
-        <button type="submit" disabled={submitting} className="btn-primary">
+        {/* A role still loading, or failed to load, is not chosen yet. */}
+        <button
+          type="submit"
+          disabled={submitting || !roleName}
+          className="btn-primary"
+        >
           {submitting ? "Creating..." : "Create TSIG Key"}
         </button>
       </div>
