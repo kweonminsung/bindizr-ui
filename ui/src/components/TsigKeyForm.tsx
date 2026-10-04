@@ -1,31 +1,31 @@
 import { useState } from "react";
 import { createTsigKey } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { TSIG_ALGORITHMS, TsigKey } from "@/lib/types";
+import { TSIG_ALGORITHMS, TsigAlgorithm, TsigKey } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
+import RoleSelect from "./RoleSelect";
 
 interface TsigKeyFormProps {
   onSuccess: (tsigKey: TsigKey) => void;
   onCancel: () => void;
+  /** Creates in this role, leaving the role picker fixed. */
+  roleName?: string;
 }
 
-const GLOBAL_WARNING =
-  "A Global Key can update every record of every zone without any grant. Create it anyway?";
-
-export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
+export default function TsigKeyForm({
+  onSuccess,
+  onCancel,
+  roleName: fixedRoleName,
+}: TsigKeyFormProps) {
   const toast = useToast();
   const [name, setName] = useState("");
-  const [algorithm, setAlgorithm] = useState<string>(TSIG_ALGORITHMS[0]);
+  const [algorithm, setAlgorithm] = useState<TsigAlgorithm>(TSIG_ALGORITHMS[0]);
   const [secret, setSecret] = useState("");
-  const [isGlobal, setIsGlobal] = useState(false);
+  const [roleName, setRoleName] = useState(fixedRoleName ?? "");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (isGlobal && !window.confirm(GLOBAL_WARNING)) {
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -33,7 +33,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
         name: name.trim(),
         algorithm,
         secret: secret.trim() || null,
-        global: isGlobal,
+        role_name: roleName,
       });
       onSuccess(tsigKey);
     } catch (error) {
@@ -48,7 +48,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Create TSIG Key</h2>
         <p className="text-sm text-gray-500 mt-1">
-          A Scoped Key needs zone grants before it can act.
+          The key may sign what its role&apos;s grants permit.
         </p>
       </div>
 
@@ -82,7 +82,7 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
             id="algorithm"
             name="algorithm"
             value={algorithm}
-            onChange={(e) => setAlgorithm(e.target.value)}
+            onChange={(e) => setAlgorithm(e.target.value as TsigAlgorithm)}
             className="w-full"
           >
             {TSIG_ALGORITHMS.map((option) => (
@@ -112,27 +112,25 @@ export default function TsigKeyForm({ onSuccess, onCancel }: TsigKeyFormProps) {
             Paste a base64 secret to import an existing key.
           </p>
         </div>
-        <label className="flex items-start space-x-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={isGlobal}
-            onChange={(e) => setIsGlobal(e.target.checked)}
-            className="mt-1"
-          />
-          <span>
-            Global Key
-            <span className="block text-amber-700">
-              May update every zone without grants. Cannot be changed later.
-            </span>
-          </span>
-        </label>
+        <RoleSelect
+          id="tsig_role_name"
+          value={roleName}
+          onChange={setRoleName}
+          fixed={fixedRoleName !== undefined}
+          hint="Its record:* grants authorize updates and zone:transfer authorizes transfers; a key that only signs NOTIFY may hold a role without grants."
+        />
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
         <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
-        <button type="submit" disabled={submitting} className="btn-primary">
+        {/* A role still loading, or failed to load, is not chosen yet. */}
+        <button
+          type="submit"
+          disabled={submitting || !roleName}
+          className="btn-primary"
+        >
           {submitting ? "Creating..." : "Create TSIG Key"}
         </button>
       </div>

@@ -14,8 +14,8 @@ interface ZoneSyncTabProps {
 
 export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
   const toast = useToast();
-  // A scoped token may NOTIFY its zone but not bump the serial.
-  const { globalAccess } = useBindizrToken();
+  // Sending a NOTIFY, with or without a serial bump, is `zone:update`.
+  const { allows } = useBindizrToken();
   const [bumpSerial, setBumpSerial] = useState(false);
   const [notifying, setNotifying] = useState(false);
   // Re-probe the secondaries once a NOTIFY has gone out.
@@ -44,14 +44,16 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
 
   return (
     <div className="space-y-6">
-      <ZoneStatusPanel zoneName={zone.name} refreshToken={statusToken} />
+      {allows("zone:read", zone.name) && (
+        <ZoneStatusPanel zoneName={zone.name} refreshToken={statusToken} />
+      )}
 
-      <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-          DNS NOTIFY
-        </h3>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {globalAccess && (
+      {allows("zone:update", zone.name) && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+            DNS NOTIFY
+          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <label className="flex items-center space-x-2 text-sm text-gray-600">
               <input
                 type="checkbox"
@@ -60,21 +62,21 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
               />
               <span>Bump serial first (forces a transfer)</span>
             </label>
-          )}
-          <button
-            type="button"
-            onClick={handleNotify}
-            disabled={notifying}
-            className="btn-primary sm:ml-auto"
-          >
-            {notifying
-              ? "Sending..."
-              : bumpSerial
-                ? "Bump serial & NOTIFY"
-                : "Send NOTIFY"}
-          </button>
+            <button
+              type="button"
+              onClick={handleNotify}
+              disabled={notifying}
+              className="btn-primary sm:ml-auto"
+            >
+              {notifying
+                ? "Sending..."
+                : bumpSerial
+                  ? "Bump serial & NOTIFY"
+                  : "Send NOTIFY"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

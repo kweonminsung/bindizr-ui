@@ -3,6 +3,7 @@ import { importZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { IMPORT_MODES, ImportMode, ImportZoneResult, Zone } from "@/lib/types";
 import Notice from "./Notice";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneImportFormProps {
@@ -21,6 +22,11 @@ export default function ZoneImportForm({
   onApplied,
 }: ZoneImportFormProps) {
   const toast = useToast();
+  const { allowsWholeZone } = useBindizrToken();
+  // Upsert and replace delete what they rewrite, so they need record:delete too.
+  const modes = allowsWholeZone("record:delete", zone.name)
+    ? IMPORT_MODES
+    : IMPORT_MODES.filter((importMode) => importMode === "append");
   const [source, setSource] = useState<"file" | "server">("file");
   const [content, setContent] = useState("");
   const [fromServer, setFromServer] = useState("");
@@ -136,7 +142,7 @@ export default function ZoneImportForm({
             onChange={(e) => setMode(e.target.value as ImportMode)}
             className="w-full"
           >
-            {IMPORT_MODES.map((importMode) => (
+            {modes.map((importMode) => (
               <option key={importMode} value={importMode}>
                 {importMode}
               </option>
