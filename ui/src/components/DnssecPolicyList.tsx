@@ -18,7 +18,7 @@ export default function DnssecPolicyList({
   onCreatePolicy,
 }: DnssecPolicyListProps) {
   const { allows } = useBindizrToken();
-  // `dnssec:read` opens the page; policies change only with an every-zone manage.
+  // `dnssec:read` opens the page; policies change only with an all-zones manage.
   const canManage = allows("dnssec:manage");
   const toast = useToast();
   const [policies, setPolicies] = useState<DnssecPolicy[]>([]);

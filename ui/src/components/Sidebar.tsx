@@ -89,7 +89,7 @@ function NavGroup({ label, basePath, links, onNavigate }: NavGroupProps) {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { pathname } = useLocation();
-  // Each admin entry needs its action in every zone.
+  // Each admin entry needs its action in all zones.
   const { allows } = useBindizrToken();
 
   return (

@@ -34,7 +34,7 @@ export default function RoleGrantTable({
             <tr key={grant.id}>
               <td className="truncate px-3 py-2" title={grant.zone_name ?? ""}>
                 {grant.zone_name === null ? (
-                  <span className="font-medium text-gray-900">Every zone</span>
+                  <span className="font-medium text-gray-900">All zones</span>
                 ) : (
                   <Link
                     to={`/records?zoneName=${encodeURIComponent(grant.zone_name)}`}

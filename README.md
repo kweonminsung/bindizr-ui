@@ -48,7 +48,7 @@ Apply reusable signing policies, monitor signatures, and manage key rollovers. C
 
 ### Roles, API tokens and zone permissions
 
-Group permissions into roles: grant actions such as `record:create` or `zone:transfer` in one zone or every zone, narrowing record actions by record-name pattern and record type. API tokens, with optional expiry, act under the role they are created in.
+Group permissions into roles: grant actions such as `record:create` or `zone:transfer` in one zone or all zones, narrowing record actions by record-name pattern and record type. API tokens, with optional expiry, act under the role they are created in.
 
 <img src="public/screenshots/api-token-grants.png" alt="A scoped deployment token with expiry metadata and per-zone record-type permissions" width="768" />
 

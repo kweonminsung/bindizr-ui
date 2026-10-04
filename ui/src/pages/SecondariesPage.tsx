@@ -15,7 +15,7 @@ export default function SecondariesPage() {
   return (
     <div>
       <p className="mb-4 text-sm text-gray-500">
-        The servers Bindizr feeds: each receives NOTIFY for every zone and may
+        The servers Bindizr feeds: each receives NOTIFY for all zones and may
         pull zones from its address.
       </p>
       <SecondaryList

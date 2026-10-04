@@ -47,7 +47,7 @@ const toFormString = (value: unknown, fallback: string) =>
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const toast = useToast();
   const { allowsWholeZone } = useBindizrToken();
-  // A new zone has only the every-zone grants, which the import needs whole;
+  // A new zone has only the all-zones grants, which the import needs whole;
   // an unlisted name reads as them.
   const canImportFile = allowsWholeZone("record:create", "");
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
