@@ -11,6 +11,7 @@ import {
   VersionDetail,
   Zone,
   ZoneVersion,
+  ZoneVersionListQuery,
 } from "@/lib/types";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
@@ -54,14 +55,27 @@ export default function ZoneVersions({
     canReadVersions &&
     allowsWholeZone("record:create", zone.name) &&
     allowsWholeZone("record:delete", zone.name);
-  const [versions, setVersions] = useState<ZoneVersion[]>([]);
-  const [total, setTotal] = useState(0);
+  const [listing, setListing] = useState<{
+    request: string;
+    versions: ZoneVersion[];
+    total: number;
+  } | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showAll, setShowAll] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Rows fetched for another page or view are never drawn under this one.
+  const request = JSON.stringify([
+    zone.name,
+    {
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+      include_signer_serials: showAll,
+    } satisfies ZoneVersionListQuery,
+  ]);
+  const versions = listing?.request === request ? listing.versions : null;
+  const total = listing?.total ?? 0;
 
   const [detail, setDetail] = useState<VersionDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -76,25 +90,21 @@ export default function ZoneVersions({
     let active = true;
 
     async function fetchVersions() {
-      setLoading(true);
       setError(null);
       try {
-        const data = await getZoneVersionsPage(zone.name, {
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-          include_signer_serials: showAll,
-        });
+        const [zoneName, query]: [string, ZoneVersionListQuery] =
+          JSON.parse(request);
+        const data = await getZoneVersionsPage(zoneName, query);
         if (active) {
-          setVersions(data.items);
-          setTotal(data.pagination.total);
+          setListing({
+            request,
+            versions: data.items,
+            total: data.pagination.total,
+          });
         }
       } catch (fetchError) {
         if (active) {
           setError(getErrorMessage(fetchError, "Failed to fetch versions"));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
         }
       }
     }
@@ -104,7 +114,7 @@ export default function ZoneVersions({
     return () => {
       active = false;
     };
-  }, [zone.name, page, pageSize, showAll, refreshKey]);
+  }, [refreshKey, request]);
 
   const handleSelect = async (serial: number) => {
     setDetailLoading(true);
@@ -350,10 +360,10 @@ export default function ZoneVersions({
         </label>
       </div>
 
-      {loading && versions.length === 0 ? (
-        <p className="text-gray-500">Loading versions...</p>
-      ) : error ? (
+      {error ? (
         <Notice tone="error">{error}</Notice>
+      ) : versions === null ? (
+        <p className="text-gray-500">Loading versions...</p>
       ) : versions.length === 0 ? (
         <p className="text-gray-500">No versions for this zone yet.</p>
       ) : (
