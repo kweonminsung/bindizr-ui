@@ -29,31 +29,31 @@ export default function TsigKeyList({
 }: TsigKeyListProps) {
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
-  const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
+  const [listing, setListing] = useState<{
+    roleFilter: string;
+    tsigKeys: TsigKey[];
+  } | null>(null);
   const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  // Rows fetched under another role filter are never drawn under this one.
+  const roleFilter = roleName ?? "";
+  const tsigKeys = listing?.roleFilter === roleFilter ? listing.tsigKeys : null;
 
   useEffect(() => {
     let active = true;
 
     async function fetchTsigKeys() {
-      setLoading(true);
       setError(null);
       try {
-        const data = await getTsigKeys(roleName);
+        const data = await getTsigKeys(roleFilter);
         if (active) {
-          setTsigKeys(data);
+          setListing({ roleFilter, tsigKeys: data });
         }
       } catch (fetchError) {
         if (active) {
           setError(getErrorMessage(fetchError, "Failed to fetch TSIG keys"));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
         }
       }
     }
@@ -63,13 +63,13 @@ export default function TsigKeyList({
     return () => {
       active = false;
     };
-  }, [refreshKey, roleName]);
+  }, [refreshKey, roleFilter]);
 
   useEffect(() => {
     if (!focusName) {
       return;
     }
-    const match = tsigKeys.find((tsigKey) => tsigKey.name === focusName);
+    const match = tsigKeys?.find((tsigKey) => tsigKey.name === focusName);
     if (match) {
       setSelectedKey(match);
     }
@@ -104,17 +104,14 @@ export default function TsigKeyList({
     }
   };
 
-  if (loading && tsigKeys.length === 0) {
+  if (listing === null && !error) {
     return <p className="text-center text-gray-500">Loading TSIG keys...</p>;
-  }
-  if (error) {
-    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleKeys = query
-    ? tsigKeys.filter((tsigKey) => tsigKey.name.toLowerCase().includes(query))
-    : tsigKeys;
+  const visibleKeys = (tsigKeys ?? []).filter((tsigKey) =>
+    tsigKey.name.toLowerCase().includes(query),
+  );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -138,6 +135,12 @@ export default function TsigKeyList({
           Create TSIG Key
         </button>
       </div>
+      {/* Not an early return: a rejected role filter must stay correctable. */}
+      {error && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {error}
+        </Notice>
+      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
@@ -220,11 +223,13 @@ export default function TsigKeyList({
       )}
       <div className="p-4">
         <p className="text-sm text-gray-700">
-          {visibleKeys.length > 0
-            ? `${visibleKeys.length} TSIG key${visibleKeys.length > 1 ? "s" : ""}`
-            : roleName
-              ? "No TSIG keys in this role"
-              : "No TSIG keys found"}
+          {tsigKeys === null
+            ? !error && "Loading TSIG keys..."
+            : visibleKeys.length > 0
+              ? `${visibleKeys.length} TSIG key${visibleKeys.length > 1 ? "s" : ""}`
+              : roleName
+                ? "No TSIG keys in this role"
+                : "No TSIG keys found"}
         </p>
       </div>
     </div>

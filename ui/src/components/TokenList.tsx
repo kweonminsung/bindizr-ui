@@ -29,31 +29,31 @@ export default function TokenList({
 }: TokenListProps) {
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
-  const [tokens, setTokens] = useState<ApiToken[]>([]);
+  const [listing, setListing] = useState<{
+    roleFilter: string;
+    tokens: ApiToken[];
+  } | null>(null);
   const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  // Rows fetched under another role filter are never drawn under this one.
+  const roleFilter = roleName ?? "";
+  const tokens = listing?.roleFilter === roleFilter ? listing.tokens : null;
 
   useEffect(() => {
     let active = true;
 
     async function fetchTokens() {
-      setLoading(true);
       setError(null);
       try {
-        const data = await getTokens(roleName);
+        const data = await getTokens(roleFilter);
         if (active) {
-          setTokens(data);
+          setListing({ roleFilter, tokens: data });
         }
       } catch (fetchError) {
         if (active) {
           setError(getErrorMessage(fetchError, "Failed to fetch API tokens"));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
         }
       }
     }
@@ -63,13 +63,13 @@ export default function TokenList({
     return () => {
       active = false;
     };
-  }, [refreshKey, roleName]);
+  }, [refreshKey, roleFilter]);
 
   useEffect(() => {
     if (!focusName) {
       return;
     }
-    const match = tokens.find((token) => token.name === focusName);
+    const match = tokens?.find((token) => token.name === focusName);
     if (match) {
       setSelectedToken(match);
     }
@@ -98,21 +98,16 @@ export default function TokenList({
     }
   };
 
-  if (loading && tokens.length === 0) {
+  if (listing === null && !error) {
     return <p className="text-center text-gray-500">Loading API tokens...</p>;
-  }
-  if (error) {
-    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleTokens = query
-    ? tokens.filter(
-        (token) =>
-          token.name.toLowerCase().includes(query) ||
-          token.description?.toLowerCase().includes(query),
-      )
-    : tokens;
+  const visibleTokens = (tokens ?? []).filter(
+    (token) =>
+      token.name.toLowerCase().includes(query) ||
+      token.description?.toLowerCase().includes(query),
+  );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -139,6 +134,12 @@ export default function TokenList({
           Create API Token
         </button>
       </div>
+      {/* Not an early return: a rejected role filter must stay correctable. */}
+      {error && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {error}
+        </Notice>
+      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
@@ -242,11 +243,13 @@ export default function TokenList({
       )}
       <div className="p-4">
         <p className="text-sm text-gray-700">
-          {visibleTokens.length > 0
-            ? `${visibleTokens.length} API token${visibleTokens.length > 1 ? "s" : ""}`
-            : roleName
-              ? "No API tokens in this role"
-              : "No API tokens found"}
+          {tokens === null
+            ? !error && "Loading API tokens..."
+            : visibleTokens.length > 0
+              ? `${visibleTokens.length} API token${visibleTokens.length > 1 ? "s" : ""}`
+              : roleName
+                ? "No API tokens in this role"
+                : "No API tokens found"}
         </p>
       </div>
     </div>

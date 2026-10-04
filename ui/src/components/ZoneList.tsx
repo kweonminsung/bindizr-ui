@@ -14,7 +14,13 @@ import {
   updatePageSearchParam,
   updateSortSearchParams,
 } from "@/lib/pageQuery";
-import { SortOrder, Zone, ZONE_SORT_FIELDS, ZoneSortField } from "@/lib/types";
+import {
+  SortOrder,
+  Zone,
+  ZONE_SORT_FIELDS,
+  ZoneListQuery,
+  ZoneSortField,
+} from "@/lib/types";
 import { countActiveFilters, toFilterNumber } from "@/lib/form";
 import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
 import SortControl from "./SortControl";
@@ -83,12 +89,15 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   const navigate = useNavigate();
   const { allows, allowsWholeZone } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [zones, setZones] = useState<Zone[]>([]);
+  const [listing, setListing] = useState<{
+    request: string;
+    zones: Zone[];
+    total: number;
+  } | null>(null);
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [importingZone, setImportingZone] = useState<Zone | null>(null);
   const [exportingZone, setExportingZone] = useState<Zone | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
@@ -100,13 +109,33 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     DEFAULT_ZONE_SORT,
   );
   const order = getOrderFromSearchParams(searchParams);
-  const [totalZones, setTotalZones] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   // Names of the listed zones that are DNSSEC-signed, for the name badge.
   const [dnssecZones, setDnssecZones] = useState<Set<string>>(new Set());
   // Probe results by zone name, so paging and filtering re-use them.
   const dnssecProbes = useRef(new Map<string, boolean>());
   const activeFilterCount = countActiveFilters(filters);
+  // Rows fetched for another request are never drawn under this one.
+  const request = JSON.stringify({
+    search: searchQuery,
+    name: filters.name,
+    mname: filters.mname,
+    rname: filters.rname,
+    min_default_ttl: toFilterNumber(filters.min_default_ttl),
+    max_default_ttl: toFilterNumber(filters.max_default_ttl),
+    serial: toFilterNumber(filters.serial),
+    min_serial: toFilterNumber(filters.min_serial),
+    max_serial: toFilterNumber(filters.max_serial),
+    signed: filters.signed === "" ? undefined : filters.signed === "true",
+    created_after: toDayStart(filters.created_after),
+    created_before: toDayEnd(filters.created_before),
+    sort,
+    order,
+    limit: zonesPerPage,
+    offset: (currentPage - 1) * zonesPerPage,
+  } satisfies ZoneListQuery);
+  const zones = listing?.request === request ? listing.zones : null;
+  const totalZones = listing?.total ?? 0;
 
   const handleDnssecChanged = useCallback(
     (zoneName: string, enabled: boolean) => {
@@ -156,30 +185,16 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     let active = true;
 
     async function fetchZones() {
-      setLoading(true);
       setError(null);
       try {
-        const data = await getZonesPage({
-          search: searchQuery,
-          name: filters.name,
-          mname: filters.mname,
-          rname: filters.rname,
-          min_default_ttl: toFilterNumber(filters.min_default_ttl),
-          max_default_ttl: toFilterNumber(filters.max_default_ttl),
-          serial: toFilterNumber(filters.serial),
-          min_serial: toFilterNumber(filters.min_serial),
-          max_serial: toFilterNumber(filters.max_serial),
-          signed: filters.signed === "" ? undefined : filters.signed === "true",
-          created_after: toDayStart(filters.created_after),
-          created_before: toDayEnd(filters.created_before),
-          sort,
-          order,
-          limit: zonesPerPage,
-          offset: (currentPage - 1) * zonesPerPage,
-        });
+        const query: ZoneListQuery = JSON.parse(request);
+        const data = await getZonesPage(query);
         if (active) {
-          setZones(data.items);
-          setTotalZones(data.pagination.total);
+          setListing({
+            request,
+            zones: data.items,
+            total: data.pagination.total,
+          });
           // Keep an open details modal in sync, e.g. the serial after a rollback.
           setSelectedZone((prev) =>
             prev
@@ -191,10 +206,6 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
         if (active) {
           setError(getErrorMessage(error, "Failed to fetch zones"));
         }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
       }
     }
 
@@ -203,15 +214,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
     return () => {
       active = false;
     };
-  }, [
-    currentPage,
-    filters,
-    order,
-    refreshKey,
-    searchQuery,
-    sort,
-    zonesPerPage,
-  ]);
+  }, [refreshKey, request]);
 
   // An explicit refresh re-probes; paging and filtering reuse the cache.
   useEffect(() => {
@@ -221,7 +224,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   // The list API has no DNSSEC flag, so probe the zones not seen yet.
   useEffect(() => {
     // The status endpoint needs `dnssec:read` in the zone.
-    const names = zones
+    const names = (zones ?? [])
       .map((zone) => zone.name)
       .filter((name) => allows("dnssec:read", name));
     if (names.length === 0) {
@@ -296,7 +299,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       toast.success(
         `Deleted ${zone.name}: ${removed.records_deleted} records, ${removed.versions_deleted} versions`,
       );
-      if (zones.length === 1 && currentPage > 1) {
+      if (zones?.length === 1 && currentPage > 1) {
         handlePageChange(currentPage - 1);
       } else {
         setRefreshKey((prev) => prev + 1);
@@ -321,8 +324,8 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   };
 
   if (
-    loading &&
-    zones.length === 0 &&
+    listing === null &&
+    !error &&
     searchQuery === "" &&
     activeFilterCount === 0 &&
     currentPage === 1
@@ -331,7 +334,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
   }
 
   const indexOfFirstZone = (currentPage - 1) * zonesPerPage;
-  const indexOfLastZone = indexOfFirstZone + zones.length;
+  const indexOfLastZone = indexOfFirstZone + (zones?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -454,7 +457,9 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
           {error}
-          {zones.length > 0 && " — showing the last results that loaded."}
+          {zones &&
+            zones.length > 0 &&
+            " — showing the last results that loaded."}
         </Notice>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
@@ -489,7 +494,7 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {zones.map((zone) => (
+            {(zones ?? []).map((zone) => (
               <tr
                 key={zone.id}
                 {...clickableRowProps(() => handleShowDetails(zone))}
@@ -599,7 +604,9 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
         <div className="mb-4 sm:mb-0">
           <p className="text-sm text-gray-700">
-            {zones.length > 0 ? (
+            {zones === null ? (
+              !error && "Loading zones..."
+            ) : zones.length > 0 ? (
               <>
                 Showing{" "}
                 <span className="font-medium">{indexOfFirstZone + 1}</span> to{" "}
