@@ -197,7 +197,6 @@ export default function RoleGrantsPanel({
         setActions((prev) =>
           prev.filter((action) => !created.actions.includes(action)),
         );
-        onChange();
         toast.success(
           `Granted ${created.actions.join(", ")} in ${created.zone_name ?? "every zone"}.`,
         );
@@ -209,6 +208,9 @@ export default function RoleGrantsPanel({
     } catch (grantError) {
       toast.error(getErrorMessage(grantError, "Failed to grant the role"));
     } finally {
+      // Once after the loop: per-grant refreshes race, and a partial success
+      // still changed the role.
+      onChange();
       setSubmitting(false);
     }
   };
