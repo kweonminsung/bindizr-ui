@@ -46,10 +46,12 @@ const toFormString = (value: unknown, fallback: string) =>
 
 export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
   const toast = useToast();
-  const { allowsWholeZone } = useBindizrToken();
+  const { allows, allowsWholeZone } = useBindizrToken();
   // A new zone has only the all-zones grants, which the import needs whole;
   // an unlisted name reads as them.
   const canImportFile = allowsWholeZone("record:create", "");
+  // A new name is zone:create's to give, which only an all-zones grant holds.
+  const canRename = zone === null || allows("zone:create");
   const [formData, setFormData] = useState<ZoneFormData>(defaultFormData);
   const [zoneFileContent, setZoneFileContent] = useState("");
   const [apexNs, setApexNs] = useState(true);
@@ -165,9 +167,15 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               value={formData.name}
               onChange={handleChange}
               required
+              readOnly={!canRename}
               placeholder="example.com"
               className="w-full"
             />
+            {!canRename && (
+              <p className="text-xs text-gray-500 mt-1">
+                Renaming a zone also needs zone:create in all zones.
+              </p>
+            )}
           </div>
           <div>
             <label
