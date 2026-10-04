@@ -47,11 +47,11 @@ export default function ZoneVersions({
 }: ZoneVersionsProps) {
   const toast = useToast();
   const { allows, allowsWholeZone } = useBindizrToken();
-  // Listing needs zone:read; a version's records and diffs need the whole
-  // zone readable, and rollback rewrites it whole.
+  // Listing needs zone:read; versions, diffs and rollback read the zone whole.
   const canReadVersions = allowsWholeZone("record:read", zone.name);
   const canRollBack =
     allows("zone:update", zone.name) &&
+    canReadVersions &&
     allowsWholeZone("record:create", zone.name) &&
     allowsWholeZone("record:delete", zone.name);
   const [versions, setVersions] = useState<ZoneVersion[]>([]);
