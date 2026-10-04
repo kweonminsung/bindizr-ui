@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { deleteDnssecPolicy, getDnssecPolicies } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage, getErrorStatus } from "@/lib/errors";
-import { DEFAULT_DNSSEC_POLICY_NAME, DnssecPolicy } from "@/lib/types";
+import { DnssecPolicy } from "@/lib/types";
 import DnssecPolicyDetails from "./DnssecPolicyDetails";
+import BuiltinBadge from "./BuiltinBadge";
 import Modal from "./Modal";
 import Notice from "./Notice";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface DnssecPolicyListProps {
@@ -15,6 +17,9 @@ interface DnssecPolicyListProps {
 export default function DnssecPolicyList({
   onCreatePolicy,
 }: DnssecPolicyListProps) {
+  const { allows } = useBindizrToken();
+  // `dnssec:read` opens the page; policies change only with an all-zones manage.
+  const canManage = allows("dnssec:manage");
   const toast = useToast();
   const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<DnssecPolicy | null>(
@@ -108,12 +113,14 @@ export default function DnssecPolicyList({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-auto mb-4 sm:mb-0"
         />
-        <button
-          onClick={onCreatePolicy}
-          className="btn-primary w-full sm:w-auto"
-        >
-          Create Policy
-        </button>
+        {canManage && (
+          <button
+            onClick={onCreatePolicy}
+            className="btn-primary w-full sm:w-auto"
+          >
+            Create Policy
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
@@ -165,7 +172,12 @@ export default function DnssecPolicyList({
                 {...clickableRowProps(() => setSelectedPolicy(policy))}
               >
                 <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {policy.name}
+                  <span className="inline-flex items-center gap-2">
+                    {policy.name}
+                    {policy.builtin && (
+                      <BuiltinBadge title="The default policy cannot be deleted" />
+                    )}
+                  </span>
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {policy.algorithm}
@@ -181,14 +193,7 @@ export default function DnssecPolicyList({
                   {policy.signature_refresh_days}d
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {policy.name === DEFAULT_DNSSEC_POLICY_NAME ? (
-                    <span
-                      className="text-gray-400"
-                      title="The built-in default policy cannot be deleted"
-                    >
-                      Built-in
-                    </span>
-                  ) : (
+                  {canManage && !policy.builtin && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

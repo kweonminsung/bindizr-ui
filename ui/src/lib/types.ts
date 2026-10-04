@@ -30,10 +30,14 @@ export interface ZonePayload {
   minimum_ttl?: number | null;
   /** At most 255 characters; empty clears it. */
   description?: string | null;
+  /** Create only: start with an apex NS record naming the MNAME (default true). */
+  apex_ns?: boolean;
 }
 
 /** An omitted field keeps its value; a different `name` renames the zone. */
-export type UpdateZonePayload = Partial<Omit<ZonePayload, "serial">> & {
+export type UpdateZonePayload = Partial<
+  Omit<ZonePayload, "serial" | "apex_ns">
+> & {
   /** `false` stops the DNS plane serving the zone without deleting it. */
   enabled?: boolean | null;
 };
@@ -45,8 +49,10 @@ export const RECORD_TYPES = [
   "AAAA",
   "CAA",
   "CNAME",
+  "DNAME",
   "DS",
   "MX",
+  "NAPTR",
   "TXT",
   "NS",
   "SRV",
@@ -69,6 +75,8 @@ export interface Record {
   zone_name: string;
   ttl: number;
   priority?: number | null;
+  /** The record actions this caller may take on it; empty on a derived row. */
+  actions: Action[];
 }
 
 export interface CreateRecordPayload {
@@ -113,6 +121,8 @@ export interface SignedRecord {
   zone_name: string;
   ttl: number;
   priority?: number | null;
+  /** The record actions this caller may take on it; empty on a derived row. */
+  actions: Action[];
 }
 
 export const SORT_ORDERS = ["asc", "desc"] as const;
@@ -206,8 +216,8 @@ export interface DeleteZoneResult {
   dry_run: boolean;
   zone: Zone;
   /** Counts of what goes with the zone, not the rows themselves. */
-  records: number;
-  versions: number;
+  records_deleted: number;
+  versions_deleted: number;
 }
 
 export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
@@ -252,12 +262,14 @@ export const TSIG_ALGORITHMS = [
   "hmac-sha512",
 ] as const;
 
+export type TsigAlgorithm = (typeof TSIG_ALGORITHMS)[number];
+
 export interface TsigKey {
   id: number;
   name: string;
-  algorithm: string;
-  /** Updates every zone without a grant. */
-  global: boolean;
+  algorithm: TsigAlgorithm;
+  /** The role whose grants decide what updates and transfers the key may sign. */
+  role_name: string;
   created_at: string;
   /** Only returned on create and single-key reads. */
   secret?: string | null;
@@ -268,43 +280,203 @@ export interface CreateTsigKeyPayload {
   algorithm?: string | null;
   /** Existing base64 secret to import; omit to generate a random one. */
   secret?: string | null;
-  global?: boolean;
+  role_name: string;
 }
 
-/** One zone granted to a token or TSIG key; the pattern and types narrow it. */
-export interface ZoneGrant {
+/** A registered secondary server. */
+export interface Secondary {
   id: number;
+  name: string;
+  /** host[:port] */
+  address: string;
+  /** Disabled: no NOTIFY, no unsigned transfer, no probe. */
+  enabled: boolean;
+  /** TSIG key its NOTIFY is signed with, if any. */
+  notify_key_name: string | null;
+  created_at: string;
+}
+
+export interface CreateSecondaryPayload {
+  name: string;
+  address: string;
+  notify_key_name?: string | null;
+}
+
+/** An omitted field keeps its value; an empty `notify_key` clears it. */
+export interface UpdateSecondaryPayload {
+  address?: string;
+  enabled?: boolean;
+  notify_key_name?: string;
+}
+
+export interface NotifyCheck {
+  address: string;
+  error?: string | null;
+}
+
+/** What a secondary answered when checked. */
+export interface SecondaryCheck {
+  secondary: Secondary;
+  /** Socket addresses the registered address resolves to now. */
+  addresses: string[];
+  resolve_error?: string | null;
+  catalog_zone_name: string;
+  /** The serial Bindizr's own listener serves the catalog zone at; absent with `listener_error`. */
+  catalog_serial?: number | null;
+  listener_error?: string | null;
+  catalog: SecondaryStatusItem;
+  notifies: NotifyCheck[];
+  /** How Bindizr served the secondary's transfers. */
+  transfers: TransferSummary;
+}
+
+/** Which transfer a secondary asked Bindizr for. */
+export type TransferKind = "axfr" | "ixfr";
+
+/** Answered, refused, or allowed and then broken off by a failure. */
+export type TransferResult = "ok" | "refused" | "failed";
+
+/** One transfer Bindizr answered, or refused, for a secondary's address. */
+export interface Transfer {
+  address: string;
   zone_name: string;
+  kind: TransferKind;
+  result: TransferResult;
+  /** Whether the answer was a delta rather than the whole zone. */
+  incremental: boolean;
+  /** The serial the answer reached; absent when nothing was transferred. */
+  serial?: number | null;
+  at: string;
+  /** Why the transfer was refused or failed. */
+  error?: string | null;
+}
+
+/** How a secondary's zones were last served. */
+export interface TransferSummary {
+  zones: number;
+  axfr: number;
+  ixfr_full: number;
+  ixfr_delta: number;
+  refused: number;
+  /** Allowed, then broken off by a failure. */
+  failed: number;
+}
+
+/** The transfers Bindizr served one secondary. */
+export interface SecondaryTransfers {
+  secondary_name: string;
+  address: string;
+  summary: TransferSummary;
+  transfers: Transfer[];
+}
+
+/** One operation a role grant permits, spelled `<resource>:<action>`. */
+export const ACTIONS = [
+  "zone:read",
+  "zone:create",
+  "zone:update",
+  "zone:delete",
+  "zone:transfer",
+  "record:read",
+  "record:create",
+  "record:update",
+  "record:delete",
+  "dnssec:read",
+  "dnssec:manage",
+  "secondary:read",
+  "secondary:manage",
+  "access:manage",
+] as const;
+
+export type Action = (typeof ACTIONS)[number];
+
+/** What each action permits, as the grant picker explains it. */
+export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
+  "zone:read": "Read a zone's status and version history.",
+  "zone:create": "Create zones, and with zone:update rename one.",
+  "zone:update":
+    "Change a zone's settings and send NOTIFY; with unnarrowed record:read, record:create and record:delete, roll back a version.",
+  "zone:delete": "Delete zones.",
+  "zone:transfer": "Answer a TSIG-signed AXFR/IXFR. TSIG keys only.",
+  "record:read":
+    "List and read records; with no name or type limit, also export the zone and read its versions and diffs.",
+  "record:create":
+    "Add records, including by import, nsupdate and ExternalDNS.",
+  "record:update":
+    "Change a record in place; without record:read on it, every field must be given.",
+  "record:delete": "Delete records, including by nsupdate and ExternalDNS.",
+  "dnssec:read":
+    "Read DNSSEC status and check the parent DS; in all zones, also read signing policies.",
+  "dnssec:manage":
+    "Enable, disable and re-sign, manage keys and rollovers; in all zones, also change signing policies.",
+  "secondary:read": "List secondaries and the transfers served them.",
+  "secondary:manage": "Register, change, check and remove secondaries.",
+  "access:manage":
+    "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
+};
+
+/** Actions on something no zone owns, so only an all-zones grant carries them. */
+export const ALL_ZONES_ACTIONS: readonly Action[] = [
+  "zone:create",
+  "secondary:read",
+  "secondary:manage",
+  "access:manage",
+];
+
+/** A named set of grants that API tokens and TSIG keys authenticate into. */
+export interface Role {
+  id: number;
+  name: string;
+  description?: string | null;
+  /** The built-in `admin` role. */
+  builtin: boolean;
+  grant_count: number;
+  /** The API tokens authenticating into the role. */
+  token_count: number;
+  /** The TSIG keys authenticating into the role. */
+  tsig_key_count: number;
+  created_at: string;
+}
+
+export interface CreateRolePayload {
+  /** Letters, digits, `.`, `_`, and `-`: one URL path segment. */
+  name: string;
+  description?: string | null;
+}
+
+/** Actions in one zone, or in all zones when `zone_name` is null; the pattern
+ * and types narrow its `record:*` actions only. */
+export interface RoleGrant {
+  id: number;
+  role_name: string;
+  zone_name: string | null;
+  actions: Action[];
   /** `*` any name, `@` apex, `*.sub` subtree, or an exact relative name. */
   record_name_pattern: string;
   /** `*` or a comma-separated list of record types. */
   record_types: string;
-  /** A read-only grant narrows reads the same way and writes nothing: for a
-   * token the zone stays visible, for a TSIG key the whole zone still
-   * transfers. */
-  can_write: boolean;
   created_at: string;
 }
 
-/** The pattern and types default to `*`, and the grant to read-write. */
-export interface CreateZoneGrantPayload {
-  zone_name: string;
+/** Omit `zone_name` to cover all zones; the pattern and types default to `*`. */
+export interface CreateRoleGrantPayload {
+  zone_name?: string | null;
+  actions: Action[];
   record_name_pattern?: string | null;
   record_types?: string | null;
-  can_write?: boolean;
 }
 
-export interface TsigGrant extends ZoneGrant {
-  tsig_key: string;
-}
-
-export type CreateTsigGrantPayload = CreateZoneGrantPayload;
-
-/** Which plane asked for a change: the API, an RFC 2136 update, the DNSSEC
- * scheduler, or the daemon socket. */
-export const CHANGE_SOURCES = ["token", "nsupdate", "system", "local"] as const;
+/** The request path that produced a change — the HTTP API, the daemon socket,
+ * an RFC 2136 update — or `system`, the DNSSEC scheduler. */
+export const CHANGE_SOURCES = ["api", "socket", "nsupdate", "system"] as const;
 
 export type ChangeSource = (typeof CHANGE_SOURCES)[number];
+
+/** The named credential a change was made under. */
+export interface ChangeActor {
+  kind: "token" | "tsig_key";
+  name: string;
+}
 
 export interface ZoneVersion {
   serial: number;
@@ -316,8 +488,9 @@ export interface ZoneVersion {
   expire: number;
   minimum_ttl: number;
   change_source: ChangeSource;
-  /** The API token or TSIG key it was made under; absent where none was. */
-  changed_by?: string | null;
+  /** The API token or TSIG key it was made under; null for socket commands,
+   * unauthenticated requests, unsigned updates, and background work. */
+  changed_by?: ChangeActor | null;
   created_at: string;
 }
 
@@ -342,9 +515,9 @@ export interface VersionDiff {
 }
 
 export interface RollbackSummary {
-  records_added: number;
-  records_deleted: number;
-  records_unchanged: number;
+  added: number;
+  deleted: number;
+  unchanged: number;
   soa_changed: boolean;
 }
 
@@ -378,7 +551,9 @@ export const DEFAULT_DNSSEC_POLICY_NAME = "default";
 export interface DnssecPolicy {
   id: number;
   name: string;
-  algorithm: string;
+  /** The built-in `default` policy, which cannot be deleted. */
+  builtin: boolean;
+  algorithm: DnssecAlgorithm;
   denial: DnssecDenialMode;
   /** A KSK/ZSK pair instead of one CSK, so the ZSK rolls without touching the parent DS. */
   split_keys: boolean;
@@ -418,7 +593,7 @@ export interface DnssecKey {
   role: DnssecKeyRole;
   state: DnssecKeyState;
   state_changed_at: string;
-  algorithm: string;
+  algorithm: DnssecAlgorithm;
   key_tag: number;
   /** Apex DNSKEY RDATA in presentation form: `257 3 <alg> <public key>`. */
   dnskey: string;
@@ -488,24 +663,24 @@ export interface DnssecStatus {
   /** When the re-signer next has work; absent for an unsigned zone. */
   next_resign_at?: string | null;
   /** The parent nameservers configured on the zone; absent until DNSSEC is enabled. */
-  parent_ns_addrs?: string | null;
+  parent_ns_addrs?: string[] | null;
   /** Present only when the status comes from a parent DS check. */
   delegation?: DnssecDelegationInfo | null;
 }
 
 export interface EnableDnssecPayload {
   /** Name of the policy to sign under; defaults to `default`. */
-  policy?: string | null;
+  policy_name?: string | null;
   /** Comma-separated `host[:port]` asked for the zone's DS by every later
    * check. Required: Bindizr does not discover the parent. */
-  parent_ns_addrs: string;
+  parent_ns_addrs: string[];
 }
 
 /** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
 export interface UpdateDnssecSettingsPayload {
   /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
-  policy?: string | null;
-  parent_ns_addrs?: string | null;
+  policy_name?: string | null;
+  parent_ns_addrs?: string[] | null;
 }
 
 /** Which key to roll: required for split-key zones, omitted for CSK zones. */
@@ -516,8 +691,8 @@ export interface ApiToken {
   id: number;
   name: string;
   description?: string | null;
-  /** Covers every zone and the zone plane. */
-  global: boolean;
+  /** The role whose grants decide what the token may do. */
+  role_name: string;
   expires_at?: string | null;
   last_used_at?: string | null;
   created_at: string;
@@ -530,8 +705,7 @@ export interface CreateTokenPayload {
   description?: string | null;
   /** 1 to 36500; omit for a token that never expires. */
   expires_in_days?: number | null;
-  /** Fixed at creation. */
-  global?: boolean;
+  role_name: string;
 }
 
 /** The secret is shown this once. */
@@ -540,16 +714,11 @@ export interface CreatedToken {
   secret: string;
 }
 
-export interface TokenGrant extends ZoneGrant {
-  api_token: string;
-}
-
-export type CreateTokenGrantPayload = CreateZoneGrantPayload;
-
 export const SECONDARY_STATUSES = [
   "in_sync",
   "lagging",
   "ahead",
+  "reachable",
   "unreachable",
 ] as const;
 
@@ -560,10 +729,12 @@ export interface SecondaryStatusItem {
   status: SecondaryStatus;
   visible_serial?: number | null;
   error?: string | null;
+  /** The latest transfer of this zone Bindizr served the address. */
+  last_transfer?: Transfer | null;
 }
 
 export interface ZoneStatus {
-  zone: string;
+  zone_name: string;
   serial: number;
   secondaries: SecondaryStatusItem[];
 }
@@ -629,4 +800,63 @@ export interface RecordListQuery extends PageQuery {
   max_priority?: number;
   sort?: RecordSortField;
   order?: SortOrder;
+}
+
+/** The machine-readable classification every error payload carries. */
+export const ERROR_CODES = [
+  "INVALID_INPUT",
+  "INVALID_ZONE_FIELD",
+  "INVALID_RECORD_NAME",
+  "INVALID_RECORD_VALUE",
+  "INVALID_JSON_BODY",
+  "ZONE_CONFLICT",
+  "RECORD_CONFLICT",
+  "TOKEN_CONFLICT",
+  "ENDPOINT_NOT_FOUND",
+  "METHOD_NOT_ALLOWED",
+  "ZONE_NOT_FOUND",
+  "RECORD_NOT_FOUND",
+  "TOKEN_NOT_FOUND",
+  "VERSION_NOT_FOUND",
+  "SECONDARY_NOT_FOUND",
+  "SECONDARY_CONFLICT",
+  "TSIG_KEY_NOT_FOUND",
+  "TSIG_KEY_CONFLICT",
+  "TSIG_KEY_IN_USE",
+  "ROLE_NOT_FOUND",
+  "ROLE_CONFLICT",
+  "ROLE_IN_USE",
+  "ROLE_GRANT_NOT_FOUND",
+  "DNSSEC_ALREADY_ENABLED",
+  "DNSSEC_NOT_ENABLED",
+  "DNSSEC_ROLLOVER_IN_PROGRESS",
+  "DNSSEC_NO_ROLLOVER_IN_PROGRESS",
+  "DNSSEC_DS_PUBLISHED",
+  "DNSSEC_DS_NOT_PUBLISHED",
+  "DNSSEC_DS_UNVERIFIED",
+  "DNSSEC_POLICY_NOT_FOUND",
+  "DNSSEC_POLICY_CONFLICT",
+  "DNSSEC_POLICY_IN_USE",
+  "DNSSEC_SIGNING_FAILED",
+  "UNAUTHORIZED",
+  "INVALID_TOKEN",
+  "FORBIDDEN",
+  "PAYLOAD_TOO_LARGE",
+  "UNSUPPORTED_MEDIA_TYPE",
+  "INTERNAL",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/** Actions held, and record actions held with no name or type limit. */
+export interface PermittedActions {
+  actions: Action[];
+  whole_zone: Action[];
+}
+
+/** What the caller may do: `all_zones` for unlisted zones, `zones` where
+ * zone grants add to it. */
+export interface Permissions {
+  all_zones: PermittedActions;
+  zones: (PermittedActions & { zone_name: string })[];
 }

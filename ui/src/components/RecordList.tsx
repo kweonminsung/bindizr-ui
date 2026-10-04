@@ -16,6 +16,7 @@ import {
   DERIVED_RECORD_TYPES,
   RECORD_SORT_FIELDS,
   RECORD_TYPES,
+  RecordListQuery,
   RecordSortField,
   SignedRecord,
   SortOrder,
@@ -77,7 +78,7 @@ export default function RecordList({
   onCreateRecord,
 }: RecordListProps) {
   const toast = useToast();
-  const { canCreateRecords, canWriteRecord } = useBindizrToken();
+  const { canCreateRecords } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const sort = getSortFromSearchParams(
     searchParams,
@@ -85,13 +86,16 @@ export default function RecordList({
     DEFAULT_RECORD_SORT,
   );
   const order = getOrderFromSearchParams(searchParams);
-  const [records, setRecords] = useState<SignedRecord[]>([]);
+  const [listing, setListing] = useState<{
+    request: string;
+    records: SignedRecord[];
+    total: number;
+  } | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<SignedRecord | null>(
     null,
   );
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailEditing, setDetailEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = getPageSizeFromSearchParams(searchParams);
@@ -104,7 +108,6 @@ export default function RecordList({
     : RECORD_TYPES;
   const selectedType = availableTypes.includes(typeParam) ? typeParam : "";
   const [filters, setFilters] = useState<RecordFilters>(defaultFilters);
-  const [totalRecords, setTotalRecords] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const activeFilterCount = countActiveFilters(filters);
   const derivedTypeSelected = DERIVED_RECORD_TYPES.includes(
@@ -120,6 +123,27 @@ export default function RecordList({
   // The user-plane endpoint rejects a derived type outright; the URL keeps it.
   const requestedType =
     userPlaneOnly && derivedTypeSelected ? "" : selectedType;
+  // Rows fetched for another request are never drawn under this one.
+  const request = JSON.stringify([
+    signedView && !userPlaneOnly,
+    {
+      zone_name: zoneName,
+      search: searchQuery,
+      type: requestedType,
+      name: filters.name,
+      value: filters.value,
+      min_ttl: toFilterNumber(filters.min_ttl),
+      max_ttl: toFilterNumber(filters.max_ttl),
+      min_priority: toFilterNumber(filters.min_priority),
+      max_priority: toFilterNumber(filters.max_priority),
+      sort,
+      order,
+      limit: recordsPerPage,
+      offset: (currentPage - 1) * recordsPerPage,
+    } satisfies RecordListQuery,
+  ]);
+  const records = listing?.request === request ? listing.records : null;
+  const totalRecords = listing?.total ?? 0;
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -164,37 +188,21 @@ export default function RecordList({
     let active = true;
 
     async function fetchRecords() {
-      setLoading(true);
       setError(null);
       try {
-        const fetchPage =
-          signedView && !userPlaneOnly ? getSignedRecordsPage : getRecordsPage;
-        const data = await fetchPage({
-          zone_name: zoneName,
-          search: searchQuery,
-          type: requestedType,
-          name: filters.name,
-          value: filters.value,
-          min_ttl: toFilterNumber(filters.min_ttl),
-          max_ttl: toFilterNumber(filters.max_ttl),
-          min_priority: toFilterNumber(filters.min_priority),
-          max_priority: toFilterNumber(filters.max_priority),
-          sort,
-          order,
-          limit: recordsPerPage,
-          offset: (currentPage - 1) * recordsPerPage,
-        });
+        const [signed, query]: [boolean, RecordListQuery] = JSON.parse(request);
+        const fetchPage = signed ? getSignedRecordsPage : getRecordsPage;
+        const data = await fetchPage(query);
         if (active) {
-          setRecords(data.items);
-          setTotalRecords(data.pagination.total);
+          setListing({
+            request,
+            records: data.items,
+            total: data.pagination.total,
+          });
         }
       } catch (error) {
         if (active) {
           setError(getErrorMessage(error, "Failed to fetch records"));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
         }
       }
     }
@@ -204,19 +212,7 @@ export default function RecordList({
     return () => {
       active = false;
     };
-  }, [
-    currentPage,
-    filters,
-    order,
-    recordsPerPage,
-    refreshKey,
-    requestedType,
-    searchQuery,
-    signedView,
-    sort,
-    userPlaneOnly,
-    zoneName,
-  ]);
+  }, [refreshKey, request]);
 
   const handleDelete = async (record: SignedRecord) => {
     if (record.id == null) {
@@ -226,7 +222,7 @@ export default function RecordList({
       try {
         await deleteRecord(record.id);
         toast.success(`Deleted ${record.name} ${record.type}`);
-        if (records.length === 1 && currentPage > 1) {
+        if (records?.length === 1 && currentPage > 1) {
           handlePageChange(currentPage - 1);
         } else {
           setRefreshKey((prev) => prev + 1);
@@ -249,8 +245,8 @@ export default function RecordList({
   };
 
   if (
-    loading &&
-    records.length === 0 &&
+    listing === null &&
+    !error &&
     searchQuery === "" &&
     selectedType === "" &&
     activeFilterCount === 0 &&
@@ -260,7 +256,7 @@ export default function RecordList({
   }
 
   const indexOfFirstRecord = (currentPage - 1) * recordsPerPage;
-  const indexOfLastRecord = indexOfFirstRecord + records.length;
+  const indexOfLastRecord = indexOfFirstRecord + (records?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
@@ -417,7 +413,9 @@ export default function RecordList({
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
           {error}
-          {records.length > 0 && " — showing the last results that loaded."}
+          {records &&
+            records.length > 0 &&
+            " — showing the last results that loaded."}
         </Notice>
       )}
       <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
@@ -452,7 +450,7 @@ export default function RecordList({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {records.map((record, index) => (
+            {(records ?? []).map((record, index) => (
               <tr
                 key={record.id ?? `derived-${index}`}
                 {...clickableRowProps(() => handleShowDetails(record))}
@@ -475,26 +473,32 @@ export default function RecordList({
                   {formatRecordValue(record.value)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {record.id != null && canWriteRecord(record) ? (
+                  {record.id != null &&
+                  (record.actions.includes("record:update") ||
+                    record.actions.includes("record:delete")) ? (
                     <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShowDetails(record, true);
-                        }}
-                        className="font-medium text-blue-600 hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(record);
-                        }}
-                        className="font-medium text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      {record.actions.includes("record:update") && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShowDetails(record, true);
+                          }}
+                          className="font-medium text-blue-600 hover:underline"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {record.actions.includes("record:delete") && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(record);
+                          }}
+                          className="font-medium text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400">read-only</span>
@@ -520,7 +524,9 @@ export default function RecordList({
       <div className="flex flex-col sm:flex-row justify-between items-center p-4">
         <div className="mb-4 sm:mb-0">
           <p className="text-sm text-gray-700">
-            {records.length > 0 ? (
+            {records === null ? (
+              !error && "Loading records..."
+            ) : records.length > 0 ? (
               <>
                 Showing{" "}
                 <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}

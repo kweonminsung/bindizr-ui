@@ -9,39 +9,51 @@ import Modal from "./Modal";
 import Notice from "./Notice";
 import TsigKeyDetails from "./TsigKeyDetails";
 import { useToast } from "@/contexts/ToastContext";
+import RoleFilterSelect from "./RoleFilterSelect";
 
 interface TsigKeyListProps {
   onCreateKey: () => void;
+  /** Lists only this role's; its column is then left out. */
+  roleName?: string;
+  /** Shows a role filter that reports the pick here. */
+  onRoleNameChange?: (roleName: string) => void;
+  /** Called after a delete, for a parent showing counts. */
+  onChange?: () => void;
 }
 
-export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
+export default function TsigKeyList({
+  onCreateKey,
+  roleName,
+  onRoleNameChange,
+  onChange,
+}: TsigKeyListProps) {
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
-  const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
+  const [listing, setListing] = useState<{
+    roleFilter: string;
+    tsigKeys: TsigKey[];
+  } | null>(null);
   const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  // Rows fetched under another role filter are never drawn under this one.
+  const roleFilter = roleName ?? "";
+  const tsigKeys = listing?.roleFilter === roleFilter ? listing.tsigKeys : null;
 
   useEffect(() => {
     let active = true;
 
     async function fetchTsigKeys() {
-      setLoading(true);
       setError(null);
       try {
-        const data = await getTsigKeys();
+        const data = await getTsigKeys(roleFilter);
         if (active) {
-          setTsigKeys(data);
+          setListing({ roleFilter, tsigKeys: data });
         }
       } catch (fetchError) {
         if (active) {
           setError(getErrorMessage(fetchError, "Failed to fetch TSIG keys"));
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
         }
       }
     }
@@ -51,13 +63,13 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
     return () => {
       active = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, roleFilter]);
 
   useEffect(() => {
     if (!focusName) {
       return;
     }
-    const match = tsigKeys.find((tsigKey) => tsigKey.name === focusName);
+    const match = tsigKeys?.find((tsigKey) => tsigKey.name === focusName);
     if (match) {
       setSelectedKey(match);
     }
@@ -80,10 +92,11 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
     try {
       toast.success(await deleteTsigKey(tsigKey.name));
       setRefreshKey((prev) => prev + 1);
+      onChange?.();
     } catch (deleteError) {
       if (getErrorStatus(deleteError) === 409) {
         toast.error(
-          `"${tsigKey.name}" still holds zone grants. Open the key and revoke them first.`,
+          `"${tsigKey.name}" still signs NOTIFY for a secondary. Move the secondary to another key first.`,
         );
         return;
       }
@@ -91,32 +104,43 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
     }
   };
 
-  if (loading && tsigKeys.length === 0) {
+  if (listing === null && !error) {
     return <p className="text-center text-gray-500">Loading TSIG keys...</p>;
-  }
-  if (error) {
-    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleKeys = query
-    ? tsigKeys.filter((tsigKey) => tsigKey.name.toLowerCase().includes(query))
-    : tsigKeys;
+  const visibleKeys = (tsigKeys ?? []).filter((tsigKey) =>
+    tsigKey.name.toLowerCase().includes(query),
+  );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
       <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <input
-          type="text"
-          placeholder="Search TSIG keys..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
-        />
+        <div className="flex flex-col sm:flex-row gap-2 mb-4 sm:mb-0">
+          <input
+            type="text"
+            placeholder="Search TSIG keys..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-auto"
+          />
+          {onRoleNameChange && (
+            <RoleFilterSelect
+              value={roleName ?? ""}
+              onChange={onRoleNameChange}
+            />
+          )}
+        </div>
         <button onClick={onCreateKey} className="btn-primary w-full sm:w-auto">
           Create TSIG Key
         </button>
       </div>
+      {/* Not an early return: a rejected role filter must stay correctable. */}
+      {error && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {error}
+        </Notice>
+      )}
       <div className="overflow-x-auto">
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
@@ -134,12 +158,14 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
               >
                 Algorithm
               </th>
-              <th
-                scope="col"
-                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Scope
-              </th>
+              {!roleName && (
+                <th
+                  scope="col"
+                  className="w-40 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Role
+                </th>
+              )}
               <th
                 scope="col"
                 className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -166,17 +192,11 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {tsigKey.algorithm}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  {tsigKey.global ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
-                      Global
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                      Scoped
-                    </span>
-                  )}
-                </td>
+                {!roleName && (
+                  <td className="truncate px-6 py-4 text-gray-700">
+                    {tsigKey.role_name}
+                  </td>
+                )}
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {formatDateTime(tsigKey.created_at)}
                 </td>
@@ -203,9 +223,13 @@ export default function TsigKeyList({ onCreateKey }: TsigKeyListProps) {
       )}
       <div className="p-4">
         <p className="text-sm text-gray-700">
-          {visibleKeys.length > 0
-            ? `${visibleKeys.length} TSIG key${visibleKeys.length > 1 ? "s" : ""}`
-            : "No TSIG keys found"}
+          {tsigKeys === null
+            ? !error && "Loading TSIG keys..."
+            : visibleKeys.length > 0
+              ? `${visibleKeys.length} TSIG key${visibleKeys.length > 1 ? "s" : ""}`
+              : roleName
+                ? "No TSIG keys in this role"
+                : "No TSIG keys found"}
         </p>
       </div>
     </div>

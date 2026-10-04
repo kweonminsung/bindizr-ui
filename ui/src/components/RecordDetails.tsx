@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { Record, SignedRecord } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import RecordForm from "./RecordForm";
@@ -16,9 +15,8 @@ export default function RecordDetails({
   onRecordChanged,
   defaultEditing = false,
 }: RecordDetailsProps) {
-  const { canWriteRecord } = useBindizrToken();
   const isDerived = record.id == null;
-  const canEdit = !isDerived && canWriteRecord(record);
+  const canEdit = !isDerived && record.actions.includes("record:update");
   const [isEditing, setIsEditing] = useState(defaultEditing && canEdit);
 
   if (isEditing && canEdit) {

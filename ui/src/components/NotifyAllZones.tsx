@@ -4,7 +4,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { useToast } from "@/contexts/ToastContext";
 import Modal from "./Modal";
 
-/** Every zone at once; a single zone is notified from its Sync tab. */
+/** All zones at once; a single zone is notified from its Sync tab. */
 export default function NotifyAllZones() {
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -45,7 +45,7 @@ export default function NotifyAllZones() {
 
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Ask the secondaries to pull the latest data for every zone.
+            Ask the secondaries to pull the latest data for all zones.
           </p>
 
           <label className="flex items-start space-x-2 text-sm text-gray-600">
@@ -56,7 +56,7 @@ export default function NotifyAllZones() {
               className="mt-1"
             />
             <span>
-              Bump every zone&apos;s serial first, so secondaries transfer even
+              Bump all zones&apos; serials first, so secondaries transfer even
               when nothing changed.
             </span>
           </label>

@@ -1,31 +1,25 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { getSelfTokenGrants } from "@/lib/api";
-import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
-import { ApiToken, TokenGrant } from "@/lib/types";
-import { TokenBadges, TokenMetadata } from "./TokenDetails";
+import { ApiToken, RoleGrant } from "@/lib/types";
+import { ExpiredTokenBadge, TokenMetadata } from "./TokenDetails";
 import Notice from "./Notice";
+import RoleGrantTable from "./RoleGrantTable";
 
 interface ConnectedTokenDetailsProps {
   /** The token the UI presents to Bindizr. */
   token: ApiToken;
 }
 
-/** Modal body: the connected token's metadata and the zones it may reach. */
+/** Modal body: the connected token's metadata and its role's grants. */
 export default function ConnectedTokenDetails({
   token,
 }: ConnectedTokenDetailsProps) {
-  const [grants, setGrants] = useState<TokenGrant[]>([]);
-  const [loading, setLoading] = useState(!token.global);
+  const [grants, setGrants] = useState<RoleGrant[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Global tokens carry no grants; nothing to fetch.
-    if (token.global) {
-      return;
-    }
-
     let active = true;
     setLoading(true);
     setError(null);
@@ -40,7 +34,7 @@ export default function ConnectedTokenDetails({
           setError(
             getErrorMessage(
               fetchError,
-              "Failed to fetch the token's zone access",
+              "Failed to fetch the token's role grants",
             ),
           );
         }
@@ -63,95 +57,32 @@ export default function ConnectedTokenDetails({
           <h2 className="text-2xl font-bold text-gray-800 break-all">
             {token.name}
           </h2>
-          <TokenBadges token={token} />
+          <ExpiredTokenBadge token={token} />
         </div>
         <TokenMetadata token={token} />
       </div>
 
-      {token.global ? (
-        <Notice tone="warning">
-          This token is global: it manages every zone and needs no grants.
-        </Notice>
-      ) : (
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-              Zone Access
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              This token sees only the zones below. The pattern and types narrow
-              what each grant reaches, for reads as much as writes.
-            </p>
-          </div>
-
-          {loading ? (
-            <p className="text-gray-500">Loading zone access...</p>
-          ) : error ? (
-            <Notice tone="error">{error}</Notice>
-          ) : grants.length === 0 ? (
-            <p className="text-sm text-gray-500">No zones granted yet.</p>
-          ) : (
-            <div className="overflow-x-auto rounded-md border border-gray-200">
-              <table className="w-full table-fixed text-left text-sm">
-                <thead className="border-b border-gray-200 bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Zone
-                    </th>
-                    <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pattern
-                    </th>
-                    <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Types
-                    </th>
-                    <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Access
-                    </th>
-                    <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Granted
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {grants.map((grant) => (
-                    <tr key={grant.id}>
-                      <td
-                        className="truncate px-3 py-2"
-                        title={grant.zone_name}
-                      >
-                        <Link
-                          to={`/records?zoneName=${encodeURIComponent(grant.zone_name)}`}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          {grant.zone_name}
-                        </Link>
-                      </td>
-                      <td
-                        className="truncate px-3 py-2 font-mono text-gray-600"
-                        title={grant.record_name_pattern}
-                      >
-                        {grant.record_name_pattern}
-                      </td>
-                      <td
-                        className="truncate px-3 py-2 font-mono text-gray-600"
-                        title={grant.record_types}
-                      >
-                        {grant.record_types}
-                      </td>
-                      <td className="truncate px-3 py-2 text-gray-600">
-                        {grant.can_write ? "read-write" : "read-only"}
-                      </td>
-                      <td className="hidden sm:table-cell truncate px-3 py-2 text-gray-500">
-                        {formatDateTime(grant.created_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
+            Role Grants
+          </h3>
+          <p className="text-sm text-gray-500 mt-2">
+            What role {token.role_name} permits this token. The pattern and
+            types narrow its record actions, for reads as much as writes.
+          </p>
         </div>
-      )}
+
+        {loading ? (
+          <p className="text-gray-500">Loading grants...</p>
+        ) : error ? (
+          <Notice tone="error">{error}</Notice>
+        ) : grants.length === 0 ? (
+          <p className="text-sm text-gray-500">The role holds no grants yet.</p>
+        ) : (
+          <RoleGrantTable grants={grants} />
+        )}
+      </div>
     </div>
   );
 }
