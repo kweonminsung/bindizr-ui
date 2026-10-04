@@ -202,7 +202,7 @@ export default function ZoneDnssecTab({
       "enable",
       async () => {
         const data = await enableDnssec(zone.name, {
-          policy_name: policyName,
+          policy_name: policyName.trim() || DEFAULT_DNSSEC_POLICY_NAME,
           parent_ns_addrs: splitParentNsAddrs(parentNsAddrs),
         });
         setStatus(data);
@@ -428,9 +428,15 @@ export default function ZoneDnssecTab({
             DNSSEC Policy
           </label>
           {policies.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Signing under the built-in <code>{policyName}</code> policy.
-            </p>
+            // Listing policies needs every-zone dnssec:read; without it the name is typed.
+            <input
+              type="text"
+              id="dnssec_policy"
+              value={policyName}
+              onChange={(e) => setPolicyName(e.target.value)}
+              placeholder={DEFAULT_DNSSEC_POLICY_NAME}
+              className="w-full rounded"
+            />
           ) : (
             <select
               id="dnssec_policy"
@@ -450,6 +456,11 @@ export default function ZoneDnssecTab({
               <>
                 {describePolicy(selectedPolicy)}. Denial and key layout are
                 fixed while signed.
+              </>
+            ) : policies.length === 0 ? (
+              <>
+                Policies cannot be listed with this token; type the
+                policy&apos;s name, or leave the built-in default.
               </>
             ) : (
               <>Manage policies under {policiesLink}.</>
@@ -731,7 +742,33 @@ export default function ZoneDnssecTab({
             </div>
             {canManage && (
               <>
-                {compatiblePolicies.length === 0 ? (
+                {policies.length === 0 ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="text-sm text-gray-500">
+                      Policies cannot be listed with this token; type the policy
+                      to move to. A different algorithm starts an algorithm
+                      rollover.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={targetPolicy}
+                        onChange={(e) => setTargetPolicy(e.target.value.trim())}
+                        aria-label="Policy to move to"
+                        placeholder="Policy name"
+                        className="rounded"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleChangePolicy}
+                        disabled={busy || !targetPolicy || moveBlocked}
+                        className="btn-primary whitespace-nowrap"
+                      >
+                        {pending === "policy" ? "Moving..." : "Move Zone"}
+                      </button>
+                    </div>
+                  </div>
+                ) : compatiblePolicies.length === 0 ? (
                   <p className="text-sm text-gray-500">
                     No other policy matches the zone&apos;s denial and key
                     layout. See {policiesLink}.
@@ -766,13 +803,14 @@ export default function ZoneDnssecTab({
                     </div>
                   </div>
                 )}
-                {moveBlocked && compatiblePolicies.length > 0 && (
-                  <p className="text-sm text-gray-500">
-                    {rolloverInProgress
-                      ? "Finish the rollover before moving the zone."
-                      : "A new algorithm can start once the retired key is removed."}
-                  </p>
-                )}
+                {moveBlocked &&
+                  (policies.length === 0 || compatiblePolicies.length > 0) && (
+                    <p className="text-sm text-gray-500">
+                      {rolloverInProgress
+                        ? "Finish the rollover before moving the zone."
+                        : "A new algorithm can start once the retired key is removed."}
+                    </p>
+                  )}
               </>
             )}
           </>
