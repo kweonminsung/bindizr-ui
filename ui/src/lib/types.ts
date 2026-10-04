@@ -393,15 +393,17 @@ export type Action = (typeof ACTIONS)[number];
 /** What each action permits, as the grant picker explains it. */
 export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "zone:read": "Read a zone's status and version history.",
-  "zone:create": "Create zones.",
-  "zone:update": "Change a zone's settings, send NOTIFY, roll back a version.",
+  "zone:create": "Create zones, and with zone:update rename one.",
+  "zone:update":
+    "Change a zone's settings and send NOTIFY; with unnarrowed record:read, record:create and record:delete, roll back a version.",
   "zone:delete": "Delete zones.",
   "zone:transfer": "Answer a TSIG-signed AXFR/IXFR. TSIG keys only.",
   "record:read":
     "List and read records; with no name or type limit, also export the zone and read its versions and diffs.",
   "record:create":
     "Add records, including by import, nsupdate and ExternalDNS.",
-  "record:update": "Change a record in place.",
+  "record:update":
+    "Change a record in place; without record:read on it, every field must be given.",
   "record:delete": "Delete records, including by nsupdate and ExternalDNS.",
   "dnssec:read":
     "Read DNSSEC status and check the parent DS; in all zones, also read signing policies.",
