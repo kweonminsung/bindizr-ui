@@ -428,7 +428,7 @@ export default function ZoneDnssecTab({
             DNSSEC Policy
           </label>
           {policies.length === 0 ? (
-            // Listing policies needs every-zone dnssec:read; without it the name is typed.
+            // Listing policies needs all-zones dnssec:read; without it the name is typed.
             <input
               type="text"
               id="dnssec_policy"

@@ -14,7 +14,7 @@ import { useAuth } from "./AuthContext";
 interface BindizrTokenContextType {
   /** The UI's own token; null when Bindizr runs without auth or the lookup failed. */
   self: ApiToken | null;
-  /** Whether the caller may do `action` in the named zone, or in every zone
+  /** Whether the caller may do `action` in the named zone, or in all zones
    * when none is named; true if the lookup failed, as the API decides. */
   allows: (action: Action, zoneName?: string) => boolean;
   /** Whether `record:create` reaches part of a zone, or of any zone when none
@@ -72,7 +72,7 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     }
   }, []);
 
-  /** A zone's permissions: its own entry, or the every-zone ones. */
+  /** A zone's permissions: its own entry, or the all-zones ones. */
   const zonePermissions = useMemo(() => {
     const byZone = new Map(
       (permissions?.zones ?? []).map((zone) => [zoneKey(zone.zone_name), zone]),

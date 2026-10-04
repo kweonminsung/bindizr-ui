@@ -188,7 +188,7 @@ async function getZoneListResult(
   return toListResult((await response.json()) as ListResponse<Zone>);
 }
 
-/** Every zone the token may see; the paging is this call's, so it takes
+/** All zones the token may see; the paging is this call's, so it takes
  * filters alone. */
 export async function getZones(
   queryParams: Omit<ZoneListQuery, keyof PageQuery> = {},

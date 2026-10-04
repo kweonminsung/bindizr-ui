@@ -31,13 +31,13 @@ interface RoleGrantsPanelProps {
   onChange: () => void;
 }
 
-/** The value the zone picker uses for a grant covering every zone. */
-const EVERY_ZONE = "";
+/** The value the zone picker uses for a grant covering all zones. */
+const ALL_ZONES = "";
 
 const DEFAULT_PATTERN = "*";
 const DEFAULT_TYPES = "*";
 
-/** Actions that act on no zone, so their grant always covers every zone. */
+/** Actions that act on no zone, so their grant always covers all zones. */
 const SERVER_ACTIONS = ACTIONS.filter((action) =>
   ALL_ZONES_ACTIONS.includes(action),
 );
@@ -75,7 +75,7 @@ export default function RoleGrantsPanel({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [zonesError, setZonesError] = useState<string | null>(null);
-  const [zoneName, setZoneName] = useState(EVERY_ZONE);
+  const [zoneName, setZoneName] = useState(ALL_ZONES);
   const [actions, setActions] = useState<Action[]>([]);
   const [pattern, setPattern] = useState(DEFAULT_PATTERN);
   const [recordTypes, setRecordTypes] = useState(DEFAULT_TYPES);
@@ -128,7 +128,7 @@ export default function RoleGrantsPanel({
   const coversNewGrant = (grant: RoleGrant, read: Action) =>
     grant.actions.includes(read) &&
     (grant.zone_name === null ||
-      (zoneName !== EVERY_ZONE &&
+      (zoneName !== ALL_ZONES &&
         zoneKey(grant.zone_name) === zoneKey(zoneName))) &&
     (!isRecordAction(read) ||
       (grant.record_name_pattern === DEFAULT_PATTERN &&
@@ -159,11 +159,11 @@ export default function RoleGrantsPanel({
     );
   };
 
-  // A grant has one zone scope: server-wide actions always take every zone,
-  // so they go in a grant of their own unless the zone pick is every zone.
-  const zoneScoped = zoneName !== EVERY_ZONE && zoneActions.length > 0;
+  // A grant has one zone scope: server-wide actions always take all zones,
+  // so they go in a grant of their own unless the zone pick is all zones.
+  const zoneScoped = zoneName !== ALL_ZONES && zoneActions.length > 0;
   const splitsInTwo = zoneScoped && serverActions.length > 0;
-  // Without the zone list the scope would silently stay every zone.
+  // Without the zone list the scope would silently stay all zones.
   const zoneScopeUnknown = zonesError !== null && zoneActions.length > 0;
 
   const handleGrant = async (e: React.FormEvent) => {
@@ -198,10 +198,10 @@ export default function RoleGrantsPanel({
           prev.filter((action) => !created.actions.includes(action)),
         );
         toast.success(
-          `Granted ${created.actions.join(", ")} in ${created.zone_name ?? "every zone"}.`,
+          `Granted ${created.actions.join(", ")} in ${created.zone_name ?? "all zones"}.`,
         );
       }
-      setZoneName(EVERY_ZONE);
+      setZoneName(ALL_ZONES);
       setPattern(DEFAULT_PATTERN);
       setRecordTypes(DEFAULT_TYPES);
       onViewChange("grants");
@@ -218,7 +218,7 @@ export default function RoleGrantsPanel({
   const handleRevoke = async (grant: RoleGrant) => {
     if (
       !window.confirm(
-        `Revoke ${grant.actions.join(", ")} in ${grant.zone_name ?? "every zone"} from "${role.name}"?`,
+        `Revoke ${grant.actions.join(", ")} in ${grant.zone_name ?? "all zones"} from "${role.name}"?`,
       )
     ) {
       return;
@@ -242,7 +242,7 @@ export default function RoleGrantsPanel({
         <div className="space-y-3">
           <p className="text-sm text-gray-500">
             {role.builtin
-              ? "The built-in role permits every action in every zone and cannot be changed."
+              ? "The built-in role permits every action in all zones and cannot be changed."
               : "Tokens and keys in this role may do what any one grant permits. The pattern and types narrow the record actions only."}
           </p>
 
@@ -314,8 +314,8 @@ export default function RoleGrantsPanel({
                   disabled={loading}
                   className="w-full"
                 >
-                  <option value={EVERY_ZONE}>
-                    Every zone, including zones created later
+                  <option value={ALL_ZONES}>
+                    All zones, including zones created later
                   </option>
                   {zones.map((zone) => (
                     <option key={zone.id} value={zone.name}>
@@ -410,7 +410,7 @@ export default function RoleGrantsPanel({
           <div className="flex items-center justify-end gap-3">
             {splitsInTwo && (
               <p className="text-xs text-gray-500">
-                Adds two grants: the server-wide actions in every zone, the rest
+                Adds two grants: the server-wide actions in all zones, the rest
                 in {zoneName}.
               </p>
             )}

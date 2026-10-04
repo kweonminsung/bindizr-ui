@@ -21,7 +21,7 @@ import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Action } from "@/lib/types";
 
-/** A page the token's role must permit `action` in every zone to open. */
+/** A page the token's role must permit `action` in all zones to open. */
 function RequireAction({
   action,
   children,

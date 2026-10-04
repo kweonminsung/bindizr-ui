@@ -404,16 +404,16 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "record:update": "Change a record in place.",
   "record:delete": "Delete records, including by nsupdate and ExternalDNS.",
   "dnssec:read":
-    "Read DNSSEC status and check the parent DS; in every zone, also read signing policies.",
+    "Read DNSSEC status and check the parent DS; in all zones, also read signing policies.",
   "dnssec:manage":
-    "Enable, disable and re-sign, manage keys and rollovers; in every zone, also change signing policies.",
+    "Enable, disable and re-sign, manage keys and rollovers; in all zones, also change signing policies.",
   "secondary:read": "List secondaries and the transfers served them.",
   "secondary:manage": "Register, change, check and remove secondaries.",
   "access:manage":
     "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
 };
 
-/** Actions on something no zone owns, so only an every-zone grant carries them. */
+/** Actions on something no zone owns, so only an all-zones grant carries them. */
 export const ALL_ZONES_ACTIONS: readonly Action[] = [
   "zone:create",
   "secondary:read",
@@ -442,7 +442,7 @@ export interface CreateRolePayload {
   description?: string | null;
 }
 
-/** Actions in one zone, or in every zone when `zone_name` is null; the pattern
+/** Actions in one zone, or in all zones when `zone_name` is null; the pattern
  * and types narrow its `record:*` actions only. */
 export interface RoleGrant {
   id: number;
@@ -456,7 +456,7 @@ export interface RoleGrant {
   created_at: string;
 }
 
-/** Omit `zone_name` to cover every zone; the pattern and types default to `*`. */
+/** Omit `zone_name` to cover all zones; the pattern and types default to `*`. */
 export interface CreateRoleGrantPayload {
   zone_name?: string | null;
   actions: Action[];
