@@ -163,6 +163,8 @@ export default function RoleGrantsPanel({
   // so they go in a grant of their own unless the zone pick is every zone.
   const zoneScoped = zoneName !== EVERY_ZONE && zoneActions.length > 0;
   const splitsInTwo = zoneScoped && serverActions.length > 0;
+  // Without the zone list the scope would silently stay every zone.
+  const zoneScopeUnknown = zonesError !== null && zoneActions.length > 0;
 
   const handleGrant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,7 +299,10 @@ export default function RoleGrantsPanel({
                 Zone
               </label>
               {zonesError ? (
-                <Notice tone="error">{zonesError}</Notice>
+                <Notice tone="error">
+                  {zonesError}. Zone actions cannot be granted until the zone
+                  list loads.
+                </Notice>
               ) : (
                 <select
                   id="grant_zone_name"
@@ -409,7 +414,12 @@ export default function RoleGrantsPanel({
             )}
             <button
               type="submit"
-              disabled={submitting || loading || actions.length === 0}
+              disabled={
+                submitting ||
+                loading ||
+                actions.length === 0 ||
+                zoneScopeUnknown
+              }
               className="btn-primary"
             >
               {submitting ? "Granting..." : "Add Grant"}
