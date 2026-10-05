@@ -32,31 +32,31 @@ Create and edit zones and records, configure SOA settings and TTLs, and inspect 
 
 Import BIND zone files or transfer records over AXFR using **append**, **upsert**, or **replace**, with dry-run validation. Copy or download exports, optionally including DNSSEC records.
 
-<img src="public/screenshots/import-preview.png" alt="A dry-run zone import validating three new records without applying changes" width="512" />
+<img src="public/screenshots/import-preview.png" alt="A dry-run zone import validating three new records without applying changes" width="384" />
 
 ### Version history and rollback
 
 Review changes by SOA serial and author, compare record differences, and preview rollbacks. Restoring a version advances the serial for secondary synchronization.
 
-<img src="public/screenshots/version-diff.png" alt="Version comparison showing an updated API address, an added docs alias, and a removed legacy record" width="768" />
+<img src="public/screenshots/version-diff.png" alt="Version comparison showing an updated API address, an added docs alias, and a removed legacy record" width="560" />
 
 ### DNSSEC signing and policies
 
 Apply reusable signing policies, monitor signatures, and manage key rollovers. Copy DS records for the parent zone, check their publication, or trigger re-signing.
 
-<img src="public/screenshots/dnssec.png" alt="DNSSEC status for example.com with signature counts, expiry, next re-signing time, and a DS record to copy" width="768" />
+<img src="public/screenshots/dnssec.png" alt="DNSSEC status for example.com with signature counts, expiry, next re-signing time, and a DS record to copy" width="560" />
 
 ### Roles, API tokens and zone permissions
 
 Group permissions into roles: grant actions such as `record:create` or `zone:transfer` in one zone or all zones, narrowing record actions by record-name pattern and record type. API tokens, with optional expiry, act under the role they are created in.
 
-<img src="public/screenshots/role-grants.png" alt="A deployment role with record permissions scoped to example.com and dev.example.com, held by one API token" width="768" />
+<img src="public/screenshots/role-grants.png" alt="A deployment role with record permissions scoped to example.com and dev.example.com, held by one API token" width="560" />
 
 ### TSIG keys for updates and transfers
 
 Generate or import TSIG keys for dynamic updates or zone transfers, each acting under a role, and reveal or copy existing secrets when needed.
 
-<img src="public/screenshots/tsig-key-role.png" alt="A TSIG key with its secret masked and permissions inherited from the zone-transfers role" width="768" />
+<img src="public/screenshots/tsig-key-role.png" alt="A TSIG key with its secret masked and permissions inherited from the zone-transfers role" width="560" />
 
 ### Secondaries
 
