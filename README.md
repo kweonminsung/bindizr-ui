@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-rc.1">
-        <img src="https://img.shields.io/badge/Compatible-0.1.0--rc.1-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-rc.2">
+        <img src="https://img.shields.io/badge/Compatible-0.1.0--rc.2-success" />
     </a>
 </p>
 
@@ -50,13 +50,13 @@ Apply reusable signing policies, monitor signatures, and manage key rollovers. C
 
 Group permissions into roles: grant actions such as `record:create` or `zone:transfer` in one zone or all zones, narrowing record actions by record-name pattern and record type. API tokens, with optional expiry, act under the role they are created in.
 
-<img src="public/screenshots/api-token-grants.png" alt="A scoped deployment token with expiry metadata and per-zone record-type permissions" width="768" />
+<img src="public/screenshots/role-grants.png" alt="A deployment role with record permissions scoped to example.com and dev.example.com, held by one API token" width="768" />
 
 ### TSIG keys for updates and transfers
 
 Generate or import TSIG keys for dynamic updates or zone transfers, each acting under a role, and reveal or copy existing secrets when needed.
 
-<img src="public/screenshots/tsig-key-grants.png" alt="A TSIG key with its secret masked and transfer-only grants for example.com and example.net" width="768" />
+<img src="public/screenshots/tsig-key-role.png" alt="A TSIG key with its secret masked and permissions inherited from the zone-transfers role" width="768" />
 
 ### Secondaries
 
@@ -71,7 +71,7 @@ Check secondary serials and reachability. Send DNS NOTIFY for one or all zones, 
 ## Run with Docker
 
 ```bash
-$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-rc.1
+$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-rc.2
 ```
 
 Or with Docker Compose:
