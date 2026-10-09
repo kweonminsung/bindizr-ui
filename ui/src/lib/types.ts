@@ -395,7 +395,7 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "zone:read": "Read a zone's status and version history.",
   "zone:create": "Create zones, and with zone:update rename one.",
   "zone:update":
-    "Change a zone's settings and send NOTIFY; with unnarrowed record:read, record:create and record:delete, roll back a version.",
+    "Change zone settings (including nsupdate SOA) and send NOTIFY; with unnarrowed record:read, record:create and record:delete, roll back a version.",
   "zone:delete": "Delete zones.",
   "zone:transfer": "Answer a TSIG-signed AXFR/IXFR. TSIG keys only.",
   "record:read":
