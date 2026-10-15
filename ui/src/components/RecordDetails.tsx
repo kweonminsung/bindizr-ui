@@ -57,11 +57,11 @@ export default function RecordDetails({
         <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Value</p>
           <p
-            className={`text-gray-900 break-all ${
+            className={`text-gray-900 break-all whitespace-pre-wrap ${
               isDerived ? "font-mono text-sm" : "text-base"
             }`}
           >
-            {formatRecordValue(record.value)}
+            {formatRecordValue(record.value, record.type)}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2">

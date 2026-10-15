@@ -26,6 +26,7 @@ interface RecordFormData {
   name: string;
   type: RecordType;
   value: string;
+  presentation: boolean;
   ttl: string;
   priority: string;
   zone_name: string;
@@ -35,6 +36,7 @@ const defaultFormData: RecordFormData = {
   name: "",
   type: "A",
   value: "",
+  presentation: false,
   ttl: "3600",
   priority: "",
   zone_name: "",
@@ -46,8 +48,10 @@ const VALUE_PLACEHOLDERS: { [type in RecordType]?: string } = {
   AAAA: "2001:db8::1",
   CAA: '0 issue "letsencrypt.org"',
   CNAME: "target.example.com.",
+  DNAME: "target.example.com.",
   DS: "34217 13 2 4B9B6B073EDD97FE1A7B19871EE93BE250E49B2D9466E661A22C74C426ACE383",
   MX: "mail.example.com.",
+  NAPTR: '100 10 "s" "SIP+D2U" "" _sip._udp.example.com.',
   TXT: "v=spf1 include:example.com -all",
   NS: "ns1.example.com.",
   SRV: "0 5060 sip.example.com.",
@@ -73,10 +77,12 @@ export default function RecordForm({
 
   useEffect(() => {
     if (record) {
+      const input = recordValueToInput(record.value);
       setFormData({
         name: record.name,
         type: record.type,
-        value: recordValueToInput(record.value),
+        value: input.value,
+        presentation: input.presentation,
         ttl: String(record.ttl),
         priority: record.priority?.toString() ?? "",
         zone_name: record.zone_name,
@@ -97,7 +103,9 @@ export default function RecordForm({
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    const value =
+      name === "type" ? e.target.value.toUpperCase() : e.target.value;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -119,8 +127,11 @@ export default function RecordForm({
     }
 
     try {
-      const value = inputToRecordValue(formData.value);
-      if (value === "") {
+      const value = inputToRecordValue(
+        formData.value,
+        formData.type === "TXT" && formData.presentation,
+      );
+      if (value === "" && formData.type !== "TXT") {
         throw new Error("Record value is required");
       }
 
@@ -176,19 +187,23 @@ export default function RecordForm({
           >
             Type
           </label>
-          <select
+          <input
+            list="record-types"
+            required
             id="type"
             name="type"
             value={formData.type}
             onChange={handleChange}
             className="w-full"
-          >
+            placeholder="A or TYPE65280"
+          />
+          <datalist id="record-types">
             {RECORD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
             ))}
-          </select>
+          </datalist>
         </div>
         <div className="md:col-span-2">
           <label
@@ -197,16 +212,40 @@ export default function RecordForm({
           >
             Value
           </label>
+          {formData.type === "TXT" && (
+            <label className="flex items-center gap-2 mb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={formData.presentation}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    presentation: event.target.checked,
+                  }))
+                }
+              />
+              Quoted DNS presentation (supports binary escapes)
+            </label>
+          )}
           <textarea
             id="value"
             name="value"
             value={formData.value}
             onChange={handleChange}
-            required
+            required={formData.type !== "TXT"}
             rows={3}
-            placeholder={VALUE_PLACEHOLDERS[formData.type]}
+            placeholder={
+              formData.type === "TXT" && formData.presentation
+                ? '"\\000\\255"'
+                : (VALUE_PLACEHOLDERS[formData.type] ?? "\\# 2 CAFE")
+            }
             className="w-full"
           />
+          {formData.type === "TXT" && !formData.presentation && (
+            <p className="mt-1 text-xs text-gray-500">
+              One TXT string per line.
+            </p>
+          )}
         </div>
         <div className={supportsPriority ? undefined : "md:col-span-2"}>
           <label

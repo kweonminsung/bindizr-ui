@@ -102,11 +102,10 @@ export default function RecordList({
   const [searchQuery, setSearchQuery] = useState("");
   const signedView = searchParams.get("signed") === "true";
   const typeParam = searchParams.get("type") ?? "";
-  // An unknown ?type= value is treated as no filter.
   const availableTypes: readonly string[] = signedView
     ? SIGNED_FILTER_TYPES
     : RECORD_TYPES;
-  const selectedType = availableTypes.includes(typeParam) ? typeParam : "";
+  const selectedType = typeParam;
   const [filters, setFilters] = useState<RecordFilters>(defaultFilters);
   const [refreshKey, setRefreshKey] = useState(0);
   const activeFilterCount = countActiveFilters(filters);
@@ -122,7 +121,7 @@ export default function RecordList({
     (selectedType !== "" && !derivedTypeSelected);
   // The user-plane endpoint rejects a derived type outright; the URL keeps it.
   const requestedType =
-    userPlaneOnly && derivedTypeSelected ? "" : selectedType;
+    (!signedView || userPlaneOnly) && derivedTypeSelected ? "" : selectedType;
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify([
     signedView && !userPlaneOnly,
@@ -289,39 +288,21 @@ export default function RecordList({
               </option>
             ))}
           </select>
-          <select
+          <input
+            list="record-filter-types"
             value={requestedType}
-            onChange={(e) => handleUrlFilterChange("type", e.target.value)}
+            onChange={(e) =>
+              handleUrlFilterChange("type", e.target.value.toUpperCase())
+            }
             aria-label="Filter by record type"
-            // Fixed width: the option list grows with the signed toggle.
+            placeholder="All Types"
             className="w-full sm:w-40"
-          >
-            <option value="">All Types</option>
-            {signedView ? (
-              <>
-                <optgroup label="Records">
-                  {RECORD_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Derived (DNSSEC)">
-                  {DERIVED_RECORD_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </optgroup>
-              </>
-            ) : (
-              RECORD_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))
-            )}
-          </select>
+          />
+          <datalist id="record-filter-types">
+            {availableTypes.map((type) => (
+              <option key={type} value={type} />
+            ))}
+          </datalist>
           <label
             title="Include the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY) in the listing — read-only rows"
             className="flex items-center space-x-2 text-sm mt-4 sm:mt-0 sm:ml-4 text-gray-600 cursor-pointer"
@@ -467,10 +448,10 @@ export default function RecordList({
                   {record.type}
                 </td>
                 <td
-                  className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
-                  title={formatRecordValue(record.value)}
+                  className="hidden md:table-cell overflow-hidden text-ellipsis whitespace-pre px-6 py-4 text-gray-500"
+                  title={formatRecordValue(record.value, record.type)}
                 >
-                  {formatRecordValue(record.value)}
+                  {formatRecordValue(record.value, record.type)}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   {record.id != null &&

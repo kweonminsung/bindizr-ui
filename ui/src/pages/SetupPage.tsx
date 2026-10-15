@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
 import { useToast } from "@/contexts/ToastContext";
@@ -13,7 +12,6 @@ export default function SetupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [createAccount, setCreateAccount] = useState(false);
   const [isConnectionTested, setIsConnectionTested] = useState(false);
-  const navigate = useNavigate();
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +41,7 @@ export default function SetupPage() {
     });
 
     if (res.ok) {
-      navigate("/");
+      window.location.replace("/");
     } else {
       const data = await res.json();
       toast.error(data.message || data.error || "Setup failed.");

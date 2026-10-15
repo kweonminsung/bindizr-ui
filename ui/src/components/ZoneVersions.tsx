@@ -263,8 +263,8 @@ export default function ZoneVersions({
                   <tr key={`${record.name}-${record.type}-${index}`}>
                     <td className="px-3 py-2 text-gray-900">{record.name}</td>
                     <td className="px-3 py-2 text-gray-500">{record.type}</td>
-                    <td className="px-3 py-2 text-gray-500 break-all">
-                      {formatRecordValue(record.value)}
+                    <td className="px-3 py-2 text-gray-500 break-all whitespace-pre-wrap">
+                      {formatRecordValue(record.value, record.type)}
                     </td>
                     <td className="px-3 py-2 text-gray-500">{record.ttl}</td>
                     <td className="px-3 py-2 text-gray-500">

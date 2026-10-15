@@ -42,7 +42,7 @@ export type UpdateZonePayload = Partial<
   enabled?: boolean | null;
 };
 
-export type RecordValue = string | string[];
+export type RecordValue = string | string[] | { presentation: string };
 
 export const RECORD_TYPES = [
   "A",
@@ -61,7 +61,7 @@ export const RECORD_TYPES = [
   "TLSA",
 ] as const;
 
-export type RecordType = (typeof RECORD_TYPES)[number];
+export type RecordType = (typeof RECORD_TYPES)[number] | `TYPE${number}`;
 
 /** Only MX and SRV carry a priority. */
 export const PRIORITY_RECORD_TYPES: readonly RecordType[] = ["MX", "SRV"];
