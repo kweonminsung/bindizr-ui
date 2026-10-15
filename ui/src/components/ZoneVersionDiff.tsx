@@ -36,8 +36,8 @@ const CHANGE_SIGN_STYLES: Record<RecordDiffChange, string> = {
   changed: "text-amber-700",
 };
 
-const formatRdata = (values: RecordDiffValue[]) =>
-  values.map(formatRecordRdata).join(", ");
+const formatRdata = (values: RecordDiffValue[], recordType: string) =>
+  values.map((value) => formatRecordRdata(value, recordType)).join(", ");
 
 /** An RRset shares one TTL, so the first record stands for the whole side. */
 const sideTtl = (values: RecordDiffValue[]) => values[0]?.ttl ?? null;
@@ -154,10 +154,10 @@ export default function ZoneVersionDiff({
                     <span className="text-gray-400">TTL {ttl}</span>
                   )
                 )}
-                <span className="min-w-0 flex-1 text-right font-mono break-all">
+                <span className="min-w-0 flex-1 text-right font-mono break-all whitespace-pre-wrap">
                   {entry.change !== "added" && (
                     <span className="text-red-700">
-                      {formatRdata(entry.from)}
+                      {formatRdata(entry.from, entry.type)}
                     </span>
                   )}
                   {entry.change === "changed" && (
@@ -165,7 +165,7 @@ export default function ZoneVersionDiff({
                   )}
                   {entry.change !== "removed" && (
                     <span className="text-green-700">
-                      {formatRdata(entry.to)}
+                      {formatRdata(entry.to, entry.type)}
                     </span>
                   )}
                 </span>
