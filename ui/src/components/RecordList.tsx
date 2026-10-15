@@ -122,6 +122,12 @@ export default function RecordList({
   // The user-plane endpoint rejects a derived type outright; the URL keeps it.
   const requestedType =
     (!signedView || userPlaneOnly) && derivedTypeSelected ? "" : selectedType;
+  const [typeDraft, setTypeDraft] = useState(requestedType);
+
+  useEffect(() => {
+    setTypeDraft(requestedType);
+  }, [requestedType]);
+
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify([
     signedView && !userPlaneOnly,
@@ -144,12 +150,22 @@ export default function RecordList({
   const records = listing?.request === request ? listing.records : null;
   const totalRecords = listing?.total ?? 0;
 
+  // Blur and another filter change can run before the URL update renders.
+  const filterSearchParams = new URLSearchParams(searchParams);
+  if (typeDraft !== requestedType) {
+    if (typeDraft) {
+      filterSearchParams.set("type", typeDraft);
+    } else {
+      filterSearchParams.delete("type");
+    }
+  }
+
   const handlePageChange = (page: number) => {
-    setSearchParams(updatePageSearchParam(searchParams, page));
+    setSearchParams(updatePageSearchParam(filterSearchParams, page));
   };
 
   const handlePageSizeChange = (pageSize: number) => {
-    setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
+    setSearchParams(updatePageSizeSearchParam(filterSearchParams, pageSize));
   };
 
   const handleFilterChange = (key: keyof RecordFilters, value: string) => {
@@ -161,7 +177,7 @@ export default function RecordList({
   const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
     setSearchParams(
       updateSortSearchParams(
-        searchParams,
+        filterSearchParams,
         nextSort,
         nextOrder,
         DEFAULT_RECORD_SORT,
@@ -174,7 +190,7 @@ export default function RecordList({
     key: "zoneName" | "type" | "signed",
     value: string,
   ) => {
-    const nextSearchParams = updatePageSearchParam(searchParams, 1);
+    const nextSearchParams = updatePageSearchParam(filterSearchParams, 1);
     if (value) {
       nextSearchParams.set(key, value);
     } else {
@@ -290,10 +306,19 @@ export default function RecordList({
           </select>
           <input
             list="record-filter-types"
-            value={requestedType}
-            onChange={(e) =>
-              handleUrlFilterChange("type", e.target.value.toUpperCase())
-            }
+            value={typeDraft}
+            onChange={(e) => setTypeDraft(e.target.value.toUpperCase())}
+            onBlur={() => {
+              if (typeDraft !== requestedType) {
+                handleUrlFilterChange("type", typeDraft);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
             aria-label="Filter by record type"
             placeholder="All Types"
             className="w-full sm:w-40"
