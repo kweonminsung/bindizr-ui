@@ -130,17 +130,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Records
               </Link>
             </li>
-            {allows("dnssec:read") && (
-              <li>
-                <Link
-                  to="/dnssec-policies"
-                  className={linkClasses(pathname, "/dnssec-policies")}
-                  onClick={onClose}
-                >
-                  DNSSEC Policies
-                </Link>
-              </li>
-            )}
             {allows("secondary:read") && (
               <li>
                 <Link
@@ -149,6 +138,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClick={onClose}
                 >
                   Secondaries
+                </Link>
+              </li>
+            )}
+            {allows("dnssec:read") && (
+              <li>
+                <Link
+                  to="/dnssec"
+                  className={linkClasses(pathname, "/dnssec")}
+                  onClick={onClose}
+                >
+                  DNSSEC
                 </Link>
               </li>
             )}

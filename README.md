@@ -42,7 +42,7 @@ Review changes by SOA serial and author, compare record differences, and preview
 
 ### DNSSEC signing and policies
 
-Apply reusable signing policies, monitor signatures, and manage key rollovers. Copy DS records for the parent zone, check their publication, or trigger re-signing.
+See every signed zone's state at a glance, apply reusable signing policies, monitor signatures, and manage key rollovers. Copy DS records for the parent zone, check their publication, or trigger re-signing.
 
 <img src="public/screenshots/dnssec.png" alt="DNSSEC status for example.com with signature counts, expiry, next re-signing time, and a DS record to copy" width="560" />
 

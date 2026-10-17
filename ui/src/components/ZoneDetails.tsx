@@ -10,6 +10,8 @@ import ZoneVersions from "./ZoneVersions";
 
 interface ZoneDetailsProps {
   zone: Zone;
+  /** The tab a link opens on; the zone's own unless it names a visible one. */
+  initialTab?: string | null;
   onZoneChanged: (zone: Zone) => void;
   onDnssecChanged?: (zoneName: string, enabled: boolean) => void;
 }
@@ -33,18 +35,21 @@ const TAB_ACTIONS: Partial<Record<TabId, Action[]>> = {
 
 export default function ZoneDetails({
   zone,
+  initialTab,
   onZoneChanged,
   onDnssecChanged,
 }: ZoneDetailsProps) {
   const { allows } = useBindizrToken();
-  const [activeTab, setActiveTab] = useState<TabId>("zone");
-  const [isEditing, setIsEditing] = useState(false);
-  const [dnssecEnabled, setDnssecEnabled] = useState(false);
-  const canReadDnssec = allows("dnssec:read", zone.name);
   const tabs = TABS.filter((tab) => {
     const actions = TAB_ACTIONS[tab.id];
     return !actions || actions.some((action) => allows(action, zone.name));
   });
+  const [activeTab, setActiveTab] = useState<TabId>(
+    () => tabs.find((tab) => tab.id === initialTab)?.id ?? "zone",
+  );
+  const [isEditing, setIsEditing] = useState(false);
+  const [dnssecEnabled, setDnssecEnabled] = useState(false);
+  const canReadDnssec = allows("dnssec:read", zone.name);
 
   // Stable identity: the DNSSEC tab keys an effect on this callback.
   const updateDnssecEnabled = useCallback(

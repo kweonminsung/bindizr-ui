@@ -1,9 +1,10 @@
 import { useState } from "react";
-import DnssecPolicyForm from "@/components/DnssecPolicyForm";
-import DnssecPolicyList from "@/components/DnssecPolicyList";
-import Modal from "@/components/Modal";
+import DnssecPolicyForm from "./DnssecPolicyForm";
+import DnssecPolicyList from "./DnssecPolicyList";
+import Modal from "./Modal";
 
-export default function DnssecPoliciesPage() {
+/** The signing-parameter bundles zones sign under, with their form. */
+export default function DnssecPoliciesTab() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -14,10 +15,6 @@ export default function DnssecPoliciesPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        Signing parameter sets for zones. Apply a policy from a zone&apos;s
-        DNSSEC tab.
-      </p>
       <DnssecPolicyList
         key={refreshKey}
         onCreatePolicy={() => setIsFormOpen(true)}

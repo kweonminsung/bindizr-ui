@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
-import { getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
+import { getZone, getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { toDayEnd, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
+import { useFocusName } from "@/lib/focusName";
 import {
   getOrderFromSearchParams,
   getPageFromSearchParams,
@@ -95,6 +96,7 @@ export default function ZoneList({
   const { allows, allowsWholeZone, allowsWholeZoneAnywhere } =
     useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { focusName, focusTab, clearFocusName } = useFocusName();
   const [listing, setListing] = useState<{
     request: string;
     zones: Zone[];
@@ -323,7 +325,30 @@ export default function ZoneList({
   const handleCloseDetails = () => {
     setSelectedZone(null);
     setIsDetailModalOpen(false);
+    clearFocusName();
   };
+
+  // A link names a zone to open, which may sit on another page of the list.
+  useEffect(() => {
+    if (!focusName) {
+      return;
+    }
+    let active = true;
+    getZone(focusName)
+      .then((zone) => {
+        if (active) {
+          handleShowDetails(zone);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          toast.error(getErrorMessage(error, "Failed to fetch zone"));
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [focusName]);
 
   const handleCloseImport = () => {
     setImportingZone(null);
@@ -597,6 +622,7 @@ export default function ZoneList({
         <Modal isOpen={isDetailModalOpen} wide onClose={handleCloseDetails}>
           <ZoneDetails
             zone={selectedZone}
+            initialTab={focusTab}
             onZoneChanged={(updatedZone) => {
               // A rename or a new serial makes the name-based sync above miss.
               setSelectedZone(updatedZone);

@@ -63,7 +63,7 @@ type PendingAction =
   | "sign"
   | "disable";
 
-const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
+export const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
   published: "bg-blue-100 text-blue-700",
   active: "bg-green-100 text-green-700",
   retired: "bg-gray-100 text-gray-600",
