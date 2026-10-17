@@ -160,6 +160,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onNavigate={onClose}
               />
             )}
+            {allows("audit:read") && (
+              <li>
+                <Link
+                  to="/audit"
+                  className={linkClasses(pathname, "/audit")}
+                  onClick={onClose}
+                >
+                  Audit Log
+                </Link>
+              </li>
+            )}
             <li>
               <Link
                 to="/settings"

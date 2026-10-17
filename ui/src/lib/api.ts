@@ -1,5 +1,7 @@
 import {
   ApiToken,
+  AuditLog,
+  AuditLogListQuery,
   CreateDnssecPolicyPayload,
   CreatedToken,
   CreateRecordPayload,
@@ -394,6 +396,23 @@ export async function getZoneVersion(
 export async function diffZoneVersions(
   zoneName: string,
   from: number,
+/** The audit log, newest first; needs `audit:read` in all zones. */
+export async function getAuditLogPage(
+  queryParams: AuditLogListQuery = {},
+): Promise<ListResult<AuditLog>> {
+  const params = pageParams({ ...queryParams, limit: queryParams.limit ?? 10 });
+  appendQueryParam(params, "entity", queryParams.entity);
+  appendQueryParam(params, "entity_name", queryParams.entity_name?.trim());
+  appendQueryParam(params, "since", queryParams.since);
+  appendQueryParam(params, "until", queryParams.until);
+
+  const response = await apiFetch(
+    withQuery("/audit", params),
+    "Failed to fetch the audit log",
+  );
+  return toListResult((await response.json()) as ListResponse<AuditLog>);
+}
+
   to?: number,
 ): Promise<VersionDiff> {
   const params = new URLSearchParams();

@@ -68,6 +68,10 @@ Register the servers Bindizr feeds by name and address. Pause one without forget
 
 Check secondary serials and reachability. Send DNS NOTIFY for one or all zones, optionally bumping the serial to trigger a transfer.
 
+### Audit log
+
+See who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when, narrowed by object, name and date. Reading it takes the `audit:read` action; a zone's own changes are in its versions.
+
 ## Run with Docker
 
 ```bash

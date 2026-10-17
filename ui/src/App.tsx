@@ -17,6 +17,7 @@ import TokensPage from "@/pages/TokensPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SecondariesPage from "@/pages/SecondariesPage";
 import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
+import AuditLogPage from "@/pages/AuditLogPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Action } from "@/lib/types";
@@ -42,6 +43,7 @@ function App() {
     "/dnssec-policies",
     "/secondaries",
     "/access",
+    "/audit",
     "/settings",
   ].some((path) => location.pathname.startsWith(path));
 
@@ -86,6 +88,14 @@ function App() {
                     element={
                       <RequireAction action="secondary:read">
                         <SecondariesPage />
+                      </RequireAction>
+                    }
+                  />
+                  <Route
+                    path="/audit"
+                    element={
+                      <RequireAction action="audit:read">
+                        <AuditLogPage />
                       </RequireAction>
                     }
                   />

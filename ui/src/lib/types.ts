@@ -525,6 +525,38 @@ export interface RollbackSummary {
   soa_changed: boolean;
 }
 
+/** The kind of object a management change was made to. */
+export const AUDIT_ENTITIES = [
+  "token",
+  "role",
+  "role_grant",
+  "tsig_key",
+  "secondary",
+  "dnssec_policy",
+  "zone",
+] as const;
+
+export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
+
+export const AUDIT_OPERATIONS = ["create", "update", "delete"] as const;
+
+export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
+
+/** One row of the audit log: a management change, who made it, and when.
+ * A zone's own changes are its versions; only its deletion is logged. */
+export interface AuditLog {
+  id: number;
+  entity: AuditEntity;
+  /** The object's name as its row spelled it; a grant's is its role's. */
+  entity_name: string;
+  operation: AuditOperation;
+  change_source: ChangeSource;
+  /** The API token it was made under; null for socket commands and
+   * unauthenticated requests. */
+  changed_by?: ChangeActor | null;
+  created_at: string;
+}
+
 export interface RollbackZoneResult {
   applied: boolean;
   dry_run: boolean;
@@ -808,6 +840,15 @@ export interface RecordListQuery extends PageQuery {
 
 /** The machine-readable classification every error payload carries. */
 export const ERROR_CODES = [
+export interface AuditLogListQuery extends PageQuery {
+  entity?: AuditEntity;
+  entity_name?: string;
+  /** RFC 3339; rows made at or after it. */
+  since?: string;
+  /** RFC 3339; rows made before it. */
+  until?: string;
+}
+
   "INVALID_INPUT",
   "INVALID_ZONE_FIELD",
   "INVALID_RECORD_NAME",

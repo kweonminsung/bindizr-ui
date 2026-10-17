@@ -5,14 +5,13 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRecordValue } from "@/lib/recordValue";
 import {
-  ChangeActor,
-  ChangeSource,
   RollbackZoneResult,
   VersionDetail,
   Zone,
   ZoneVersion,
   ZoneVersionListQuery,
 } from "@/lib/types";
+import ChangeSourceBadge, { describeActor } from "./ChangeSourceBadge";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneVersionDiff from "./ZoneVersionDiff";
@@ -21,25 +20,6 @@ import { useToast } from "@/contexts/ToastContext";
 interface ZoneVersionsProps {
   zone: Zone;
   onRolledBack: (result: RollbackZoneResult) => void;
-}
-
-const CHANGE_SOURCE_STYLES: Record<ChangeSource, string> = {
-  api: "bg-blue-100 text-blue-700",
-  socket: "bg-amber-100 text-amber-700",
-  nsupdate: "bg-purple-100 text-purple-700",
-  system: "bg-gray-100 text-gray-600",
-};
-
-const CHANGE_SOURCE_HINTS: Record<ChangeSource, string> = {
-  api: "Written over the HTTP API.",
-  socket: "Written over the daemon socket (the CLI).",
-  nsupdate: "Written by an RFC 2136 dynamic update.",
-  system: "Written by bindizr itself — the DNSSEC signer or its scheduler.",
-};
-
-/** The credential behind a change, by kind and name. */
-function describeActor(actor: ChangeActor): string {
-  return `${actor.kind === "token" ? "token" : "TSIG key"} ${actor.name}`;
 }
 
 export default function ZoneVersions({
@@ -411,15 +391,10 @@ export default function ZoneVersions({
                         ? describeActor(version.changed_by)
                         : "—"}
                     </span>
-                    <span
-                      className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${CHANGE_SOURCE_STYLES[version.change_source] ?? "bg-gray-100 text-gray-600"}`}
-                      title={
-                        CHANGE_SOURCE_HINTS[version.change_source] ??
-                        "An unrecognised change source."
-                      }
-                    >
-                      {version.change_source}
-                    </span>
+                    <ChangeSourceBadge
+                      source={version.change_source}
+                      className="ml-2"
+                    />
                   </td>
                   <td className="hidden sm:table-cell px-3 py-2 text-gray-500 break-all">
                     {version.mname}
