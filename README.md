@@ -30,7 +30,7 @@ Create and edit zones and records, configure SOA settings and TTLs, and inspect 
 
 ### Zone import and export
 
-Import BIND zone files or transfer records over AXFR using **append**, **upsert**, or **replace**, with dry-run validation. Copy or download exports, optionally including DNSSEC records.
+Import BIND zone files or transfer records over AXFR using **append**, **upsert**, or **replace**, with dry-run validation, one zone at a time or every zone a server lists or its catalog zone names. Copy or download exports, optionally including DNSSEC records.
 
 <img src="public/screenshots/import-preview.png" alt="A dry-run zone import validating three new records without applying changes" width="384" />
 

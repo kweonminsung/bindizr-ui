@@ -256,6 +256,49 @@ export interface ImportZoneResult {
   skipped_records?: string[];
 }
 
+/** Exactly one of `zone_names` and `from_catalog` (the server's catalog
+ * zone, RFC 9432) names the zones pulled over AXFR from `from_server`. */
+export interface ImportZonesPayload {
+  from_server: string;
+  zone_names?: string[];
+  from_catalog?: string;
+  mode?: ImportMode;
+  dry_run?: boolean;
+  skip_unsupported?: boolean;
+  /** Create each missing zone from its SOA; needs zone:create. */
+  create?: boolean;
+}
+
+/** The import ran, was rejected by validation, or never ran. */
+export type ImportResult = "ok" | "rejected" | "failed";
+
+/** An error answer's body. */
+export interface ErrorBody {
+  error: string;
+  code: ErrorCode;
+}
+
+/** One zone of a bulk import: its result with the import answer or the error. */
+export interface ImportZonesItem {
+  zone_name: string;
+  result: ImportResult;
+  import?: ImportZoneResult | null;
+  error?: ErrorBody | null;
+}
+
+export interface ImportZonesSummary {
+  zones: number;
+  ok: number;
+  rejected: number;
+  failed: number;
+}
+
+export interface ImportZonesResult {
+  dry_run: boolean;
+  summary: ImportZonesSummary;
+  zones: ImportZonesItem[];
+}
+
 export const TSIG_ALGORITHMS = [
   "hmac-sha256",
   "hmac-sha384",
@@ -482,6 +525,38 @@ export interface ChangeActor {
   name: string;
 }
 
+/** The kind of object a management change was made to. */
+export const AUDIT_ENTITIES = [
+  "token",
+  "role",
+  "role_grant",
+  "tsig_key",
+  "secondary",
+  "dnssec_policy",
+  "zone",
+] as const;
+
+export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
+
+export const AUDIT_OPERATIONS = ["create", "update", "delete"] as const;
+
+export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
+
+/** One row of the audit log: a management change, who made it, and when.
+ * A zone's own changes are its versions; only its deletion is logged. */
+export interface AuditLog {
+  id: number;
+  entity: AuditEntity;
+  /** The object's name as its row spelled it; a grant's is its role's. */
+  entity_name: string;
+  operation: AuditOperation;
+  change_source: ChangeSource;
+  /** The API token it was made under; null for socket commands and
+   * unauthenticated requests. */
+  changed_by?: ChangeActor | null;
+  created_at: string;
+}
+
 export interface ZoneVersion {
   serial: number;
   mname: string;
@@ -523,38 +598,6 @@ export interface RollbackSummary {
   deleted: number;
   unchanged: number;
   soa_changed: boolean;
-}
-
-/** The kind of object a management change was made to. */
-export const AUDIT_ENTITIES = [
-  "token",
-  "role",
-  "role_grant",
-  "tsig_key",
-  "secondary",
-  "dnssec_policy",
-  "zone",
-] as const;
-
-export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
-
-export const AUDIT_OPERATIONS = ["create", "update", "delete"] as const;
-
-export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
-
-/** One row of the audit log: a management change, who made it, and when.
- * A zone's own changes are its versions; only its deletion is logged. */
-export interface AuditLog {
-  id: number;
-  entity: AuditEntity;
-  /** The object's name as its row spelled it; a grant's is its role's. */
-  entity_name: string;
-  operation: AuditOperation;
-  change_source: ChangeSource;
-  /** The API token it was made under; null for socket commands and
-   * unauthenticated requests. */
-  changed_by?: ChangeActor | null;
-  created_at: string;
 }
 
 export interface RollbackZoneResult {
@@ -797,6 +840,15 @@ export interface ZoneVersionListQuery extends PageQuery {
   include_signer_serials?: boolean;
 }
 
+export interface AuditLogListQuery extends PageQuery {
+  entity?: AuditEntity;
+  entity_name?: string;
+  /** RFC 3339; rows made at or after it. */
+  since?: string;
+  /** RFC 3339; rows made before it. */
+  until?: string;
+}
+
 export interface ZoneListQuery extends PageQuery {
   search?: string;
   name?: string;
@@ -840,15 +892,6 @@ export interface RecordListQuery extends PageQuery {
 
 /** The machine-readable classification every error payload carries. */
 export const ERROR_CODES = [
-export interface AuditLogListQuery extends PageQuery {
-  entity?: AuditEntity;
-  entity_name?: string;
-  /** RFC 3339; rows made at or after it. */
-  since?: string;
-  /** RFC 3339; rows made before it. */
-  until?: string;
-}
-
   "INVALID_INPUT",
   "INVALID_ZONE_FIELD",
   "INVALID_RECORD_NAME",

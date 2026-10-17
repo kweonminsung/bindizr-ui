@@ -19,6 +19,8 @@ import {
   ErrorCode,
   ImportZonePayload,
   ImportZoneResult,
+  ImportZonesPayload,
+  ImportZonesResult,
   ListResult,
   PageQuery,
   Pagination,
@@ -347,6 +349,18 @@ export async function importZone(
   return (await response.json()) as ImportZoneResult;
 }
 
+/** Several zones from one server, each imported on its own; the answer
+ * carries every zone's outcome, so only a malformed request throws. */
+export async function importZones(
+  payload: ImportZonesPayload,
+): Promise<ImportZonesResult> {
+  const response = await apiFetch("/import", "Failed to import zones", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return (await response.json()) as ImportZonesResult;
+}
+
 export async function exportZone(
   zoneName: string,
   signed = false,
@@ -382,20 +396,6 @@ export async function getZoneVersionsPage(
   return toListResult((await response.json()) as ListResponse<ZoneVersion>);
 }
 
-export async function getZoneVersion(
-  zoneName: string,
-  serial: number,
-): Promise<VersionDetail> {
-  const response = await apiFetch(
-    `/zones/${encodeURIComponent(zoneName)}/versions/${serial}`,
-    "Failed to fetch zone version",
-  );
-  return (await response.json()) as VersionDetail;
-}
-
-export async function diffZoneVersions(
-  zoneName: string,
-  from: number,
 /** The audit log, newest first; needs `audit:read` in all zones. */
 export async function getAuditLogPage(
   queryParams: AuditLogListQuery = {},
@@ -413,6 +413,20 @@ export async function getAuditLogPage(
   return toListResult((await response.json()) as ListResponse<AuditLog>);
 }
 
+export async function getZoneVersion(
+  zoneName: string,
+  serial: number,
+): Promise<VersionDetail> {
+  const response = await apiFetch(
+    `/zones/${encodeURIComponent(zoneName)}/versions/${serial}`,
+    "Failed to fetch zone version",
+  );
+  return (await response.json()) as VersionDetail;
+}
+
+export async function diffZoneVersions(
+  zoneName: string,
+  from: number,
   to?: number,
 ): Promise<VersionDiff> {
   const params = new URLSearchParams();

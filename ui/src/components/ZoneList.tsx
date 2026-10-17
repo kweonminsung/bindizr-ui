@@ -35,6 +35,8 @@ import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneListProps {
   onCreateZone: () => void;
+  /** Opens the bulk import from a server. */
+  onImportZones: () => void;
 }
 
 interface ZoneFilters {
@@ -84,10 +86,13 @@ const DEFAULT_ZONE_SORT: ZoneSortField = "name";
 /** Badge probes per batch, so a large page is not one burst. */
 const DNSSEC_PROBE_BATCH = 6;
 
-export default function ZoneList({ onCreateZone }: ZoneListProps) {
+export default function ZoneList({
+  onCreateZone,
+  onImportZones,
+}: ZoneListProps) {
   const toast = useToast();
   const navigate = useNavigate();
-  const { allows, allowsWholeZone } = useBindizrToken();
+  const { allows, allowsWholeZone, canCreateRecords } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [listing, setListing] = useState<{
     request: string;
@@ -356,9 +361,20 @@ export default function ZoneList({ onCreateZone }: ZoneListProps) {
             order={order}
             onChange={handleSortChange}
           />
-          {(allows("zone:update") || allows("zone:create")) && (
+          {(allows("zone:update") ||
+            allows("zone:create") ||
+            canCreateRecords()) && (
             <div className="flex flex-col sm:flex-row gap-2">
               {allows("zone:update") && <NotifyAllZones />}
+              {/* Each zone's import is authorized on its own; the form is offered to anyone who may add records somewhere. */}
+              {(allows("zone:create") || canCreateRecords()) && (
+                <button
+                  onClick={onImportZones}
+                  className="btn-primary w-full sm:w-auto"
+                >
+                  Import Zones
+                </button>
+              )}
               {allows("zone:create") && (
                 <button
                   onClick={onCreateZone}
