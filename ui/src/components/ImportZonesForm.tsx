@@ -55,7 +55,11 @@ function describeFailure(item: ImportZonesItem): string {
 
 export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
   const toast = useToast();
-  const { allows } = useBindizrToken();
+  const { allows, allowsWholeZoneAnywhere } = useBindizrToken();
+  // Upsert and replace delete what they rewrite, so they need record:delete too.
+  const modes = allowsWholeZoneAnywhere("record:delete")
+    ? IMPORT_MODES
+    : IMPORT_MODES.filter((importMode) => importMode === "append");
   const [fromServer, setFromServer] = useState("");
   const [source, setSource] = useState<"list" | "catalog">("list");
   const [zoneList, setZoneList] = useState("");
@@ -205,7 +209,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
             onChange={(e) => setMode(e.target.value as ImportMode)}
             className="w-full"
           >
-            {IMPORT_MODES.map((importMode) => (
+            {modes.map((importMode) => (
               <option key={importMode} value={importMode}>
                 {importMode}
               </option>
