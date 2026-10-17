@@ -53,11 +53,13 @@ export function getSortFromSearchParams<T extends string>(
   return allowed.includes(sort as T) ? (sort as T) : fallback;
 }
 
-/** The sort direction the URL names; ascending unless it says otherwise. */
+/** The sort direction the URL names, or the listing's default. */
 export function getOrderFromSearchParams(
   searchParams: URLSearchParams,
+  defaultOrder: "asc" | "desc" = "asc",
 ): "asc" | "desc" {
-  return searchParams.get("order") === "desc" ? "desc" : "asc";
+  const order = searchParams.get("order");
+  return order === "asc" || order === "desc" ? order : defaultOrder;
 }
 
 /** URL params for a new sort, back on page one. */
@@ -66,6 +68,7 @@ export function updateSortSearchParams(
   sort: string,
   order: "asc" | "desc",
   defaultSort: string,
+  defaultOrder: "asc" | "desc" = "asc",
 ) {
   const nextSearchParams = new URLSearchParams(searchParams);
 
@@ -77,7 +80,7 @@ export function updateSortSearchParams(
     nextSearchParams.set("sort", sort);
   }
 
-  if (order === "asc") {
+  if (order === defaultOrder) {
     nextSearchParams.delete("order");
   } else {
     nextSearchParams.set("order", order);

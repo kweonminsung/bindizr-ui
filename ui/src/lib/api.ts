@@ -405,6 +405,8 @@ export async function getAuditLogPage(
   appendQueryParam(params, "entity_name", queryParams.entity_name?.trim());
   appendQueryParam(params, "since", queryParams.since);
   appendQueryParam(params, "until", queryParams.until);
+  appendQueryParam(params, "sort", queryParams.sort);
+  appendQueryParam(params, "order", queryParams.order);
 
   const response = await apiFetch(
     withQuery("/audit", params),

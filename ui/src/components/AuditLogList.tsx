@@ -5,22 +5,29 @@ import { formatDateTime, toDayEnd, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { countActiveFilters } from "@/lib/form";
 import {
+  getOrderFromSearchParams,
   getPageFromSearchParams,
   getPageSizeFromSearchParams,
+  getSortFromSearchParams,
   updatePageSearchParam,
   updatePageSizeSearchParam,
+  updateSortSearchParams,
 } from "@/lib/pageQuery";
 import {
   AUDIT_ENTITIES,
+  AUDIT_LOG_SORT_FIELDS,
   AuditEntity,
   AuditLog,
   AuditLogListQuery,
+  AuditLogSortField,
   AuditOperation,
+  SortOrder,
 } from "@/lib/types";
 import ChangeSourceBadge, { describeActor } from "./ChangeSourceBadge";
 import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
+import SortControl from "./SortControl";
 
 interface AuditLogFilters {
   entity: string;
@@ -54,6 +61,18 @@ const ENTITY_OPTIONS = [
   })),
 ] as const;
 
+const SORT_OPTIONS = [
+  { value: "created_at", label: "Time" },
+  { value: "entity", label: "Entity" },
+  { value: "entity_name", label: "Name" },
+  { value: "operation", label: "Change" },
+] as const;
+
+const DEFAULT_SORT: AuditLogSortField = "created_at";
+
+/** Newest first is the log's natural order, whatever the field. */
+const DEFAULT_ORDER: SortOrder = "desc";
+
 const OPERATION_STYLES: Record<AuditOperation, string> = {
   create: "bg-green-100 text-green-700",
   update: "bg-blue-100 text-blue-700",
@@ -77,6 +96,12 @@ export default function AuditLogList() {
   const [filters, setFilters] = useState<AuditLogFilters>(defaultFilters);
   const currentPage = getPageFromSearchParams(searchParams);
   const rowsPerPage = getPageSizeFromSearchParams(searchParams);
+  const sort = getSortFromSearchParams(
+    searchParams,
+    AUDIT_LOG_SORT_FIELDS,
+    DEFAULT_SORT,
+  );
+  const order = getOrderFromSearchParams(searchParams, DEFAULT_ORDER);
   const activeFilterCount = countActiveFilters(filters);
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify({
@@ -84,6 +109,8 @@ export default function AuditLogList() {
     entity_name: filters.entity_name,
     since: toDayStart(filters.since),
     until: toDayEnd(filters.until),
+    sort,
+    order,
     limit: rowsPerPage,
     offset: (currentPage - 1) * rowsPerPage,
   } satisfies AuditLogListQuery);
@@ -101,6 +128,19 @@ export default function AuditLogList() {
   const handleFilterChange = (key: keyof AuditLogFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     handlePageChange(1);
+  };
+
+  // URL-backed like the page: a sorted listing stays shareable.
+  const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
+    setSearchParams(
+      updateSortSearchParams(
+        searchParams,
+        nextSort,
+        nextOrder,
+        DEFAULT_SORT,
+        DEFAULT_ORDER,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -150,6 +190,14 @@ export default function AuditLogList() {
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
+      <div className="p-4 pb-0 flex justify-end">
+        <SortControl
+          options={SORT_OPTIONS}
+          sort={sort}
+          order={order}
+          onChange={handleSortChange}
+        />
+      </div>
       <div className="pt-4">
         <FilterPanel
           activeCount={activeFilterCount}
@@ -232,6 +280,12 @@ export default function AuditLogList() {
               >
                 By
               </th>
+              <th
+                scope="col"
+                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Detail
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -267,6 +321,12 @@ export default function AuditLogList() {
                     source={row.change_source}
                     className="ml-2"
                   />
+                </td>
+                <td
+                  className="hidden lg:table-cell truncate px-6 py-4 text-gray-500"
+                  title={row.detail ?? undefined}
+                >
+                  {row.detail ?? "—"}
                 </td>
               </tr>
             ))}

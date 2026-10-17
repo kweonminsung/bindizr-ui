@@ -550,6 +550,9 @@ export interface AuditLog {
   /** The entity's name as its row spelled it; a grant's is its role's. */
   entity_name: string;
   operation: AuditOperation;
+  /** What the change set, or what an update moved, in the request's field
+   * names; null for a delete. */
+  detail?: string | null;
   change_source: ChangeSource;
   /** The API token it was made under; null for socket commands and
    * unauthenticated requests. */
@@ -840,6 +843,15 @@ export interface ZoneVersionListQuery extends PageQuery {
   include_signer_serials?: boolean;
 }
 
+export const AUDIT_LOG_SORT_FIELDS = [
+  "created_at",
+  "entity",
+  "entity_name",
+  "operation",
+] as const;
+
+export type AuditLogSortField = (typeof AUDIT_LOG_SORT_FIELDS)[number];
+
 export interface AuditLogListQuery extends PageQuery {
   entity?: AuditEntity;
   entity_name?: string;
@@ -847,6 +859,9 @@ export interface AuditLogListQuery extends PageQuery {
   since?: string;
   /** RFC 3339; rows made before it. */
   until?: string;
+  sort?: AuditLogSortField;
+  /** Newest first by default. */
+  order?: SortOrder;
 }
 
 export interface ZoneListQuery extends PageQuery {
