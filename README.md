@@ -70,7 +70,7 @@ Check secondary serials and reachability. Send DNS NOTIFY for one or all zones, 
 
 ### Audit log
 
-See who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when, narrowed by object, name and date. Reading it takes the `audit:read` action; a zone's own changes are in its versions.
+See who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when, narrowed by entity, name and date. Reading it takes the `audit:read` action; a zone's own changes are in its versions.
 
 ## Run with Docker
 

@@ -525,7 +525,7 @@ export interface ChangeActor {
   name: string;
 }
 
-/** The kind of object a management change was made to. */
+/** The kind of entity a management change was made to. */
 export const AUDIT_ENTITIES = [
   "token",
   "role",
@@ -547,7 +547,7 @@ export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
 export interface AuditLog {
   id: number;
   entity: AuditEntity;
-  /** The object's name as its row spelled it; a grant's is its role's. */
+  /** The entity's name as its row spelled it; a grant's is its role's. */
   entity_name: string;
   operation: AuditOperation;
   change_source: ChangeSource;

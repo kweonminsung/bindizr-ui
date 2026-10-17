@@ -160,7 +160,7 @@ export default function AuditLogList() {
         >
           <FilterSelect
             id="filter_audit_entity"
-            label="Object"
+            label="Entity"
             value={filters.entity}
             onChange={(value) => handleFilterChange("entity", value)}
             options={ENTITY_OPTIONS}
@@ -212,7 +212,7 @@ export default function AuditLogList() {
                 scope="col"
                 className="w-44 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                Object
+                Entity
               </th>
               <th
                 scope="col"
