@@ -56,8 +56,9 @@ function describeFailure(item: ImportZonesItem): string {
 export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
   const toast = useToast();
   const { allows, allowsWholeZoneAnywhere } = useBindizrToken();
-  // Upsert and replace delete what they rewrite, so they need record:delete too.
-  const modes = allowsWholeZoneAnywhere("record:delete")
+  // Upsert and replace delete what they rewrite, so a zone takes them only
+  // from a caller holding record:delete beside record:create on it.
+  const modes = allowsWholeZoneAnywhere("record:create", "record:delete")
     ? IMPORT_MODES
     : IMPORT_MODES.filter((importMode) => importMode === "append");
   const [fromServer, setFromServer] = useState("");

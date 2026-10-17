@@ -23,9 +23,9 @@ interface BindizrTokenContextType {
   /** Whether the caller may do `action` in the zone with no name or type
    * limit. */
   allowsWholeZone: (action: Action, zoneName: string) => boolean;
-  /** Whether `action` reaches some zone, or all zones, with no name or type
-   * limit. */
-  allowsWholeZoneAnywhere: (action: Action) => boolean;
+  /** Whether every one of `actions` reaches one same zone, or all zones,
+   * with no name or type limit. */
+  allowsWholeZoneAnywhere: (...actions: Action[]) => boolean;
   /** Re-read after the Bindizr settings change. */
   refresh: () => Promise<void>;
 }
@@ -115,10 +115,10 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
   );
 
   const allowsWholeZoneAnywhere = useCallback(
-    (action: Action) =>
+    (...actions: Action[]) =>
       !permissions ||
       [permissions.all_zones, ...permissions.zones].some((permitted) =>
-        permitted.whole_zone.includes(action),
+        actions.every((action) => permitted.whole_zone.includes(action)),
       ),
     [permissions],
   );
