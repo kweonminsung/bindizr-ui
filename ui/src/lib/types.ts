@@ -256,6 +256,49 @@ export interface ImportZoneResult {
   skipped_records?: string[];
 }
 
+/** Exactly one of `zone_names` and `from_catalog` (the server's catalog
+ * zone, RFC 9432) names the zones pulled over AXFR from `from_server`. */
+export interface ImportZonesPayload {
+  from_server: string;
+  zone_names?: string[];
+  from_catalog?: string;
+  mode?: ImportMode;
+  dry_run?: boolean;
+  skip_unsupported?: boolean;
+  /** Create each missing zone from its SOA; needs zone:create. */
+  create?: boolean;
+}
+
+/** The import ran, was rejected by validation, or never ran. */
+export type ImportResult = "ok" | "rejected" | "failed";
+
+/** An error answer's body. */
+export interface ErrorBody {
+  error: string;
+  code: ErrorCode;
+}
+
+/** One zone of a bulk import: its result with the import answer or the error. */
+export interface ImportZonesItem {
+  zone_name: string;
+  result: ImportResult;
+  import?: ImportZoneResult | null;
+  error?: ErrorBody | null;
+}
+
+export interface ImportZonesSummary {
+  zones: number;
+  ok: number;
+  rejected: number;
+  failed: number;
+}
+
+export interface ImportZonesResult {
+  dry_run: boolean;
+  summary: ImportZonesSummary;
+  zones: ImportZonesItem[];
+}
+
 export const TSIG_ALGORITHMS = [
   "hmac-sha256",
   "hmac-sha384",
@@ -386,6 +429,7 @@ export const ACTIONS = [
   "secondary:read",
   "secondary:manage",
   "access:manage",
+  "audit:read",
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -413,6 +457,8 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "secondary:manage": "Register, change, check and remove secondaries.",
   "access:manage":
     "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
+  "audit:read":
+    "Read the audit log: who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when.",
 };
 
 /** Actions on something no zone owns, so only an all-zones grant carries them. */
@@ -421,6 +467,7 @@ export const ALL_ZONES_ACTIONS: readonly Action[] = [
   "secondary:read",
   "secondary:manage",
   "access:manage",
+  "audit:read",
 ];
 
 /** A named set of grants that API tokens and TSIG keys authenticate into. */
@@ -476,6 +523,41 @@ export type ChangeSource = (typeof CHANGE_SOURCES)[number];
 export interface ChangeActor {
   kind: "token" | "tsig_key";
   name: string;
+}
+
+/** The kind of entity a management change was made to. */
+export const AUDIT_ENTITIES = [
+  "token",
+  "role",
+  "role_grant",
+  "tsig_key",
+  "secondary",
+  "dnssec_policy",
+  "zone",
+] as const;
+
+export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
+
+export const AUDIT_OPERATIONS = ["create", "update", "delete"] as const;
+
+export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
+
+/** One row of the audit log: a management change, who made it, and when.
+ * A zone's own changes are its versions; only its deletion is logged. */
+export interface AuditLog {
+  id: number;
+  entity: AuditEntity;
+  /** The entity's name as its row spelled it; a grant's is its role's. */
+  entity_name: string;
+  operation: AuditOperation;
+  /** What the change set, or what an update moved, in the request's field
+   * names; null for a delete. */
+  detail?: string | null;
+  change_source: ChangeSource;
+  /** The API token it was made under; null for socket commands and
+   * unauthenticated requests. */
+  changed_by?: ChangeActor | null;
+  created_at: string;
 }
 
 export interface ZoneVersion {
@@ -759,6 +841,27 @@ export interface PageQuery {
 export interface ZoneVersionListQuery extends PageQuery {
   /** Also list signer-only serials (DNSSEC re-signs and rollovers), hidden by default. */
   include_signer_serials?: boolean;
+}
+
+export const AUDIT_LOG_SORT_FIELDS = [
+  "created_at",
+  "entity",
+  "entity_name",
+  "operation",
+] as const;
+
+export type AuditLogSortField = (typeof AUDIT_LOG_SORT_FIELDS)[number];
+
+export interface AuditLogListQuery extends PageQuery {
+  entity?: AuditEntity;
+  entity_name?: string;
+  /** RFC 3339; rows made at or after it. */
+  since?: string;
+  /** RFC 3339; rows made before it. */
+  until?: string;
+  sort?: AuditLogSortField;
+  /** Newest first by default. */
+  order?: SortOrder;
 }
 
 export interface ZoneListQuery extends PageQuery {

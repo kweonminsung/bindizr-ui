@@ -30,7 +30,7 @@ Create and edit zones and records, configure SOA settings and TTLs, and inspect 
 
 ### Zone import and export
 
-Import BIND zone files or transfer records over AXFR using **append**, **upsert**, or **replace**, with dry-run validation. Copy or download exports, optionally including DNSSEC records.
+Import BIND zone files or transfer records over AXFR using **append**, **upsert**, or **replace**, with dry-run validation, one zone at a time or every zone a server lists or its catalog zone names. Copy or download exports, optionally including DNSSEC records.
 
 <img src="public/screenshots/import-preview.png" alt="A dry-run zone import validating three new records without applying changes" width="384" />
 
@@ -42,7 +42,7 @@ Review changes by SOA serial and author, compare record differences, and preview
 
 ### DNSSEC signing and policies
 
-Apply reusable signing policies, monitor signatures, and manage key rollovers. Copy DS records for the parent zone, check their publication, or trigger re-signing.
+See every signed zone's state at a glance, apply reusable signing policies, monitor signatures, and manage key rollovers. Copy DS records for the parent zone, check their publication, or trigger re-signing.
 
 <img src="public/screenshots/dnssec.png" alt="DNSSEC status for example.com with signature counts, expiry, next re-signing time, and a DS record to copy" width="560" />
 
@@ -67,6 +67,10 @@ Register the servers Bindizr feeds by name and address. Pause one without forget
 ### Secondary synchronization
 
 Check secondary serials and reachability. Send DNS NOTIFY for one or all zones, optionally bumping the serial to trigger a transfer.
+
+### Audit log
+
+See who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when, narrowed by entity, name and date. Reading it takes the `audit:read` action; a zone's own changes are in its versions.
 
 ## Run with Docker
 

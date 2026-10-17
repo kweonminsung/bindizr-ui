@@ -16,7 +16,8 @@ import RolesPage from "@/pages/RolesPage";
 import TokensPage from "@/pages/TokensPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SecondariesPage from "@/pages/SecondariesPage";
-import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
+import DnssecPage from "@/pages/DnssecPage";
+import AuditLogPage from "@/pages/AuditLogPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Action } from "@/lib/types";
@@ -39,9 +40,10 @@ function App() {
   const showSidebar = [
     "/records",
     "/zones",
-    "/dnssec-policies",
+    "/dnssec",
     "/secondaries",
     "/access",
+    "/audit",
     "/settings",
   ].some((path) => location.pathname.startsWith(path));
 
@@ -74,18 +76,30 @@ function App() {
                   <Route path="/zones" element={<ZonesPage />} />
                   <Route path="/records" element={<RecordsPage />} />
                   <Route
-                    path="/dnssec-policies"
+                    path="/dnssec"
                     element={
                       <RequireAction action="dnssec:read">
-                        <DnssecPoliciesPage />
+                        <DnssecPage />
                       </RequireAction>
                     }
+                  />
+                  <Route
+                    path="/dnssec-policies"
+                    element={<Navigate to="/dnssec?tab=policies" replace />}
                   />
                   <Route
                     path="/secondaries"
                     element={
                       <RequireAction action="secondary:read">
                         <SecondariesPage />
+                      </RequireAction>
+                    }
+                  />
+                  <Route
+                    path="/audit"
+                    element={
+                      <RequireAction action="audit:read">
+                        <AuditLogPage />
                       </RequireAction>
                     }
                   />

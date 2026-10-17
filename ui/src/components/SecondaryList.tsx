@@ -226,7 +226,7 @@ export default function SecondaryList({
         </table>
       </div>
       {selected && (
-        <Modal isOpen onClose={handleCloseDetails}>
+        <Modal isOpen wide onClose={handleCloseDetails}>
           <SecondaryDetails secondary={selected} onUpdated={handleUpdated} />
         </Modal>
       )}

@@ -337,31 +337,75 @@ function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
         {describeSummary(transfers.summary)}
       </p>
       {transfers.transfers.length > 0 && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500">
-              <th className="pr-3">Zone</th>
-              <th className="pr-3">Transfer</th>
-              <th className="pr-3">Serial</th>
-              <th className="pr-3">Address</th>
-              <th className="pr-3">At</th>
-              <th>Error</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transfers.transfers.map((transfer) => (
-              // Unique: Bindizr keeps one transfer per address and zone.
-              <tr key={`${transfer.address}-${transfer.zone_name}`}>
-                <td className="pr-3 font-mono">{transfer.zone_name}</td>
-                <td className="pr-3">{describeTransfer(transfer)}</td>
-                <td className="pr-3">{transfer.serial ?? "-"}</td>
-                <td className="pr-3 font-mono">{transfer.address}</td>
-                <td className="pr-3">{formatDateTime(transfer.at)}</td>
-                <td>{transfer.error ?? "-"}</td>
+        <div className="overflow-x-auto rounded-md border border-gray-200">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Zone
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Transfer
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Serial
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Address
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  At
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Error
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {transfers.transfers.map((transfer) => (
+                // Unique: Bindizr keeps one transfer per address and zone.
+                <tr key={`${transfer.address}-${transfer.zone_name}`}>
+                  <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                    {transfer.zone_name}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    {describeTransfer(transfer)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    {transfer.serial ?? "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    {transfer.address}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    {formatDateTime(transfer.at)}
+                  </td>
+                  <td className="px-6 py-4 text-gray-500">
+                    {transfer.error ?? "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

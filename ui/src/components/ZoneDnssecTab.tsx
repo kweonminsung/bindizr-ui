@@ -63,7 +63,7 @@ type PendingAction =
   | "sign"
   | "disable";
 
-const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
+export const KEY_STATE_STYLES: Record<DnssecKeyState, string> = {
   published: "bg-blue-100 text-blue-700",
   active: "bg-green-100 text-green-700",
   retired: "bg-gray-100 text-gray-600",
@@ -829,25 +829,46 @@ export default function ZoneDnssecTab({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Role
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   State
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Key Tag
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Algorithm
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Since
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Next Step
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   At Parent
                 </th>
               </tr>
@@ -857,28 +878,32 @@ export default function ZoneDnssecTab({
                 const parentAnswer = atParent(key);
                 return (
                   <tr key={key.id}>
-                    <td className="px-3 py-2 font-medium text-gray-900 uppercase">
+                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 uppercase">
                       {key.role}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="whitespace-nowrap px-6 py-4">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${KEY_STATE_STYLES[key.state]}`}
                       >
                         {key.state}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{key.key_tag}</td>
-                    <td className="px-3 py-2 text-gray-500">{key.algorithm}</td>
-                    <td className="px-3 py-2 text-gray-500">
+                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                      {key.key_tag}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                      {key.algorithm}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
                       {formatDateTime(key.state_changed_at)}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">
+                    <td className="px-6 py-4 text-gray-500">
                       {key.eligible_at
                         ? `${key.state === "published" ? "Promotable" : "Removable"} ${formatDateTime(key.eligible_at)}`
                         : "-"}
                     </td>
                     <td
-                      className="px-3 py-2 text-gray-500"
+                      className="px-6 py-4 text-gray-500"
                       title={parentAnswer.hint}
                     >
                       {parentAnswer.label}

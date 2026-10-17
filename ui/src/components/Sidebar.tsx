@@ -130,17 +130,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Records
               </Link>
             </li>
-            {allows("dnssec:read") && (
-              <li>
-                <Link
-                  to="/dnssec-policies"
-                  className={linkClasses(pathname, "/dnssec-policies")}
-                  onClick={onClose}
-                >
-                  DNSSEC Policies
-                </Link>
-              </li>
-            )}
             {allows("secondary:read") && (
               <li>
                 <Link
@@ -152,6 +141,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </Link>
               </li>
             )}
+            {allows("dnssec:read") && (
+              <li>
+                <Link
+                  to="/dnssec"
+                  className={linkClasses(pathname, "/dnssec")}
+                  onClick={onClose}
+                >
+                  DNSSEC
+                </Link>
+              </li>
+            )}
             {allows("access:manage") && (
               <NavGroup
                 label="Access"
@@ -159,6 +159,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 links={ACCESS_LINKS}
                 onNavigate={onClose}
               />
+            )}
+            {allows("audit:read") && (
+              <li>
+                <Link
+                  to="/audit"
+                  className={linkClasses(pathname, "/audit")}
+                  onClick={onClose}
+                >
+                  Audit Log
+                </Link>
+              </li>
             )}
             <li>
               <Link

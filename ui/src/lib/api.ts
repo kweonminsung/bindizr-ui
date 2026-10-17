@@ -1,5 +1,7 @@
 import {
   ApiToken,
+  AuditLog,
+  AuditLogListQuery,
   CreateDnssecPolicyPayload,
   CreatedToken,
   CreateRecordPayload,
@@ -17,6 +19,8 @@ import {
   ErrorCode,
   ImportZonePayload,
   ImportZoneResult,
+  ImportZonesPayload,
+  ImportZonesResult,
   ListResult,
   PageQuery,
   Pagination,
@@ -345,6 +349,18 @@ export async function importZone(
   return (await response.json()) as ImportZoneResult;
 }
 
+/** Several zones from one server, each imported on its own; the answer
+ * carries every zone's outcome, so only a malformed request throws. */
+export async function importZones(
+  payload: ImportZonesPayload,
+): Promise<ImportZonesResult> {
+  const response = await apiFetch("/import", "Failed to import zones", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return (await response.json()) as ImportZonesResult;
+}
+
 export async function exportZone(
   zoneName: string,
   signed = false,
@@ -378,6 +394,25 @@ export async function getZoneVersionsPage(
     "Failed to fetch zone versions",
   );
   return toListResult((await response.json()) as ListResponse<ZoneVersion>);
+}
+
+/** The audit log, newest first; needs `audit:read` in all zones. */
+export async function getAuditLogPage(
+  queryParams: AuditLogListQuery = {},
+): Promise<ListResult<AuditLog>> {
+  const params = pageParams({ ...queryParams, limit: queryParams.limit ?? 10 });
+  appendQueryParam(params, "entity", queryParams.entity);
+  appendQueryParam(params, "entity_name", queryParams.entity_name?.trim());
+  appendQueryParam(params, "since", queryParams.since);
+  appendQueryParam(params, "until", queryParams.until);
+  appendQueryParam(params, "sort", queryParams.sort);
+  appendQueryParam(params, "order", queryParams.order);
+
+  const response = await apiFetch(
+    withQuery("/audit", params),
+    "Failed to fetch the audit log",
+  );
+  return toListResult((await response.json()) as ListResponse<AuditLog>);
 }
 
 export async function getZoneVersion(
