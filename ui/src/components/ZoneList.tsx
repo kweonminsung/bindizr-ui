@@ -92,7 +92,8 @@ export default function ZoneList({
 }: ZoneListProps) {
   const toast = useToast();
   const navigate = useNavigate();
-  const { allows, allowsWholeZone, canCreateRecords } = useBindizrToken();
+  const { allows, allowsWholeZone, allowsWholeZoneAnywhere } =
+    useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const [listing, setListing] = useState<{
     request: string;
@@ -363,11 +364,12 @@ export default function ZoneList({
           />
           {(allows("zone:update") ||
             allows("zone:create") ||
-            canCreateRecords()) && (
+            allowsWholeZoneAnywhere("record:create")) && (
             <div className="flex flex-col sm:flex-row gap-2">
               {allows("zone:update") && <NotifyAllZones />}
-              {/* Each zone's import is authorized on its own; the form is offered to anyone who may add records somewhere. */}
-              {(allows("zone:create") || canCreateRecords()) && (
+              {/* An import rewrites zones whole: an unnarrowed record:create somewhere, or zone:create. */}
+              {(allows("zone:create") ||
+                allowsWholeZoneAnywhere("record:create")) && (
                 <button
                   onClick={onImportZones}
                   className="btn-primary w-full sm:w-auto"
