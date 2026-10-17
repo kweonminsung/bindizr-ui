@@ -386,6 +386,7 @@ export const ACTIONS = [
   "secondary:read",
   "secondary:manage",
   "access:manage",
+  "audit:read",
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -413,6 +414,8 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "secondary:manage": "Register, change, check and remove secondaries.",
   "access:manage":
     "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
+  "audit:read":
+    "Read the audit log: who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when.",
 };
 
 /** Actions on something no zone owns, so only an all-zones grant carries them. */
@@ -421,6 +424,7 @@ export const ALL_ZONES_ACTIONS: readonly Action[] = [
   "secondary:read",
   "secondary:manage",
   "access:manage",
+  "audit:read",
 ];
 
 /** A named set of grants that API tokens and TSIG keys authenticate into. */
