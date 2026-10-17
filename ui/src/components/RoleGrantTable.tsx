@@ -9,7 +9,7 @@ interface RoleGrantTableProps {
 }
 
 const HEADER =
-  "px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider";
+  "px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider";
 
 /** A role's grants: the zone each reaches, its actions, and the record constraints. */
 export default function RoleGrantTable({
@@ -18,21 +18,31 @@ export default function RoleGrantTable({
 }: RoleGrantTableProps) {
   return (
     <div className="overflow-x-auto rounded-md border border-gray-200">
-      <table className="w-full table-fixed text-left text-sm">
+      <table className="w-full text-left text-sm">
         <thead className="border-b border-gray-200 bg-gray-50">
           <tr>
-            <th className={HEADER}>Zone</th>
-            <th className={`${HEADER} w-2/5`}>Actions</th>
-            <th className={HEADER}>Pattern</th>
-            <th className={HEADER}>Types</th>
-            <th className={`hidden sm:table-cell ${HEADER}`}>Granted</th>
-            {onRevoke && <th className="w-20 px-3 py-2" />}
+            <th scope="col" className={HEADER}>
+              Zone
+            </th>
+            <th scope="col" className={`${HEADER} w-2/5`}>
+              Actions
+            </th>
+            <th scope="col" className={HEADER}>
+              Pattern
+            </th>
+            <th scope="col" className={HEADER}>
+              Types
+            </th>
+            <th scope="col" className={`hidden sm:table-cell ${HEADER}`}>
+              Granted
+            </th>
+            {onRevoke && <th scope="col" className="px-6 py-3" />}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {grants.map((grant) => (
             <tr key={grant.id}>
-              <td className="truncate px-3 py-2" title={grant.zone_name ?? ""}>
+              <td className="px-6 py-4 break-all">
                 {grant.zone_name === null ? (
                   <span className="font-medium text-gray-900">All zones</span>
                 ) : (
@@ -44,26 +54,20 @@ export default function RoleGrantTable({
                   </Link>
                 )}
               </td>
-              <td className="px-3 py-2 font-mono text-xs text-gray-600 break-words">
+              <td className="px-6 py-4 font-mono text-xs text-gray-600 break-words">
                 {grant.actions.join(", ")}
               </td>
-              <td
-                className="truncate px-3 py-2 font-mono text-gray-600"
-                title={grant.record_name_pattern}
-              >
+              <td className="whitespace-nowrap px-6 py-4 font-mono text-gray-600">
                 {grant.record_name_pattern}
               </td>
-              <td
-                className="truncate px-3 py-2 font-mono text-gray-600"
-                title={grant.record_types}
-              >
+              <td className="whitespace-nowrap px-6 py-4 font-mono text-gray-600">
                 {grant.record_types}
               </td>
-              <td className="hidden sm:table-cell truncate px-3 py-2 text-gray-500">
+              <td className="hidden sm:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
                 {formatDateTime(grant.created_at)}
               </td>
               {onRevoke && (
-                <td className="px-3 py-2 text-right">
+                <td className="whitespace-nowrap px-6 py-4 text-right">
                   <button
                     type="button"
                     onClick={() => onRevoke(grant)}

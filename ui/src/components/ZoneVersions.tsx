@@ -221,19 +221,34 @@ export default function ZoneVersions({
             <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Name
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Type
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Value
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     TTL
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Priority
                   </th>
                 </tr>
@@ -241,13 +256,19 @@ export default function ZoneVersions({
               <tbody className="divide-y divide-gray-200">
                 {records.map((record, index) => (
                   <tr key={`${record.name}-${record.type}-${index}`}>
-                    <td className="px-3 py-2 text-gray-900">{record.name}</td>
-                    <td className="px-3 py-2 text-gray-500">{record.type}</td>
-                    <td className="px-3 py-2 text-gray-500 break-all whitespace-pre-wrap">
+                    <td className="px-6 py-4 text-gray-900 break-all">
+                      {record.name}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                      {record.type}
+                    </td>
+                    <td className="px-6 py-4 text-gray-500 break-all whitespace-pre-wrap">
                       {formatRecordValue(record.value, record.type)}
                     </td>
-                    <td className="px-3 py-2 text-gray-500">{record.ttl}</td>
-                    <td className="px-3 py-2 text-gray-500">
+                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                      {record.ttl}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
                       {record.priority ?? "-"}
                     </td>
                   </tr>
@@ -351,19 +372,34 @@ export default function ZoneVersions({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Serial
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Created
                 </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Changed By
                 </th>
-                <th className="hidden sm:table-cell px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="hidden sm:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Primary NS
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Actions
                 </th>
               </tr>
@@ -374,7 +410,7 @@ export default function ZoneVersions({
                   key={version.serial}
                   className="transition-colors hover:bg-gray-50"
                 >
-                  <td className="px-3 py-2 font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
                     {version.serial}
                     {version.serial === zone.serial && (
                       <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
@@ -382,10 +418,10 @@ export default function ZoneVersions({
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-gray-500">
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
                     {formatDateTime(version.created_at)}
                   </td>
-                  <td className="px-3 py-2 text-gray-500">
+                  <td className="px-6 py-4 text-gray-500">
                     <span className="break-all">
                       {version.changed_by
                         ? describeActor(version.changed_by)
@@ -396,10 +432,10 @@ export default function ZoneVersions({
                       className="ml-2"
                     />
                   </td>
-                  <td className="hidden sm:table-cell px-3 py-2 text-gray-500 break-all">
+                  <td className="hidden sm:table-cell px-6 py-4 text-gray-500 break-all">
                     {version.mname}
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="whitespace-nowrap px-6 py-4 text-right">
                     {canReadVersions && (
                       <div className="flex justify-end items-center space-x-3">
                         <button
