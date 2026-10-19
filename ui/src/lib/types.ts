@@ -1,3 +1,6 @@
+/** Largest DNS TTL in seconds (unsigned 32-bit wire value). */
+export const MAX_TTL = 2 ** 32 - 1;
+
 export interface Zone {
   id: number;
   name: string;
@@ -30,7 +33,7 @@ export interface ZonePayload {
   minimum_ttl?: number | null;
   /** At most 255 characters; empty clears it. */
   description?: string | null;
-  /** Create only: start with an apex NS record naming the MNAME (default true). */
+  /** Create only: add apex NS naming MNAME (default true); otherwise start disabled. */
   apex_ns?: boolean;
 }
 
@@ -74,6 +77,7 @@ export interface Record {
   value: RecordValue;
   zone_id: number;
   zone_name: string;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
   /** The record actions this caller may take on it; empty on a derived row. */
@@ -85,6 +89,7 @@ export interface CreateRecordPayload {
   type: RecordType;
   value: RecordValue;
   zone_name: string;
+  /** Seconds, 0–4294967295; omitted values inherit the zone default. */
   ttl?: number | null;
   /** Only MX and SRV take one; omitted, it is served and compared as 10. */
   priority?: number | null;
@@ -95,6 +100,7 @@ export interface UpdateRecordPayload {
   name?: string;
   type?: RecordType;
   value?: RecordValue;
+  /** Seconds, 0–4294967295; omitted values inherit the zone default. */
   ttl?: number | null;
   priority?: number | null;
 }
@@ -120,6 +126,7 @@ export interface SignedRecord {
   value: RecordValue;
   zone_id: number;
   zone_name: string;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
   /** The record actions this caller may take on it; empty on a derived row. */
@@ -156,6 +163,7 @@ export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
 /** One record on one side of a diff; rendering the rdata is left to the client. */
 export interface RecordDiffValue {
   value: RecordValue;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
 }
@@ -442,7 +450,7 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "record:create":
     "Add records, including by import, nsupdate and ExternalDNS.",
   "record:update":
-    "Change a record in place; without record:read on it, every field must be given.",
+    "Change a record in place; without record:read on it, every field must be given. Also required when nsupdate changes existing records’ TTL.",
   "record:delete":
     "Delete records, including by nsupdate and ExternalDNS; also required for nsupdate CNAME, DNAME, or matching WKS replacement.",
   "dnssec:read":
@@ -577,6 +585,7 @@ export interface VersionRecord {
   name: string;
   type: string;
   value: RecordValue;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
 }

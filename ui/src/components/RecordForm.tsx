@@ -4,6 +4,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
 import {
+  MAX_TTL,
   PRIORITY_RECORD_TYPES,
   Record,
   RECORD_TYPES,
@@ -254,6 +255,9 @@ export default function RecordForm({
           </label>
           <input
             type="number"
+            min={0}
+            max={MAX_TTL}
+            step={1}
             id="ttl"
             name="ttl"
             value={formData.ttl}
