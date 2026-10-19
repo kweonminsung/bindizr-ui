@@ -306,6 +306,7 @@ export const TSIG_ALGORITHMS = [
   "hmac-sha256",
   "hmac-sha384",
   "hmac-sha512",
+  "hmac-sha1",
 ] as const;
 
 export type TsigAlgorithm = (typeof TSIG_ALGORITHMS)[number];
