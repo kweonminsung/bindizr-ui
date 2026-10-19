@@ -59,9 +59,10 @@ export const RECORD_TYPES = [
   "PTR",
   "SSHFP",
   "TLSA",
+  "WKS",
 ] as const;
 
-export type RecordType = (typeof RECORD_TYPES)[number] | `TYPE${number}`;
+export type RecordType = (typeof RECORD_TYPES)[number];
 
 /** Only MX and SRV carry a priority. */
 export const PRIORITY_RECORD_TYPES: readonly RecordType[] = ["MX", "SRV"];
@@ -232,9 +233,6 @@ export interface ImportZonePayload {
   dry_run?: boolean;
   /** Create the zone from the file's SOA; without it a miss is an error. */
   create?: boolean;
-  /** Pass over record types Bindizr does not store instead of failing the
-   * whole file; they are counted as skipped and listed in `skipped_records`. */
-  skip_unsupported?: boolean;
 }
 
 export interface ImportSummary {
@@ -252,8 +250,6 @@ export interface ImportZoneResult {
   summary: ImportSummary;
   diff: RecordDiff;
   errors: string[];
-  /** Records passed over under `skip_unsupported`. */
-  skipped_records?: string[];
 }
 
 /** Exactly one of `zone_names` and `from_catalog` (the server's catalog
@@ -264,7 +260,6 @@ export interface ImportZonesPayload {
   from_catalog?: string;
   mode?: ImportMode;
   dry_run?: boolean;
-  skip_unsupported?: boolean;
   /** Create each missing zone from its SOA; needs zone:create. */
   create?: boolean;
 }
@@ -448,7 +443,8 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
     "Add records, including by import, nsupdate and ExternalDNS.",
   "record:update":
     "Change a record in place; without record:read on it, every field must be given.",
-  "record:delete": "Delete records, including by nsupdate and ExternalDNS.",
+  "record:delete":
+    "Delete records, including by nsupdate and ExternalDNS; also required for nsupdate CNAME, DNAME, or matching WKS replacement.",
   "dnssec:read":
     "Read DNSSEC status and check the parent DS; in all zones, also read signing policies.",
   "dnssec:manage":

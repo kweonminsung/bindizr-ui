@@ -83,9 +83,9 @@ test("record diffs preserve TXT boundaries, whitespace and escapes", () => {
   );
 });
 
-test("record diffs preserve opaque RDATA including empty values", () => {
-  for (const value of [String.raw`\# 0`, String.raw`\# 2 CAFE`]) {
-    assert.equal(formatRecordRdata({ value, ttl: 300 }, "TYPE65280"), value);
+test("record diffs preserve WKS values", () => {
+  for (const value of ["192.0.2.1 6", "192.0.2.1 6 0 15"]) {
+    assert.equal(formatRecordRdata({ value, ttl: 300 }, "WKS"), value);
   }
 });
 
