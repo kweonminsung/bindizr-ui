@@ -545,7 +545,7 @@ export async function getTokens(roleName?: string): Promise<ApiToken[]> {
   );
 }
 
-/** The calling token; 401 when Bindizr runs without auth. */
+/** The calling token; 404 when Bindizr runs without auth. */
 export async function getSelfToken(): Promise<ApiToken> {
   const response = await apiFetch(
     `/tokens/self`,
@@ -563,7 +563,7 @@ export async function getPermissions(): Promise<Permissions> {
   return (await response.json()) as Permissions;
 }
 
-/** The grants of the calling token's role; 401 without auth. */
+/** The grants of the calling token's role; 404 without auth. */
 export async function getSelfTokenGrants(): Promise<RoleGrant[]> {
   return getAllItems<RoleGrant>(
     `/tokens/self/grants`,

@@ -59,7 +59,7 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     try {
       setSelf(await getSelfToken());
     } catch {
-      // 401 is auth disabled; anything else fails open.
+      // 404 is auth disabled; anything else fails open.
       setSelf(null);
     }
 
