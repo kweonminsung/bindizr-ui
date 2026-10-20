@@ -298,7 +298,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
             </label>
             <input
               type="number"
-              min={1}
+              min={0}
               max={MAX_TTL}
               step={1}
               id="minimum_ttl"
