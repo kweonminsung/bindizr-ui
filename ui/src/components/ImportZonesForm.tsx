@@ -67,7 +67,6 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
   const [catalog, setCatalog] = useState("");
   const [mode, setMode] = useState<ImportMode>("append");
   const [dryRun, setDryRun] = useState(false);
-  const [skipUnsupported, setSkipUnsupported] = useState(false);
   const [create, setCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ImportZonesResult | null>(null);
@@ -85,7 +84,6 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
           : { from_catalog: catalog.trim() }),
         mode,
         dry_run: dryRun,
-        skip_unsupported: skipUnsupported,
         create,
       });
       setResult(response);
@@ -227,14 +225,6 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
             onChange={(e) => setDryRun(e.target.checked)}
           />
           <span>Dry run (validate without applying changes)</span>
-        </label>
-        <label className="flex items-center space-x-2 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={skipUnsupported}
-            onChange={(e) => setSkipUnsupported(e.target.checked)}
-          />
-          <span>Skip record types Bindizr does not store</span>
         </label>
         {allows("zone:create") && (
           <label className="flex items-center space-x-2 text-sm text-gray-600">

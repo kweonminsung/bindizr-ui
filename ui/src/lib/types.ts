@@ -1,3 +1,6 @@
+/** Largest DNS TTL in seconds (unsigned 32-bit wire value). */
+export const MAX_TTL = 2 ** 32 - 1;
+
 export interface Zone {
   id: number;
   name: string;
@@ -30,7 +33,7 @@ export interface ZonePayload {
   minimum_ttl?: number | null;
   /** At most 255 characters; empty clears it. */
   description?: string | null;
-  /** Create only: start with an apex NS record naming the MNAME (default true). */
+  /** Create only: add apex NS naming MNAME (default true); otherwise start disabled. */
   apex_ns?: boolean;
 }
 
@@ -59,9 +62,10 @@ export const RECORD_TYPES = [
   "PTR",
   "SSHFP",
   "TLSA",
+  "WKS",
 ] as const;
 
-export type RecordType = (typeof RECORD_TYPES)[number] | `TYPE${number}`;
+export type RecordType = (typeof RECORD_TYPES)[number];
 
 /** Only MX and SRV carry a priority. */
 export const PRIORITY_RECORD_TYPES: readonly RecordType[] = ["MX", "SRV"];
@@ -73,6 +77,7 @@ export interface Record {
   value: RecordValue;
   zone_id: number;
   zone_name: string;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
   /** The record actions this caller may take on it; empty on a derived row. */
@@ -84,6 +89,7 @@ export interface CreateRecordPayload {
   type: RecordType;
   value: RecordValue;
   zone_name: string;
+  /** Seconds, 0–4294967295; omitted values inherit the zone default. */
   ttl?: number | null;
   /** Only MX and SRV take one; omitted, it is served and compared as 10. */
   priority?: number | null;
@@ -94,6 +100,7 @@ export interface UpdateRecordPayload {
   name?: string;
   type?: RecordType;
   value?: RecordValue;
+  /** Seconds, 0–4294967295; omitted values inherit the zone default. */
   ttl?: number | null;
   priority?: number | null;
 }
@@ -119,6 +126,7 @@ export interface SignedRecord {
   value: RecordValue;
   zone_id: number;
   zone_name: string;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
   /** The record actions this caller may take on it; empty on a derived row. */
@@ -155,6 +163,7 @@ export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
 /** One record on one side of a diff; rendering the rdata is left to the client. */
 export interface RecordDiffValue {
   value: RecordValue;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
 }
@@ -232,9 +241,6 @@ export interface ImportZonePayload {
   dry_run?: boolean;
   /** Create the zone from the file's SOA; without it a miss is an error. */
   create?: boolean;
-  /** Pass over record types Bindizr does not store instead of failing the
-   * whole file; they are counted as skipped and listed in `skipped_records`. */
-  skip_unsupported?: boolean;
 }
 
 export interface ImportSummary {
@@ -252,8 +258,6 @@ export interface ImportZoneResult {
   summary: ImportSummary;
   diff: RecordDiff;
   errors: string[];
-  /** Records passed over under `skip_unsupported`. */
-  skipped_records?: string[];
 }
 
 /** Exactly one of `zone_names` and `from_catalog` (the server's catalog
@@ -264,7 +268,6 @@ export interface ImportZonesPayload {
   from_catalog?: string;
   mode?: ImportMode;
   dry_run?: boolean;
-  skip_unsupported?: boolean;
   /** Create each missing zone from its SOA; needs zone:create. */
   create?: boolean;
 }
@@ -303,6 +306,7 @@ export const TSIG_ALGORITHMS = [
   "hmac-sha256",
   "hmac-sha384",
   "hmac-sha512",
+  "hmac-sha1",
 ] as const;
 
 export type TsigAlgorithm = (typeof TSIG_ALGORITHMS)[number];
@@ -447,8 +451,9 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "record:create":
     "Add records, including by import, nsupdate and ExternalDNS.",
   "record:update":
-    "Change a record in place; without record:read on it, every field must be given.",
-  "record:delete": "Delete records, including by nsupdate and ExternalDNS.",
+    "Change a record in place; without record:read on it, every field must be given. Also required when nsupdate changes existing records’ TTL.",
+  "record:delete":
+    "Delete records, including by nsupdate and ExternalDNS; also required for nsupdate CNAME, DNAME, or matching WKS replacement.",
   "dnssec:read":
     "Read DNSSEC status and check the parent DS; in all zones, also read signing policies.",
   "dnssec:manage":
@@ -581,6 +586,7 @@ export interface VersionRecord {
   name: string;
   type: string;
   value: RecordValue;
+  /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
   priority?: number | null;
 }

@@ -4,6 +4,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
 import { inputToRecordValue, recordValueToInput } from "@/lib/recordValue";
 import {
+  MAX_TTL,
   PRIORITY_RECORD_TYPES,
   Record,
   RECORD_TYPES,
@@ -57,6 +58,7 @@ const VALUE_PLACEHOLDERS: { [type in RecordType]?: string } = {
   SRV: "0 5060 sip.example.com.",
   PTR: "host.example.com.",
   SSHFP: "4 2 AA50F8A4E37BCBC6A41031183D245CB6B28F701FBE007A08F225C98B2C3103D8",
+  WKS: "192.0.2.1 TCP 22 80 443",
   TLSA: "3 1 1 0C72AC70B745AC19998811B131D662C9AC69DBDBE7CB23E5B514B56664C5D3D6",
 };
 
@@ -187,23 +189,20 @@ export default function RecordForm({
           >
             Type
           </label>
-          <input
-            list="record-types"
+          <select
             required
             id="type"
             name="type"
             value={formData.type}
             onChange={handleChange}
             className="w-full"
-            placeholder="A or TYPE65280"
-          />
-          <datalist id="record-types">
+          >
             {RECORD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
             ))}
-          </datalist>
+          </select>
         </div>
         <div className="md:col-span-2">
           <label
@@ -237,7 +236,7 @@ export default function RecordForm({
             placeholder={
               formData.type === "TXT" && formData.presentation
                 ? '"\\000\\255"'
-                : (VALUE_PLACEHOLDERS[formData.type] ?? "\\# 2 CAFE")
+                : (VALUE_PLACEHOLDERS[formData.type] ?? "")
             }
             className="w-full"
           />
@@ -256,6 +255,9 @@ export default function RecordForm({
           </label>
           <input
             type="number"
+            min={0}
+            max={MAX_TTL}
+            step={1}
             id="ttl"
             name="ttl"
             value={formData.ttl}

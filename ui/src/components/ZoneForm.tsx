@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
-import { Zone, ZonePayload } from "@/lib/types";
+import { MAX_TTL, Zone, ZonePayload } from "@/lib/types";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -230,6 +230,9 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
             </label>
             <input
               type="number"
+              min={60}
+              max={604800}
+              step={1}
               id="default_ttl"
               name="default_ttl"
               value={formData.default_ttl}
@@ -295,6 +298,9 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
             </label>
             <input
               type="number"
+              min={0}
+              max={MAX_TTL}
+              step={1}
               id="minimum_ttl"
               name="minimum_ttl"
               value={formData.minimum_ttl}
@@ -385,7 +391,8 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
               </span>
               <span className="block text-sm text-gray-500">
                 Start the zone with an NS record naming the Primary NS. Clear it
-                to add every NS record yourself.
+                to create a disabled zone. Add apex NS records, then enable the
+                zone.
               </span>
             </span>
           </label>
