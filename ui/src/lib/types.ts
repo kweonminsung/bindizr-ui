@@ -383,12 +383,15 @@ export type TransferKind = "axfr" | "ixfr";
 /** Answered, refused, or allowed and then broken off by a failure. */
 export type TransferResult = "ok" | "refused" | "failed";
 
+export type TransferTransport = "udp" | "tcp" | "tls";
+
 /** One transfer Bindizr answered, or refused, for a secondary's address. */
 export interface Transfer {
   address: string;
   zone_name: string;
   kind: TransferKind;
   result: TransferResult;
+  transport: TransferTransport;
   /** Whether the answer was a delta rather than the whole zone. */
   incremental: boolean;
   /** The serial the answer reached; absent when nothing was transferred. */
@@ -750,7 +753,7 @@ export interface DnssecStatus {
   expired_signatures: number;
   /** When the re-signer next has work; absent for an unsigned zone. */
   next_resign_at?: string | null;
-  /** The parent nameservers configured on the zone; absent until DNSSEC is enabled. */
+  /** Configured parent nameservers; may also be set while unsigned. */
   parent_ns_addrs?: string[] | null;
   /** Present only when the status comes from a parent DS check. */
   delegation?: DnssecDelegationInfo | null;
@@ -766,7 +769,7 @@ export interface EnableDnssecPayload {
 
 /** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
 export interface UpdateDnssecSettingsPayload {
-  /** Must match the zone's denial mode and key layout; a new algorithm starts a rollover. */
+  /** Must match the key layout; denial may change, and a new algorithm starts a rollover. */
   policy_name?: string | null;
   parent_ns_addrs?: string[] | null;
 }
