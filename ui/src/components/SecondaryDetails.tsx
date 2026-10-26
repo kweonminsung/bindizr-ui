@@ -357,6 +357,12 @@ function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
                   scope="col"
                   className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  Transport
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Serial
                 </th>
                 <th
@@ -388,6 +394,9 @@ function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-gray-500">
                     {describeTransfer(transfer)}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    {transfer.transport.toUpperCase()}
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-gray-500">
                     {transfer.serial ?? "-"}

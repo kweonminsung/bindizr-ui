@@ -14,6 +14,7 @@ import {
   withdrawDnssec,
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
+import { policyMoveBlocked, policyMoveCandidates } from "@/lib/dnssecPolicy";
 import { getErrorCode, getErrorMessage } from "@/lib/errors";
 import {
   DEFAULT_DNSSEC_POLICY_NAME,
@@ -512,22 +513,11 @@ export default function ZoneDnssecTab({
   const currentPolicy = status.policy;
   const splitKeyZone =
     currentPolicy?.split_keys ?? status.keys.some((key) => key.role !== "csk");
-  // The server rejects a policy whose denial mode or key layout differs.
-  const compatiblePolicies = currentPolicy
-    ? policies.filter(
-        (policy) =>
-          policy.name !== currentPolicy.name &&
-          policy.denial === currentPolicy.denial &&
-          policy.split_keys === currentPolicy.split_keys,
-      )
-    : [];
+  const compatiblePolicies = policyMoveCandidates(currentPolicy, policies);
   const selectedPolicy = compatiblePolicies.find(
     (policy) => policy.name === targetPolicy,
   );
-  // A new algorithm starts a rollover.
-  const algorithmRollover =
-    !!selectedPolicy && selectedPolicy.algorithm !== currentPolicy?.algorithm;
-  const moveBlocked = rolloverInProgress || (retiringKeys && algorithmRollover);
+  const moveBlocked = policyMoveBlocked(selectedPolicy, status.keys);
 
   /** How the parent answered for one key: served, absent, or undecided.
    * ZSKs carry no DS, so only the rest are checked. */
@@ -770,13 +760,14 @@ export default function ZoneDnssecTab({
                   </div>
                 ) : compatiblePolicies.length === 0 ? (
                   <p className="text-sm text-gray-500">
-                    No other policy matches the zone&apos;s denial and key
-                    layout. See {policiesLink}.
+                    No other policy matches the zone&apos;s key layout. See{" "}
+                    {policiesLink}.
                   </p>
                 ) : (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p className="text-sm text-gray-500">
-                      A different algorithm starts an algorithm rollover.
+                      A different denial mode replaces the denial chain. A
+                      different algorithm starts an algorithm rollover.
                     </p>
                     <div className="flex items-center gap-2">
                       <select
@@ -788,7 +779,8 @@ export default function ZoneDnssecTab({
                         <option value="">Select a policy</option>
                         {compatiblePolicies.map((policy) => (
                           <option key={policy.id} value={policy.name}>
-                            {policy.name} ({policy.algorithm})
+                            {policy.name} ({policy.algorithm},{" "}
+                            {policy.denial.toUpperCase()})
                           </option>
                         ))}
                       </select>

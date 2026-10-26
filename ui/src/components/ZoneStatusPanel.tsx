@@ -139,5 +139,5 @@ function describeTransfer(transfer: Transfer): string {
           ? "IXFR delta"
           : "IXFR full"
         : "AXFR";
-  return `${kind} ${transfer.serial ?? "-"} at ${formatDateTime(transfer.at)}`;
+  return `${kind} over ${transfer.transport.toUpperCase()} ${transfer.serial ?? "-"} at ${formatDateTime(transfer.at)}`;
 }
