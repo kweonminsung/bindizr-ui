@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0-rc.2">
-        <img src="https://img.shields.io/badge/Compatible-0.1.0--rc.2-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0">
+        <img src="https://img.shields.io/badge/Compatible-0.1.0-success" />
     </a>
 </p>
 
@@ -75,7 +75,7 @@ See who created, changed or deleted a token, role, grant, TSIG key, secondary or
 ## Run with Docker
 
 ```bash
-$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0-rc.2
+$ docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0
 ```
 
 Or with Docker Compose:
