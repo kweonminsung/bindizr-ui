@@ -1,6 +1,6 @@
 # Multi-stage build for Bindizr UI
 # Stage 1: Build frontend
-FROM node:24.22.2-alpine AS frontend-builder
+FROM node:26.13.0-alpine AS frontend-builder
 
 WORKDIR /app/ui
 
