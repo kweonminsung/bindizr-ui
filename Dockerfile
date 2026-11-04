@@ -14,6 +14,7 @@ RUN npm ci
 COPY ui/ ./
 
 # Build frontend
+ARG APP_VERSION
 RUN npm run build
 
 # Stage 2: Build Go application
