@@ -66,6 +66,7 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
+          build-args: APP_VERSION=${{ needs.version.outputs.version }}
           outputs: type=image,name=docker.io/kweonminsung/bindizr-ui,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest

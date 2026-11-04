@@ -11,6 +11,7 @@ IMAGE="${IMAGE:-kweonminsung/bindizr-ui}"
 # The non-native half builds under emulation: slow, but no cross toolchain.
 docker buildx build \
     --platform linux/amd64,linux/arm64 \
+    --build-arg APP_VERSION="$TAG" \
     -t "$IMAGE:$TAG" -t "$IMAGE:latest" \
     --push .
 

@@ -118,6 +118,9 @@ push it from your own machine instead (the tag defaults to the version in
 ./scripts/build_image.sh
 ```
 
+These builds pass the selected image tag as `APP_VERSION` for the UI footer.
+Local frontend builds use `ui/package.json` unless `APP_VERSION` is set.
+
 ## Getting Started
 
 Run these commands from the repository root.
