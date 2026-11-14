@@ -386,9 +386,10 @@ function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {transfers.transfers.map((transfer) => (
-                // Unique: Bindizr keeps one transfer per address and zone.
-                <tr key={`${transfer.address}-${transfer.zone_name}`}>
+              {transfers.transfers.map((transfer, index) => (
+                // A log row has no id and one address and zone repeat; the
+                // list is replaced whole on every fetch, so its position is stable.
+                <tr key={index}>
                   <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
                     {transfer.zone_name}
                   </td>
