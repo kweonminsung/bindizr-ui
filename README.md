@@ -87,9 +87,9 @@ Generate or import TSIG keys for dynamic updates and zone transfers. Existing ke
 
 </details>
 
-## Audit log
+## Logs
 
-Review role, grant and credential changes alongside secondary and DNSSEC policy administration, filtered by entity, name or date. Reading the log requires `audit:read`; zone and record edits remain in the zone's version history.
+Three logs, one tab each. The audit log shows role, grant and credential changes alongside secondary and DNSSEC policy administration, filtered by entity, name or date; zone and record edits remain in the zone's version history. The access log shows every API request and nsupdate Bindizr answered, denied or failed, by caller, address and result. The transfer log shows the zone transfers each client was answered, by secondary, address, zone and result. Reading them requires `log:read`.
 
 <img src="public/screenshots/audit-log.png" alt="Audit log showing role grants, API token and TSIG key creation, with the acting token and source of each change" width="1000" />
 

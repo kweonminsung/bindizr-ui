@@ -381,12 +381,15 @@ export interface SecondaryCheck {
 export type TransferKind = "axfr" | "ixfr";
 
 /** Answered, refused, or allowed and then broken off by a failure. */
-export type TransferResult = "ok" | "refused" | "failed";
+export const TRANSFER_RESULTS = ["ok", "refused", "failed"] as const;
+
+export type TransferResult = (typeof TRANSFER_RESULTS)[number];
 
 export type TransferTransport = "udp" | "tcp" | "tls";
 
-/** One transfer Bindizr answered, or refused, for a secondary's address. */
-export interface Transfer {
+/** One row of the transfer log: a transfer Bindizr answered, refused, or
+ * failed for a client address. */
+export interface TransferLog {
   address: string;
   zone_name: string;
   kind: TransferKind;
@@ -412,14 +415,6 @@ export interface TransferSummary {
   failed: number;
 }
 
-/** The transfers Bindizr served one secondary. */
-export interface SecondaryTransfers {
-  secondary_name: string;
-  address: string;
-  summary: TransferSummary;
-  transfers: Transfer[];
-}
-
 /** One operation a role grant permits, spelled `<resource>:<action>`. */
 export const ACTIONS = [
   "zone:read",
@@ -436,7 +431,7 @@ export const ACTIONS = [
   "secondary:read",
   "secondary:manage",
   "access:manage",
-  "audit:read",
+  "log:read",
 ] as const;
 
 export type Action = (typeof ACTIONS)[number];
@@ -461,12 +456,12 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
     "Read DNSSEC status and check the parent DS; in all zones, also read signing policies.",
   "dnssec:manage":
     "Enable, disable and re-sign, manage keys and rollovers; in all zones, also change signing policies.",
-  "secondary:read": "List secondaries and the transfers served them.",
+  "secondary:read": "List and read secondaries.",
   "secondary:manage": "Register, change, check and remove secondaries.",
   "access:manage":
     "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
-  "audit:read":
-    "Read the audit log: who created, changed or deleted a token, role, grant, TSIG key, secondary or DNSSEC policy, or deleted a zone, and when.",
+  "log:read":
+    "Read the audit, access and transfer logs: who changed a token, role, grant, TSIG key, secondary or DNSSEC policy or deleted a zone, which API requests and nsupdates were answered or denied, and what each client transferred.",
 };
 
 /** Actions on something no zone owns, so only an all-zones grant carries them. */
@@ -475,7 +470,7 @@ export const ALL_ZONES_ACTIONS: readonly Action[] = [
   "secondary:read",
   "secondary:manage",
   "access:manage",
-  "audit:read",
+  "log:read",
 ];
 
 /** A named set of grants that API tokens and TSIG keys authenticate into. */
@@ -566,6 +561,37 @@ export interface AuditLog {
    * unauthenticated requests. */
   changed_by?: ChangeActor | null;
   created_at: string;
+}
+
+/** The front end a logged request arrived at. */
+export const ACCESS_SOURCES = ["api", "nsupdate"] as const;
+
+export type AccessSource = (typeof ACCESS_SOURCES)[number];
+
+/** How a request ended: `denied` is HTTP 401 or 403, a rejected TSIG or
+ * REFUSED; a zone the caller may not see answers 404 and is `failed`. */
+export const ACCESS_RESULTS = ["ok", "denied", "failed"] as const;
+
+export type AccessResult = (typeof ACCESS_RESULTS)[number];
+
+/** One row of the access log: a management API request or nsupdate Bindizr
+ * answered, who made it, and how it ended. */
+export interface AccessLog {
+  source: AccessSource;
+  /** The connection's peer address; a proxy in front shows as itself. */
+  address: string;
+  /** The HTTP method, or `UPDATE` for an nsupdate. */
+  method: string;
+  /** The request path without its query, or the zone an nsupdate named. */
+  target: string;
+  /** The HTTP status code, or the DNS RCODE. */
+  status: string;
+  result: AccessResult;
+  /** The token or TSIG key that verified; null when none did, or with API
+   * authentication off. */
+  caller?: ChangeActor | null;
+  error?: string | null;
+  requested_at: string;
 }
 
 export interface ZoneVersion {
@@ -821,7 +847,7 @@ export interface SecondaryStatusItem {
   visible_serial?: number | null;
   error?: string | null;
   /** The latest transfer of this zone Bindizr served the address. */
-  last_transfer?: Transfer | null;
+  last_transfer?: TransferLog | null;
 }
 
 export interface ZoneStatus {
@@ -871,6 +897,29 @@ export interface AuditLogListQuery extends PageQuery {
   sort?: AuditLogSortField;
   /** Newest first by default. */
   order?: SortOrder;
+}
+
+export interface AccessLogListQuery extends PageQuery {
+  source?: AccessSource;
+  result?: AccessResult;
+  caller_name?: string;
+  address?: string;
+  /** RFC 3339; requests made at or after it. */
+  since?: string;
+  /** RFC 3339; requests made before it. */
+  until?: string;
+}
+
+export interface TransferLogListQuery extends PageQuery {
+  /** The addresses this secondary resolves to now. */
+  secondary_name?: string;
+  address?: string;
+  zone_name?: string;
+  result?: TransferResult;
+  /** RFC 3339; transfers answered at or after it. */
+  since?: string;
+  /** RFC 3339; transfers answered before it. */
+  until?: string;
 }
 
 export interface ZoneListQuery extends PageQuery {

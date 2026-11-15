@@ -17,7 +17,7 @@ import TokensPage from "@/pages/TokensPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SecondariesPage from "@/pages/SecondariesPage";
 import DnssecPage from "@/pages/DnssecPage";
-import AuditLogPage from "@/pages/AuditLogPage";
+import LogsPage from "@/pages/LogsPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Action } from "@/lib/types";
@@ -43,7 +43,7 @@ function App() {
     "/dnssec",
     "/secondaries",
     "/access",
-    "/audit",
+    "/logs",
     "/settings",
   ].some((path) => location.pathname.startsWith(path));
 
@@ -96,10 +96,10 @@ function App() {
                     }
                   />
                   <Route
-                    path="/audit"
+                    path="/logs"
                     element={
-                      <RequireAction action="audit:read">
-                        <AuditLogPage />
+                      <RequireAction action="log:read">
+                        <LogsPage />
                       </RequireAction>
                     }
                   />

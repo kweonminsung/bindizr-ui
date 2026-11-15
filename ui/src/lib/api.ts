@@ -1,4 +1,6 @@
 import {
+  AccessLog,
+  AccessLogListQuery,
   ApiToken,
   AuditLog,
   AuditLogListQuery,
@@ -33,8 +35,9 @@ import {
   RollbackZoneResult,
   Secondary,
   SecondaryCheck,
-  SecondaryTransfers,
   SignedRecord,
+  TransferLog,
+  TransferLogListQuery,
   TsigKey,
   UpdateDnssecPolicyPayload,
   UpdateDnssecSettingsPayload,
@@ -396,7 +399,7 @@ export async function getZoneVersionsPage(
   return toListResult((await response.json()) as ListResponse<ZoneVersion>);
 }
 
-/** The audit log, newest first; needs `audit:read` in all zones. */
+/** The audit log, newest first; needs `log:read` in all zones. */
 export async function getAuditLogPage(
   queryParams: AuditLogListQuery = {},
 ): Promise<ListResult<AuditLog>> {
@@ -409,10 +412,48 @@ export async function getAuditLogPage(
   appendQueryParam(params, "order", queryParams.order);
 
   const response = await apiFetch(
-    withQuery("/audit", params),
+    withQuery("/logs/audit", params),
     "Failed to fetch the audit log",
   );
   return toListResult((await response.json()) as ListResponse<AuditLog>);
+}
+
+/** The access log, newest first; needs `log:read` in all zones. */
+export async function getAccessLogPage(
+  queryParams: AccessLogListQuery = {},
+): Promise<ListResult<AccessLog>> {
+  const params = pageParams({ ...queryParams, limit: queryParams.limit ?? 10 });
+  appendQueryParam(params, "source", queryParams.source);
+  appendQueryParam(params, "result", queryParams.result);
+  appendQueryParam(params, "caller_name", queryParams.caller_name?.trim());
+  appendQueryParam(params, "address", queryParams.address?.trim());
+  appendQueryParam(params, "since", queryParams.since);
+  appendQueryParam(params, "until", queryParams.until);
+
+  const response = await apiFetch(
+    withQuery("/logs/access", params),
+    "Failed to fetch the access log",
+  );
+  return toListResult((await response.json()) as ListResponse<AccessLog>);
+}
+
+/** The transfer log, newest first; needs `log:read` in all zones. */
+export async function getTransferLogPage(
+  queryParams: TransferLogListQuery = {},
+): Promise<ListResult<TransferLog>> {
+  const params = pageParams({ ...queryParams, limit: queryParams.limit ?? 10 });
+  appendQueryParam(params, "secondary_name", queryParams.secondary_name);
+  appendQueryParam(params, "address", queryParams.address?.trim());
+  appendQueryParam(params, "zone_name", queryParams.zone_name?.trim());
+  appendQueryParam(params, "result", queryParams.result);
+  appendQueryParam(params, "since", queryParams.since);
+  appendQueryParam(params, "until", queryParams.until);
+
+  const response = await apiFetch(
+    withQuery("/logs/transfer", params),
+    "Failed to fetch the transfer log",
+  );
+  return toListResult((await response.json()) as ListResponse<TransferLog>);
 }
 
 export async function getZoneVersion(
@@ -503,16 +544,6 @@ export async function checkSecondary(name: string): Promise<SecondaryCheck> {
     { method: "POST" },
   );
   return (await response.json()) as SecondaryCheck;
-}
-
-export async function getSecondaryTransfers(
-  name: string,
-): Promise<SecondaryTransfers> {
-  const response = await apiFetch(
-    `/secondaries/${encodeURIComponent(name)}/transfers?limit=100`,
-    "Failed to fetch the secondary's transfers",
-  );
-  return (await response.json()) as SecondaryTransfers;
 }
 
 export async function deleteSecondary(name: string): Promise<string> {
