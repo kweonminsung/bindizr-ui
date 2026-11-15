@@ -5,10 +5,13 @@ import { formatDateTime, toDayEnd, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { countActiveFilters } from "@/lib/form";
 import {
+  getOrderFromSearchParams,
   getPageFromSearchParams,
   getPageSizeFromSearchParams,
+  getSortFromSearchParams,
   updatePageSearchParam,
   updatePageSizeSearchParam,
+  updateSortSearchParams,
 } from "@/lib/pageQuery";
 import {
   ACCESS_RESULTS,
@@ -17,11 +20,21 @@ import {
   AccessLogListQuery,
   AccessResult,
   AccessSource,
+  ACCESS_LOG_SORT_FIELDS,
+  AccessLogSortField,
+  SortOrder,
 } from "@/lib/types";
 import { describeActor } from "./ChangeSourceBadge";
-import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
+import { FilterField, FilterSelect } from "./FilterFields";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
+import SortControl from "./SortControl";
+import {
+  ListFooter,
+  ListToolbar,
+  PageSummary,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
 
 interface AccessLogFilters {
   source: string;
@@ -65,6 +78,20 @@ const RESULT_STYLES: Record<AccessResult, string> = {
   failed: "bg-amber-100 text-amber-700",
 };
 
+const SORT_OPTIONS = [
+  { value: "requested_at", label: "Time" },
+  { value: "source", label: "Source" },
+  { value: "target", label: "Request" },
+  { value: "status", label: "Status" },
+  { value: "result", label: "Result" },
+  { value: "address", label: "Address" },
+] as const;
+
+const DEFAULT_SORT: AccessLogSortField = "requested_at";
+
+/** Newest first is the log's natural order, whatever the field. */
+const DEFAULT_ORDER: SortOrder = "desc";
+
 /** A select's value as the query takes it: one of `values`, or none. */
 const toChoice = <T extends string>(
   values: readonly T[],
@@ -82,6 +109,12 @@ export default function AccessLogList() {
   const [filters, setFilters] = useState<AccessLogFilters>(defaultFilters);
   const currentPage = getPageFromSearchParams(searchParams);
   const rowsPerPage = getPageSizeFromSearchParams(searchParams);
+  const sort = getSortFromSearchParams(
+    searchParams,
+    ACCESS_LOG_SORT_FIELDS,
+    DEFAULT_SORT,
+  );
+  const order = getOrderFromSearchParams(searchParams, DEFAULT_ORDER);
   const activeFilterCount = countActiveFilters(filters);
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify({
@@ -91,6 +124,8 @@ export default function AccessLogList() {
     address: filters.address,
     since: toDayStart(filters.since),
     until: toDayEnd(filters.until),
+    sort,
+    order,
     limit: rowsPerPage,
     offset: (currentPage - 1) * rowsPerPage,
   } satisfies AccessLogListQuery);
@@ -108,6 +143,19 @@ export default function AccessLogList() {
   const handleFilterChange = (key: keyof AccessLogFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     handlePageChange(1);
+  };
+
+  // URL-backed like the page: a sorted listing stays shareable.
+  const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
+    setSearchParams(
+      updateSortSearchParams(
+        searchParams,
+        nextSort,
+        nextOrder,
+        DEFAULT_SORT,
+        DEFAULT_ORDER,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -153,62 +201,70 @@ export default function AccessLogList() {
   }
 
   const indexOfFirstRow = (currentPage - 1) * rowsPerPage;
-  const indexOfLastRow = indexOfFirstRow + (rows?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="pt-4">
-        <FilterPanel
-          activeCount={activeFilterCount}
-          onReset={() => {
-            setFilters(defaultFilters);
-            handlePageChange(1);
-          }}
-        >
-          <FilterSelect
-            id="filter_access_source"
-            label="Source"
-            value={filters.source}
-            onChange={(value) => handleFilterChange("source", value)}
-            options={SOURCE_OPTIONS}
+      <ListToolbar
+        filters={
+          <>
+            <FilterSelect
+              id="filter_access_source"
+              label="Source"
+              value={filters.source}
+              onChange={(value) => handleFilterChange("source", value)}
+              options={SOURCE_OPTIONS}
+            />
+            <FilterSelect
+              id="filter_access_result"
+              label="Result"
+              value={filters.result}
+              onChange={(value) => handleFilterChange("result", value)}
+              options={RESULT_OPTIONS}
+            />
+            <FilterField
+              id="filter_access_caller_name"
+              label="Caller"
+              value={filters.caller_name}
+              onChange={(value) => handleFilterChange("caller_name", value)}
+              placeholder="A token or TSIG key name"
+            />
+            <FilterField
+              id="filter_access_address"
+              label="Address"
+              value={filters.address}
+              onChange={(value) => handleFilterChange("address", value)}
+              placeholder="192.0.2.10"
+            />
+            <FilterField
+              id="filter_access_since"
+              label="From"
+              type="date"
+              value={filters.since}
+              onChange={(value) => handleFilterChange("since", value)}
+            />
+            <FilterField
+              id="filter_access_until"
+              label="To"
+              type="date"
+              value={filters.until}
+              onChange={(value) => handleFilterChange("until", value)}
+            />
+          </>
+        }
+        activeFilterCount={activeFilterCount}
+        onResetFilters={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+        actions={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
           />
-          <FilterSelect
-            id="filter_access_result"
-            label="Result"
-            value={filters.result}
-            onChange={(value) => handleFilterChange("result", value)}
-            options={RESULT_OPTIONS}
-          />
-          <FilterField
-            id="filter_access_caller_name"
-            label="Caller"
-            value={filters.caller_name}
-            onChange={(value) => handleFilterChange("caller_name", value)}
-            placeholder="A token or TSIG key name"
-          />
-          <FilterField
-            id="filter_access_address"
-            label="Address"
-            value={filters.address}
-            onChange={(value) => handleFilterChange("address", value)}
-            placeholder="192.0.2.10"
-          />
-          <FilterField
-            id="filter_access_since"
-            label="From"
-            type="date"
-            value={filters.since}
-            onChange={(value) => handleFilterChange("since", value)}
-          />
-          <FilterField
-            id="filter_access_until"
-            label="To"
-            type="date"
-            value={filters.until}
-            onChange={(value) => handleFilterChange("until", value)}
-          />
-        </FilterPanel>
-      </div>
+        }
+      />
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
@@ -223,39 +279,30 @@ export default function AccessLogList() {
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="w-44 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
                 When
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Request
               </th>
-              <th
-                scope="col"
-                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-36 ${TABLE_HEADER_CLASS}`}>
                 Result
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Caller
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell w-40 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell w-40 ${TABLE_HEADER_CLASS}`}
               >
                 Address
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Error
               </th>
@@ -307,23 +354,21 @@ export default function AccessLogList() {
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
-        <div className="mb-4 sm:mb-0">
-          <p className="text-sm text-gray-700">
-            {rows === null ? (
-              !error && "Loading the access log..."
-            ) : rows.length > 0 ? (
-              <>
-                Showing{" "}
-                <span className="font-medium">{indexOfFirstRow + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastRow}</span> of{" "}
-                <span className="font-medium">{total}</span>
-              </>
-            ) : (
-              "No requests found"
-            )}
-          </p>
-        </div>
+      <ListFooter
+        summary={
+          rows === null ? (
+            !error && "Loading the access log..."
+          ) : rows.length > 0 ? (
+            <PageSummary
+              offset={indexOfFirstRow}
+              count={rows.length}
+              total={total}
+            />
+          ) : (
+            "No requests found"
+          )
+        }
+      >
         <PaginationControls
           currentPage={currentPage}
           pageSize={rowsPerPage}
@@ -331,7 +376,7 @@ export default function AccessLogList() {
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
-      </div>
+      </ListFooter>
     </div>
   );
 }

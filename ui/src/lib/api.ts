@@ -429,6 +429,8 @@ export async function getAccessLogPage(
   appendQueryParam(params, "address", queryParams.address?.trim());
   appendQueryParam(params, "since", queryParams.since);
   appendQueryParam(params, "until", queryParams.until);
+  appendQueryParam(params, "sort", queryParams.sort);
+  appendQueryParam(params, "order", queryParams.order);
 
   const response = await apiFetch(
     withQuery("/logs/access", params),
@@ -448,6 +450,8 @@ export async function getTransferLogPage(
   appendQueryParam(params, "result", queryParams.result);
   appendQueryParam(params, "since", queryParams.since);
   appendQueryParam(params, "until", queryParams.until);
+  appendQueryParam(params, "sort", queryParams.sort);
+  appendQueryParam(params, "order", queryParams.order);
 
   const response = await apiFetch(
     withQuery("/logs/transfer", params),

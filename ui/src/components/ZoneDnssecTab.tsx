@@ -28,6 +28,7 @@ import {
 } from "@/lib/types";
 import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
+import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 /** The comma-separated text of a parent nameserver list, as the field shows it. */
 function joinParentNsAddrs(addrs: string[] | null | undefined): string {
@@ -821,46 +822,25 @@ export default function ZoneDnssecTab({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Role
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   State
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Key Tag
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Algorithm
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Since
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Next Step
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   At Parent
                 </th>
               </tr>

@@ -899,6 +899,17 @@ export interface AuditLogListQuery extends PageQuery {
   order?: SortOrder;
 }
 
+export const ACCESS_LOG_SORT_FIELDS = [
+  "requested_at",
+  "source",
+  "target",
+  "status",
+  "result",
+  "address",
+] as const;
+
+export type AccessLogSortField = (typeof ACCESS_LOG_SORT_FIELDS)[number];
+
 export interface AccessLogListQuery extends PageQuery {
   source?: AccessSource;
   result?: AccessResult;
@@ -908,7 +919,20 @@ export interface AccessLogListQuery extends PageQuery {
   since?: string;
   /** RFC 3339; requests made before it. */
   until?: string;
+  sort?: AccessLogSortField;
+  /** Newest first by default. */
+  order?: SortOrder;
 }
+
+export const TRANSFER_LOG_SORT_FIELDS = [
+  "at",
+  "address",
+  "zone_name",
+  "kind",
+  "result",
+] as const;
+
+export type TransferLogSortField = (typeof TRANSFER_LOG_SORT_FIELDS)[number];
 
 export interface TransferLogListQuery extends PageQuery {
   /** The addresses this secondary resolves to now. */
@@ -920,6 +944,9 @@ export interface TransferLogListQuery extends PageQuery {
   since?: string;
   /** RFC 3339; transfers answered before it. */
   until?: string;
+  sort?: TransferLogSortField;
+  /** Newest first by default. */
+  order?: SortOrder;
 }
 
 export interface ZoneListQuery extends PageQuery {

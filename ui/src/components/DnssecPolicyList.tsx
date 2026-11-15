@@ -9,10 +9,38 @@ import Modal from "./Modal";
 import Notice from "./Notice";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
+import { SortValue } from "@/lib/sort";
+import { useRowSort } from "@/lib/useRowSort";
+import {
+  describeCount,
+  ListFooter,
+  ListToolbar,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import SortControl from "./SortControl";
 
 interface DnssecPolicyListProps {
   onCreatePolicy: () => void;
 }
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "algorithm", label: "Algorithm" },
+  { value: "denial", label: "Denial" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+type DnssecPolicySortField = (typeof SORT_OPTIONS)[number]["value"];
+
+const SORT_VALUES: Record<
+  DnssecPolicySortField,
+  (policy: DnssecPolicy) => SortValue
+> = {
+  name: (policy) => policy.name,
+  algorithm: (policy) => policy.algorithm,
+  denial: (policy) => policy.denial,
+  created_at: (policy) => policy.created_at,
+};
 
 export default function DnssecPolicyList({
   onCreatePolicy,
@@ -29,6 +57,7 @@ export default function DnssecPolicyList({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const rowSort = useRowSort(SORT_VALUES, "name");
 
   useEffect(() => {
     let active = true;
@@ -89,77 +118,84 @@ export default function DnssecPolicyList({
     );
   };
 
-  if (loading && policies.length === 0) {
+  if (loading && policies.length === 0 && !error) {
     return (
       <p className="text-center text-gray-500">Loading DNSSEC policies...</p>
     );
   }
-  if (error) {
-    return <Notice tone="error">{error}</Notice>;
-  }
 
   const query = searchQuery.trim().toLowerCase();
-  const visiblePolicies = query
-    ? policies.filter((policy) => policy.name.toLowerCase().includes(query))
-    : policies;
+  const visiblePolicies = rowSort.sorted(
+    policies.filter((policy) => policy.name.toLowerCase().includes(query)),
+  );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <ListToolbar
+        actions={
+          <>
+            <SortControl
+              options={SORT_OPTIONS}
+              sort={rowSort.sort}
+              order={rowSort.order}
+              onChange={rowSort.onChange}
+            />
+            {canManage && (
+              <button
+                onClick={onCreatePolicy}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Create Policy
+              </button>
+            )}
+          </>
+        }
+      >
         <input
           type="text"
           placeholder="Search DNSSEC policies..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
+          className="w-full sm:w-auto"
         />
-        {canManage && (
-          <button
-            onClick={onCreatePolicy}
-            className="btn-primary w-full sm:w-auto"
-          >
-            Create Policy
-          </button>
-        )}
-      </div>
-      <div className="overflow-x-auto">
+      </ListToolbar>
+      {error && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {error}
+        </Notice>
+      )}
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Algorithm
               </th>
-              <th
-                scope="col"
-                className="w-24 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-24 ${TABLE_HEADER_CLASS}`}>
                 Denial
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell w-32 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell w-32 ${TABLE_HEADER_CLASS}`}
               >
                 Keys
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Signatures
               </th>
               <th
                 scope="col"
-                className="w-24 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -218,13 +254,13 @@ export default function DnssecPolicyList({
           />
         </Modal>
       )}
-      <div className="p-4">
-        <p className="text-sm text-gray-700">
-          {visiblePolicies.length > 0
-            ? `${visiblePolicies.length} DNSSEC polic${visiblePolicies.length > 1 ? "ies" : "y"}`
-            : "No DNSSEC policies found"}
-        </p>
-      </div>
+      <ListFooter
+        summary={describeCount(
+          visiblePolicies.length,
+          "DNSSEC policy",
+          "DNSSEC policies",
+        )}
+      />
     </div>
   );
 }

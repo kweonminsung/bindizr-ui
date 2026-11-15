@@ -4,9 +4,18 @@ import { getDnssecStatus, getZones } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { focusLink } from "@/lib/focusName";
+import { SortValue } from "@/lib/sort";
 import { DnssecStatus, Zone } from "@/lib/types";
+import { useRowSort } from "@/lib/useRowSort";
 import Notice from "./Notice";
 import { KEY_STATE_STYLES } from "./ZoneDnssecTab";
+import {
+  describeCount,
+  ListFooter,
+  ListToolbar,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import SortControl from "./SortControl";
 
 /** Status probes per batch, so a large listing is not one burst. */
 const PROBE_BATCH = 6;
@@ -14,12 +23,32 @@ const PROBE_BATCH = 6;
 /** A probe's outcome: the status, or why it could not be read. */
 type Probe = { status: DnssecStatus } | { error: string };
 
+const SORT_OPTIONS = [
+  { value: "name", label: "Zone" },
+  { value: "policy", label: "Policy" },
+  { value: "next_resign_at", label: "Next re-sign" },
+] as const;
+
+type SignedZoneSortField = (typeof SORT_OPTIONS)[number]["value"];
+
 /** Every signed zone with its signing state, read zone by zone. */
 export default function DnssecOverview() {
   const [zones, setZones] = useState<Zone[] | null>(null);
   const [probes, setProbes] = useState<Map<string, Probe>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // The policy and re-sign time arrive with each zone's probe; until then the
+  // zone sorts last, as any absent value does.
+  const statusOf = (zone: Zone) => {
+    const probe = probes.get(zone.name);
+    return probe && "status" in probe ? probe.status : null;
+  };
+  const sortValues: Record<SignedZoneSortField, (zone: Zone) => SortValue> = {
+    name: (zone) => zone.name,
+    policy: (zone) => statusOf(zone)?.policy?.name,
+    next_resign_at: (zone) => statusOf(zone)?.next_resign_at,
+  };
+  const rowSort = useRowSort(sortValues, "name");
 
   useEffect(() => {
     let active = true;
@@ -81,13 +110,22 @@ export default function DnssecOverview() {
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleZones = (zones ?? []).filter((zone) =>
-    zone.name.toLowerCase().includes(query),
+  const visibleZones = rowSort.sorted(
+    (zones ?? []).filter((zone) => zone.name.toLowerCase().includes(query)),
   );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4">
+      <ListToolbar
+        actions={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={rowSort.sort}
+            order={rowSort.order}
+            onChange={rowSort.onChange}
+          />
+        }
+      >
         <input
           type="text"
           placeholder="Search signed zones..."
@@ -95,49 +133,41 @@ export default function DnssecOverview() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-auto"
         />
-      </div>
+      </ListToolbar>
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
           {error}
         </Notice>
       )}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
+        {/* Fixed layout: column widths must not follow the page content. */}
+        <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Zone
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-40 ${TABLE_HEADER_CLASS}`}>
                 Policy
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
                 Keys
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell w-40 ${TABLE_HEADER_CLASS}`}
               >
                 Signatures
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell w-48 ${TABLE_HEADER_CLASS}`}
               >
                 Next Re-sign
               </th>
               <th
                 scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -146,10 +176,13 @@ export default function DnssecOverview() {
           <tbody className="divide-y divide-gray-200">
             {visibleZones.map((zone) => {
               const probe = probes.get(zone.name);
-              const status = probe && "status" in probe ? probe.status : null;
+              const status = statusOf(zone);
               return (
                 <tr key={zone.id}>
-                  <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
+                  <td
+                    className="truncate px-6 py-4 font-medium text-gray-900"
+                    title={zone.name}
+                  >
                     {zone.name}
                     {status?.withdrawing && (
                       <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
@@ -162,10 +195,10 @@ export default function DnssecOverview() {
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                  <td className="truncate px-6 py-4 text-gray-500">
                     {status?.policy?.name ?? (probe ? "-" : "…")}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="truncate px-6 py-4">
                     {probe && "error" in probe ? (
                       <span className="text-red-600" title={probe.error}>
                         unavailable
@@ -218,15 +251,13 @@ export default function DnssecOverview() {
           </tbody>
         </table>
       </div>
-      <div className="p-4">
-        <p className="text-sm text-gray-700">
-          {zones === null
+      <ListFooter
+        summary={
+          zones === null
             ? !error && "Loading signed zones..."
-            : visibleZones.length > 0
-              ? `${visibleZones.length} signed zone${visibleZones.length > 1 ? "s" : ""}`
-              : "No signed zones found"}
-        </p>
-      </div>
+            : describeCount(visibleZones.length, "signed zone", "signed zones")
+        }
+      />
     </div>
   );
 }

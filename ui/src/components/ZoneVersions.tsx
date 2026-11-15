@@ -16,6 +16,7 @@ import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneVersionDiff from "./ZoneVersionDiff";
 import { useToast } from "@/contexts/ToastContext";
+import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 interface ZoneVersionsProps {
   zone: Zone;
@@ -221,34 +222,19 @@ export default function ZoneVersions({
             <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Name
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Type
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Value
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     TTL
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Priority
                   </th>
                 </tr>
@@ -372,34 +358,22 @@ export default function ZoneVersions({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Serial
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Created
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={TABLE_HEADER_CLASS}>
                   Changed By
                 </th>
                 <th
                   scope="col"
-                  className="hidden sm:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className={`hidden sm:table-cell ${TABLE_HEADER_CLASS}`}
                 >
                   Primary NS
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={`text-right ${TABLE_HEADER_CLASS}`}>
                   Actions
                 </th>
               </tr>

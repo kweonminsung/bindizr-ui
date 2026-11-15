@@ -5,20 +5,33 @@ import { formatDateTime, toDayEnd, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { countActiveFilters } from "@/lib/form";
 import {
+  getOrderFromSearchParams,
   getPageFromSearchParams,
   getPageSizeFromSearchParams,
+  getSortFromSearchParams,
   updatePageSearchParam,
   updatePageSizeSearchParam,
+  updateSortSearchParams,
 } from "@/lib/pageQuery";
 import {
   TRANSFER_RESULTS,
   TransferLog,
   TransferLogListQuery,
   TransferResult,
+  TRANSFER_LOG_SORT_FIELDS,
+  TransferLogSortField,
+  SortOrder,
 } from "@/lib/types";
-import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
+import { FilterField, FilterSelect } from "./FilterFields";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
+import SortControl from "./SortControl";
+import {
+  ListFooter,
+  ListToolbar,
+  PageSummary,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
 
 interface TransferLogFilters {
   secondary_name: string;
@@ -57,6 +70,19 @@ function describeTransfer(transfer: TransferLog): string {
   return "AXFR";
 }
 
+const SORT_OPTIONS = [
+  { value: "at", label: "Time" },
+  { value: "zone_name", label: "Zone" },
+  { value: "kind", label: "Kind" },
+  { value: "result", label: "Result" },
+  { value: "address", label: "Address" },
+] as const;
+
+const DEFAULT_SORT: TransferLogSortField = "at";
+
+/** Newest first is the log's natural order, whatever the field. */
+const DEFAULT_ORDER: SortOrder = "desc";
+
 /** A select's value as the query takes it: one of `values`, or none. */
 const toChoice = <T extends string>(
   values: readonly T[],
@@ -78,6 +104,12 @@ export default function TransferLogList() {
   }));
   const currentPage = getPageFromSearchParams(searchParams);
   const rowsPerPage = getPageSizeFromSearchParams(searchParams);
+  const sort = getSortFromSearchParams(
+    searchParams,
+    TRANSFER_LOG_SORT_FIELDS,
+    DEFAULT_SORT,
+  );
+  const order = getOrderFromSearchParams(searchParams, DEFAULT_ORDER);
   const activeFilterCount = countActiveFilters(filters);
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify({
@@ -87,6 +119,8 @@ export default function TransferLogList() {
     result: toChoice<TransferResult>(TRANSFER_RESULTS, filters.result),
     since: toDayStart(filters.since),
     until: toDayEnd(filters.until),
+    sort,
+    order,
     limit: rowsPerPage,
     offset: (currentPage - 1) * rowsPerPage,
   } satisfies TransferLogListQuery);
@@ -104,6 +138,19 @@ export default function TransferLogList() {
   const handleFilterChange = (key: keyof TransferLogFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     handlePageChange(1);
+  };
+
+  // URL-backed like the page: a sorted listing stays shareable.
+  const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
+    setSearchParams(
+      updateSortSearchParams(
+        searchParams,
+        nextSort,
+        nextOrder,
+        DEFAULT_SORT,
+        DEFAULT_ORDER,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -149,62 +196,70 @@ export default function TransferLogList() {
   }
 
   const indexOfFirstRow = (currentPage - 1) * rowsPerPage;
-  const indexOfLastRow = indexOfFirstRow + (rows?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="pt-4">
-        <FilterPanel
-          activeCount={activeFilterCount}
-          onReset={() => {
-            setFilters(defaultFilters);
-            handlePageChange(1);
-          }}
-        >
-          <FilterField
-            id="filter_transfer_secondary_name"
-            label="Secondary"
-            value={filters.secondary_name}
-            onChange={(value) => handleFilterChange("secondary_name", value)}
-            placeholder="The addresses it resolves to now"
+      <ListToolbar
+        filters={
+          <>
+            <FilterField
+              id="filter_transfer_secondary_name"
+              label="Secondary"
+              value={filters.secondary_name}
+              onChange={(value) => handleFilterChange("secondary_name", value)}
+              placeholder="The addresses it resolves to now"
+            />
+            <FilterField
+              id="filter_transfer_address"
+              label="Address"
+              value={filters.address}
+              onChange={(value) => handleFilterChange("address", value)}
+              placeholder="192.0.2.10"
+            />
+            <FilterField
+              id="filter_transfer_zone_name"
+              label="Zone"
+              value={filters.zone_name}
+              onChange={(value) => handleFilterChange("zone_name", value)}
+              placeholder="example.com"
+            />
+            <FilterSelect
+              id="filter_transfer_result"
+              label="Result"
+              value={filters.result}
+              onChange={(value) => handleFilterChange("result", value)}
+              options={RESULT_OPTIONS}
+            />
+            <FilterField
+              id="filter_transfer_since"
+              label="From"
+              type="date"
+              value={filters.since}
+              onChange={(value) => handleFilterChange("since", value)}
+            />
+            <FilterField
+              id="filter_transfer_until"
+              label="To"
+              type="date"
+              value={filters.until}
+              onChange={(value) => handleFilterChange("until", value)}
+            />
+          </>
+        }
+        activeFilterCount={activeFilterCount}
+        onResetFilters={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+        actions={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
           />
-          <FilterField
-            id="filter_transfer_address"
-            label="Address"
-            value={filters.address}
-            onChange={(value) => handleFilterChange("address", value)}
-            placeholder="192.0.2.10"
-          />
-          <FilterField
-            id="filter_transfer_zone_name"
-            label="Zone"
-            value={filters.zone_name}
-            onChange={(value) => handleFilterChange("zone_name", value)}
-            placeholder="example.com"
-          />
-          <FilterSelect
-            id="filter_transfer_result"
-            label="Result"
-            value={filters.result}
-            onChange={(value) => handleFilterChange("result", value)}
-            options={RESULT_OPTIONS}
-          />
-          <FilterField
-            id="filter_transfer_since"
-            label="From"
-            type="date"
-            value={filters.since}
-            onChange={(value) => handleFilterChange("since", value)}
-          />
-          <FilterField
-            id="filter_transfer_until"
-            label="To"
-            type="date"
-            value={filters.until}
-            onChange={(value) => handleFilterChange("until", value)}
-          />
-        </FilterPanel>
-      </div>
+        }
+      />
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
@@ -219,45 +274,36 @@ export default function TransferLogList() {
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="w-44 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
                 When
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Zone
               </th>
-              <th
-                scope="col"
-                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-36 ${TABLE_HEADER_CLASS}`}>
                 Transfer
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell w-28 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell w-28 ${TABLE_HEADER_CLASS}`}
               >
                 Transport
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell w-32 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell w-32 ${TABLE_HEADER_CLASS}`}
               >
                 Serial
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell w-40 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell w-40 ${TABLE_HEADER_CLASS}`}
               >
                 Address
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Error
               </th>
@@ -306,23 +352,21 @@ export default function TransferLogList() {
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
-        <div className="mb-4 sm:mb-0">
-          <p className="text-sm text-gray-700">
-            {rows === null ? (
-              !error && "Loading the transfer log..."
-            ) : rows.length > 0 ? (
-              <>
-                Showing{" "}
-                <span className="font-medium">{indexOfFirstRow + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastRow}</span> of{" "}
-                <span className="font-medium">{total}</span>
-              </>
-            ) : (
-              "No transfers found"
-            )}
-          </p>
-        </div>
+      <ListFooter
+        summary={
+          rows === null ? (
+            !error && "Loading the transfer log..."
+          ) : rows.length > 0 ? (
+            <PageSummary
+              offset={indexOfFirstRow}
+              count={rows.length}
+              total={total}
+            />
+          ) : (
+            "No transfers found"
+          )
+        }
+      >
         <PaginationControls
           currentPage={currentPage}
           pageSize={rowsPerPage}
@@ -330,7 +374,7 @@ export default function TransferLogList() {
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
-      </div>
+      </ListFooter>
     </div>
   );
 }

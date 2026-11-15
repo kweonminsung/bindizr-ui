@@ -40,6 +40,10 @@ export default function RecordsPage() {
 
   return (
     <div>
+      <p className="mb-4 text-sm text-gray-500">
+        The records of every zone, or of the one chosen. Records sharing a name
+        and type share one TTL.
+      </p>
       <RecordList
         key={refreshKey}
         onCreateRecord={() => setIsModalOpen(true)}

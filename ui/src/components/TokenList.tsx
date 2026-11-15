@@ -10,6 +10,15 @@ import Notice from "./Notice";
 import TokenDetails, { isTokenExpired } from "./TokenDetails";
 import { useToast } from "@/contexts/ToastContext";
 import RoleFilterSelect from "./RoleFilterSelect";
+import { SortValue } from "@/lib/sort";
+import { useRowSort } from "@/lib/useRowSort";
+import {
+  describeCount,
+  ListFooter,
+  ListToolbar,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import SortControl from "./SortControl";
 
 interface TokenListProps {
   onCreateToken: () => void;
@@ -20,6 +29,24 @@ interface TokenListProps {
   /** Called after a delete, for a parent showing counts. */
   onChange?: () => void;
 }
+
+const SORT_OPTIONS = [
+  { value: "created_at", label: "Created" },
+  { value: "name", label: "Name" },
+  { value: "role_name", label: "Role" },
+  { value: "expires_at", label: "Expires" },
+  { value: "last_used_at", label: "Last used" },
+] as const;
+
+type TokenSortField = (typeof SORT_OPTIONS)[number]["value"];
+
+const SORT_VALUES: Record<TokenSortField, (token: ApiToken) => SortValue> = {
+  created_at: (token) => token.created_at,
+  name: (token) => token.name,
+  role_name: (token) => token.role_name,
+  expires_at: (token) => token.expires_at,
+  last_used_at: (token) => token.last_used_at,
+};
 
 export default function TokenList({
   onCreateToken,
@@ -36,6 +63,8 @@ export default function TokenList({
   const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // Newest first, as the server lists them.
+  const rowSort = useRowSort(SORT_VALUES, "created_at", "desc");
   const [refreshKey, setRefreshKey] = useState(0);
   // Rows fetched under another role filter are never drawn under this one.
   const roleFilter = roleName ?? "";
@@ -103,83 +132,88 @@ export default function TokenList({
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleTokens = (tokens ?? []).filter(
-    (token) =>
-      token.name.toLowerCase().includes(query) ||
-      token.description?.toLowerCase().includes(query),
+  const visibleTokens = rowSort.sorted(
+    (tokens ?? []).filter(
+      (token) =>
+        token.name.toLowerCase().includes(query) ||
+        token.description?.toLowerCase().includes(query),
+    ),
   );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row gap-2 mb-4 sm:mb-0">
-          <input
-            type="text"
-            placeholder="Search API tokens..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-auto"
-          />
-          {onRoleNameChange && (
-            <RoleFilterSelect
-              value={roleName ?? ""}
-              onChange={onRoleNameChange}
+      <ListToolbar
+        actions={
+          <>
+            <SortControl
+              options={SORT_OPTIONS}
+              sort={rowSort.sort}
+              order={rowSort.order}
+              onChange={rowSort.onChange}
             />
-          )}
-        </div>
-        <button
-          onClick={onCreateToken}
-          className="btn-primary w-full sm:w-auto"
-        >
-          Create API Token
-        </button>
-      </div>
+            <button
+              onClick={onCreateToken}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Create API Token
+            </button>
+          </>
+        }
+      >
+        <input
+          type="text"
+          placeholder="Search API tokens..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:w-auto"
+        />
+        {onRoleNameChange && (
+          <RoleFilterSelect
+            value={roleName ?? ""}
+            onChange={onRoleNameChange}
+          />
+        )}
+      </ListToolbar>
       {/* Not an early return: a rejected role filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
           {error}
         </Notice>
       )}
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
               {!roleName && (
-                <th
-                  scope="col"
-                  className="w-40 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={`w-40 ${TABLE_HEADER_CLASS}`}>
                   Role
                 </th>
               )}
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Description
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Expires
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Last Used
               </th>
               <th
                 scope="col"
-                className="w-24 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -241,17 +275,15 @@ export default function TokenList({
           <TokenDetails token={selectedToken} />
         </Modal>
       )}
-      <div className="p-4">
-        <p className="text-sm text-gray-700">
-          {tokens === null
+      <ListFooter
+        summary={
+          tokens === null
             ? !error && "Loading API tokens..."
-            : visibleTokens.length > 0
-              ? `${visibleTokens.length} API token${visibleTokens.length > 1 ? "s" : ""}`
-              : roleName
-                ? "No API tokens in this role"
-                : "No API tokens found"}
-        </p>
-      </div>
+            : visibleTokens.length === 0 && roleName
+              ? "No API tokens in this role"
+              : describeCount(visibleTokens.length, "API token", "API tokens")
+        }
+      />
     </div>
   );
 }

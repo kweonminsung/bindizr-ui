@@ -9,6 +9,15 @@ import Notice from "./Notice";
 import BuiltinBadge from "./BuiltinBadge";
 import RoleDetails from "./RoleDetails";
 import { useToast } from "@/contexts/ToastContext";
+import { SortValue } from "@/lib/sort";
+import { useRowSort } from "@/lib/useRowSort";
+import {
+  describeCount,
+  ListFooter,
+  ListToolbar,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import SortControl from "./SortControl";
 
 interface RoleListProps {
   onCreateRole: () => void;
@@ -29,8 +38,21 @@ const describeHolders = (role: Role) => {
   return parts.join(" and ");
 };
 
-const HEADER =
-  "px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider";
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "grant_count", label: "Grants" },
+  { value: "credential_count", label: "Tokens and keys" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+type RoleSortField = (typeof SORT_OPTIONS)[number]["value"];
+
+const SORT_VALUES: Record<RoleSortField, (role: Role) => SortValue> = {
+  name: (role) => role.name,
+  grant_count: (role) => role.grant_count,
+  credential_count: (role) => role.token_count + role.tsig_key_count,
+  created_at: (role) => role.created_at,
+};
 
 export default function RoleList({ onCreateRole }: RoleListProps) {
   const toast = useToast();
@@ -40,6 +62,7 @@ export default function RoleList({ onCreateRole }: RoleListProps) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const rowSort = useRowSort(SORT_VALUES, "name");
 
   useEffect(() => {
     let active = true;
@@ -84,59 +107,90 @@ export default function RoleList({ onCreateRole }: RoleListProps) {
     }
   };
 
-  if (loading && roles.length === 0) {
+  if (loading && roles.length === 0 && !error) {
     return <p className="text-center text-gray-500">Loading roles...</p>;
-  }
-  if (error) {
-    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleRoles = query
-    ? roles.filter((role) => role.name.toLowerCase().includes(query))
-    : roles;
+  const visibleRoles = rowSort.sorted(
+    roles.filter((role) => role.name.toLowerCase().includes(query)),
+  );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <ListToolbar
+        actions={
+          <>
+            <SortControl
+              options={SORT_OPTIONS}
+              sort={rowSort.sort}
+              order={rowSort.order}
+              onChange={rowSort.onChange}
+            />
+            <button
+              onClick={onCreateRole}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Create Role
+            </button>
+          </>
+        }
+      >
         <input
           type="text"
           placeholder="Search roles..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
+          className="w-full sm:w-auto"
         />
-        <button onClick={onCreateRole} className="btn-primary w-full sm:w-auto">
-          Create Role
-        </button>
-      </div>
-      <div className="overflow-x-auto">
+      </ListToolbar>
+      {error && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {error}
+        </Notice>
+      )}
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th scope="col" className={HEADER}>
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
-              <th scope="col" className={`hidden sm:table-cell w-24 ${HEADER}`}>
+              <th
+                scope="col"
+                className={`hidden sm:table-cell w-24 ${TABLE_HEADER_CLASS}`}
+              >
                 Grants
               </th>
-              <th scope="col" className={`hidden sm:table-cell w-24 ${HEADER}`}>
+              <th
+                scope="col"
+                className={`hidden sm:table-cell w-24 ${TABLE_HEADER_CLASS}`}
+              >
                 Tokens
               </th>
               <th
                 scope="col"
-                className={`hidden sm:table-cell w-32 whitespace-nowrap ${HEADER}`}
+                className={`hidden sm:table-cell w-32 whitespace-nowrap ${TABLE_HEADER_CLASS}`}
               >
                 TSIG Keys
               </th>
-              <th scope="col" className={`hidden md:table-cell ${HEADER}`}>
+              <th
+                scope="col"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 Description
               </th>
-              <th scope="col" className={`hidden md:table-cell ${HEADER}`}>
+              <th
+                scope="col"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 Created
               </th>
-              <th scope="col" className={`w-24 text-right ${HEADER}`}>
+              <th
+                scope="col"
+                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
+              >
                 Actions
               </th>
             </tr>
@@ -219,13 +273,9 @@ export default function RoleList({ onCreateRole }: RoleListProps) {
           <RoleDetails role={selectedRole} />
         </Modal>
       )}
-      <div className="p-4">
-        <p className="text-sm text-gray-700">
-          {visibleRoles.length > 0
-            ? `${visibleRoles.length} role${visibleRoles.length > 1 ? "s" : ""}`
-            : "No roles found"}
-        </p>
-      </div>
+      <ListFooter
+        summary={describeCount(visibleRoles.length, "role", "roles")}
+      />
     </div>
   );
 }
