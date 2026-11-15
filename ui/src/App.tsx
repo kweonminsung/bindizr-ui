@@ -16,8 +16,11 @@ import RolesPage from "@/pages/RolesPage";
 import TokensPage from "@/pages/TokensPage";
 import TsigKeysPage from "@/pages/TsigKeysPage";
 import SecondariesPage from "@/pages/SecondariesPage";
-import DnssecPage from "@/pages/DnssecPage";
-import LogsPage from "@/pages/LogsPage";
+import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
+import DnssecZonesPage from "@/pages/DnssecZonesPage";
+import AccessLogPage from "@/pages/AccessLogPage";
+import AuditLogPage from "@/pages/AuditLogPage";
+import TransferLogPage from "@/pages/TransferLogPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Action } from "@/lib/types";
@@ -77,15 +80,27 @@ function App() {
                   <Route path="/records" element={<RecordsPage />} />
                   <Route
                     path="/dnssec"
+                    element={<Navigate to="/dnssec/zones" replace />}
+                  />
+                  <Route
+                    path="/dnssec/zones"
                     element={
                       <RequireAction action="dnssec:read">
-                        <DnssecPage />
+                        <DnssecZonesPage />
+                      </RequireAction>
+                    }
+                  />
+                  <Route
+                    path="/dnssec/policies"
+                    element={
+                      <RequireAction action="dnssec:read">
+                        <DnssecPoliciesPage />
                       </RequireAction>
                     }
                   />
                   <Route
                     path="/dnssec-policies"
-                    element={<Navigate to="/dnssec?tab=policies" replace />}
+                    element={<Navigate to="/dnssec/policies" replace />}
                   />
                   <Route
                     path="/secondaries"
@@ -97,19 +112,39 @@ function App() {
                   />
                   <Route
                     path="/logs"
+                    element={<Navigate to="/logs/audit" replace />}
+                  />
+                  <Route
+                    path="/logs/audit"
                     element={
                       <RequireAction action="log:read">
-                        <LogsPage />
+                        <AuditLogPage />
+                      </RequireAction>
+                    }
+                  />
+                  <Route
+                    path="/logs/access"
+                    element={
+                      <RequireAction action="log:read">
+                        <AccessLogPage />
+                      </RequireAction>
+                    }
+                  />
+                  <Route
+                    path="/logs/transfer"
+                    element={
+                      <RequireAction action="log:read">
+                        <TransferLogPage />
                       </RequireAction>
                     }
                   />
                   <Route
                     path="/dns"
-                    element={<Navigate to="/dnssec-policies" replace />}
+                    element={<Navigate to="/dnssec/policies" replace />}
                   />
                   <Route
                     path="/dns/dnssec-policies"
-                    element={<Navigate to="/dnssec-policies" replace />}
+                    element={<Navigate to="/dnssec/policies" replace />}
                   />
                   <Route
                     path="/dns/notify"

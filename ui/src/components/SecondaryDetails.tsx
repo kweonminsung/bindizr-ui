@@ -125,7 +125,7 @@ export default function SecondaryDetails({
               <p className="text-sm text-gray-500">
                 The transfers Bindizr answered its addresses are in the{" "}
                 <Link
-                  to={`/logs?tab=transfer&secondary_name=${encodeURIComponent(secondary.name)}`}
+                  to={`/logs/transfer?secondary_name=${encodeURIComponent(secondary.name)}`}
                   className="text-(--primary) hover:underline"
                 >
                   transfer log
