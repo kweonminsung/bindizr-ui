@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.1.0">
-        <img src="https://img.shields.io/badge/Compatible-0.1.0-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.2.0-rc.1">
+        <img src="https://img.shields.io/badge/Compatible-0.2.0--rc.1-success" />
     </a>
 </p>
 
@@ -96,7 +96,7 @@ Three logs, each under Logs in the sidebar. The audit log shows role, grant and 
 ## Run with Docker
 
 ```bash
-docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.1.0
+docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.2.0-rc.1
 ```
 
 Or with Docker Compose:
