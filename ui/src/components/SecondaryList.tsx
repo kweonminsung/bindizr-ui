@@ -4,12 +4,40 @@ import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
+import { SortValue } from "@/lib/sort";
 import { Secondary } from "@/lib/types";
+import { useRowSort } from "@/lib/useRowSort";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import SecondaryDetails from "./SecondaryDetails";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
+import {
+  describeCount,
+  ListFooter,
+  ListToolbar,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import SortControl from "./SortControl";
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "address", label: "Address" },
+  { value: "enabled", label: "State" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+type SecondarySortField = (typeof SORT_OPTIONS)[number]["value"];
+
+const SORT_VALUES: Record<
+  SecondarySortField,
+  (secondary: Secondary) => SortValue
+> = {
+  name: (secondary) => secondary.name,
+  address: (secondary) => secondary.address,
+  enabled: (secondary) => secondary.enabled,
+  created_at: (secondary) => secondary.created_at,
+};
 
 interface SecondaryListProps {
   onCreateSecondary: () => void;
@@ -29,6 +57,7 @@ export default function SecondaryList({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const rowSort = useRowSort(SORT_VALUES, "name");
 
   useEffect(() => {
     let active = true;
@@ -100,79 +129,83 @@ export default function SecondaryList({
     }
   };
 
-  if (loading && secondaries.length === 0) {
+  if (loading && secondaries.length === 0 && !error) {
     return <p className="text-center text-gray-500">Loading secondaries...</p>;
-  }
-  if (error) {
-    return <Notice tone="error">{error}</Notice>;
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visible = query
-    ? secondaries.filter(
-        (secondary) =>
-          secondary.name.toLowerCase().includes(query) ||
-          secondary.address.toLowerCase().includes(query),
-      )
-    : secondaries;
+  const visible = rowSort.sorted(
+    secondaries.filter(
+      (secondary) =>
+        secondary.name.toLowerCase().includes(query) ||
+        secondary.address.toLowerCase().includes(query),
+    ),
+  );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <ListToolbar
+        actions={
+          <>
+            <SortControl
+              options={SORT_OPTIONS}
+              sort={rowSort.sort}
+              order={rowSort.order}
+              onChange={rowSort.onChange}
+            />
+            {canManage && (
+              <button
+                onClick={onCreateSecondary}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Register Secondary
+              </button>
+            )}
+          </>
+        }
+      >
         <input
           type="text"
           placeholder="Search secondaries..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto mb-4 sm:mb-0"
+          className="w-full sm:w-auto"
         />
-        {canManage && (
-          <button
-            onClick={onCreateSecondary}
-            className="btn-primary w-full sm:w-auto"
-          >
-            Register Secondary
-          </button>
-        )}
-      </div>
-      <div className="overflow-x-auto">
+      </ListToolbar>
+      {error && (
+        <Notice tone="error" className="mx-4 mb-4">
+          {error}
+        </Notice>
+      )}
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Address
               </th>
-              <th
-                scope="col"
-                className="w-32 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-32 ${TABLE_HEADER_CLASS}`}>
                 State
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 NOTIFY Key
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Created
               </th>
               <th
                 scope="col"
-                className="w-24 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -230,13 +263,9 @@ export default function SecondaryList({
           <SecondaryDetails secondary={selected} onUpdated={handleUpdated} />
         </Modal>
       )}
-      <div className="p-4">
-        <p className="text-sm text-gray-700">
-          {visible.length > 0
-            ? `${visible.length} secondar${visible.length > 1 ? "ies" : "y"}`
-            : "No secondaries found"}
-        </p>
-      </div>
+      <ListFooter
+        summary={describeCount(visible.length, "secondary", "secondaries")}
+      />
     </div>
   );
 }

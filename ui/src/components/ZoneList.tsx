@@ -23,7 +23,7 @@ import {
   ZoneSortField,
 } from "@/lib/types";
 import { countActiveFilters, toFilterNumber } from "@/lib/form";
-import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
+import { FilterField, FilterSelect } from "./FilterFields";
 import SortControl from "./SortControl";
 import Modal from "./Modal";
 import NotifyAllZones from "./NotifyAllZones";
@@ -33,6 +33,12 @@ import ZoneDetails from "./ZoneDetails";
 import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
 import { useToast } from "@/contexts/ToastContext";
+import {
+  ListFooter,
+  ListToolbar,
+  PageSummary,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
 
 interface ZoneListProps {
   onCreateZone: () => void;
@@ -365,11 +371,123 @@ export default function ZoneList({
   }
 
   const indexOfFirstZone = (currentPage - 1) * zonesPerPage;
-  const indexOfLastZone = indexOfFirstZone + (zones?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <ListToolbar
+        filters={
+          <>
+            <FilterField
+              id="filter_zone_name"
+              label="Name"
+              value={filters.name}
+              onChange={(value) => handleFilterChange("name", value)}
+            />
+            <FilterField
+              id="filter_zone_mname"
+              label="Primary NS"
+              value={filters.mname}
+              onChange={(value) => handleFilterChange("mname", value)}
+            />
+            <FilterField
+              id="filter_zone_rname"
+              label="Admin Email"
+              value={filters.rname}
+              onChange={(value) => handleFilterChange("rname", value)}
+            />
+            <FilterField
+              id="filter_zone_min_default_ttl"
+              label="Min Default TTL"
+              type="number"
+              value={filters.min_default_ttl}
+              onChange={(value) => handleFilterChange("min_default_ttl", value)}
+            />
+            <FilterField
+              id="filter_zone_max_default_ttl"
+              label="Max Default TTL"
+              type="number"
+              value={filters.max_default_ttl}
+              onChange={(value) => handleFilterChange("max_default_ttl", value)}
+            />
+            <FilterField
+              id="filter_zone_serial"
+              label="Serial"
+              type="number"
+              value={filters.serial}
+              onChange={(value) => handleFilterChange("serial", value)}
+            />
+            <FilterField
+              id="filter_zone_min_serial"
+              label="Min Serial"
+              type="number"
+              value={filters.min_serial}
+              onChange={(value) => handleFilterChange("min_serial", value)}
+            />
+            <FilterField
+              id="filter_zone_max_serial"
+              label="Max Serial"
+              type="number"
+              value={filters.max_serial}
+              onChange={(value) => handleFilterChange("max_serial", value)}
+            />
+            <FilterSelect
+              id="filter_zone_signed"
+              label="DNSSEC"
+              value={filters.signed}
+              onChange={(value) => handleFilterChange("signed", value)}
+              options={SIGNED_OPTIONS}
+            />
+            <FilterField
+              id="filter_zone_created_after"
+              label="Created From"
+              type="date"
+              value={filters.created_after}
+              onChange={(value) => handleFilterChange("created_after", value)}
+            />
+            <FilterField
+              id="filter_zone_created_before"
+              label="Created To"
+              type="date"
+              value={filters.created_before}
+              onChange={(value) => handleFilterChange("created_before", value)}
+            />
+          </>
+        }
+        activeFilterCount={activeFilterCount}
+        onResetFilters={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+        actions={
+          <>
+            <SortControl
+              options={ZONE_SORT_OPTIONS}
+              sort={sort}
+              order={order}
+              onChange={handleSortChange}
+            />
+            {allows("zone:update") && <NotifyAllZones />}
+            {/* An import rewrites zones whole: an unnarrowed record:create somewhere, or zone:create. */}
+            {(allows("zone:create") ||
+              allowsWholeZoneAnywhere("record:create")) && (
+              <button
+                onClick={onImportZones}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Import Zones
+              </button>
+            )}
+            {allows("zone:create") && (
+              <button
+                onClick={onCreateZone}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Create Zone
+              </button>
+            )}
+          </>
+        }
+      >
         <input
           type="text"
           placeholder="Search zones..."
@@ -380,122 +498,7 @@ export default function ZoneList({
           }}
           className="w-full sm:w-auto"
         />
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 sm:mt-0">
-          <SortControl
-            options={ZONE_SORT_OPTIONS}
-            sort={sort}
-            order={order}
-            onChange={handleSortChange}
-          />
-          {(allows("zone:update") ||
-            allows("zone:create") ||
-            allowsWholeZoneAnywhere("record:create")) && (
-            <div className="flex flex-col sm:flex-row gap-2">
-              {allows("zone:update") && <NotifyAllZones />}
-              {/* An import rewrites zones whole: an unnarrowed record:create somewhere, or zone:create. */}
-              {(allows("zone:create") ||
-                allowsWholeZoneAnywhere("record:create")) && (
-                <button
-                  onClick={onImportZones}
-                  className="btn-primary w-full sm:w-auto"
-                >
-                  Import Zones
-                </button>
-              )}
-              {allows("zone:create") && (
-                <button
-                  onClick={onCreateZone}
-                  className="btn-primary w-full sm:w-auto"
-                >
-                  Create Zone
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-      <FilterPanel
-        activeCount={activeFilterCount}
-        onReset={() => {
-          setFilters(defaultFilters);
-          handlePageChange(1);
-        }}
-      >
-        <FilterField
-          id="filter_zone_name"
-          label="Name"
-          value={filters.name}
-          onChange={(value) => handleFilterChange("name", value)}
-        />
-        <FilterField
-          id="filter_zone_mname"
-          label="Primary NS"
-          value={filters.mname}
-          onChange={(value) => handleFilterChange("mname", value)}
-        />
-        <FilterField
-          id="filter_zone_rname"
-          label="Admin Email"
-          value={filters.rname}
-          onChange={(value) => handleFilterChange("rname", value)}
-        />
-        <FilterField
-          id="filter_zone_min_default_ttl"
-          label="Min Default TTL"
-          type="number"
-          value={filters.min_default_ttl}
-          onChange={(value) => handleFilterChange("min_default_ttl", value)}
-        />
-        <FilterField
-          id="filter_zone_max_default_ttl"
-          label="Max Default TTL"
-          type="number"
-          value={filters.max_default_ttl}
-          onChange={(value) => handleFilterChange("max_default_ttl", value)}
-        />
-        <FilterField
-          id="filter_zone_serial"
-          label="Serial"
-          type="number"
-          value={filters.serial}
-          onChange={(value) => handleFilterChange("serial", value)}
-        />
-        <FilterField
-          id="filter_zone_min_serial"
-          label="Min Serial"
-          type="number"
-          value={filters.min_serial}
-          onChange={(value) => handleFilterChange("min_serial", value)}
-        />
-        <FilterField
-          id="filter_zone_max_serial"
-          label="Max Serial"
-          type="number"
-          value={filters.max_serial}
-          onChange={(value) => handleFilterChange("max_serial", value)}
-        />
-        <FilterSelect
-          id="filter_zone_signed"
-          label="DNSSEC"
-          value={filters.signed}
-          onChange={(value) => handleFilterChange("signed", value)}
-          options={SIGNED_OPTIONS}
-        />
-        <FilterField
-          id="filter_zone_created_after"
-          label="Created After"
-          type="date"
-          value={filters.created_after}
-          onChange={(value) => handleFilterChange("created_after", value)}
-        />
-        <FilterField
-          id="filter_zone_created_before"
-          label="Created Before"
-          type="date"
-          value={filters.created_before}
-          onChange={(value) => handleFilterChange("created_before", value)}
-        />
-      </FilterPanel>
+      </ListToolbar>
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
@@ -510,27 +513,24 @@ export default function ZoneList({
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Zone Name
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Primary NS
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Admin Email
               </th>
               <th
                 scope="col"
-                className="sm:w-72 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`sm:w-72 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -645,23 +645,21 @@ export default function ZoneList({
           <ZoneExport zone={exportingZone} />
         </Modal>
       )}
-      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
-        <div className="mb-4 sm:mb-0">
-          <p className="text-sm text-gray-700">
-            {zones === null ? (
-              !error && "Loading zones..."
-            ) : zones.length > 0 ? (
-              <>
-                Showing{" "}
-                <span className="font-medium">{indexOfFirstZone + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastZone}</span> of{" "}
-                <span className="font-medium">{totalZones}</span>
-              </>
-            ) : (
-              "No zones found"
-            )}
-          </p>
-        </div>
+      <ListFooter
+        summary={
+          zones === null ? (
+            !error && "Loading zones..."
+          ) : zones.length > 0 ? (
+            <PageSummary
+              offset={indexOfFirstZone}
+              count={zones.length}
+              total={totalZones}
+            />
+          ) : (
+            "No zones found"
+          )
+        }
+      >
         <PaginationControls
           currentPage={currentPage}
           pageSize={zonesPerPage}
@@ -669,7 +667,7 @@ export default function ZoneList({
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
-      </div>
+      </ListFooter>
     </div>
   );
 }

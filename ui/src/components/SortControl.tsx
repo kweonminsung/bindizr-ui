@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { SortOrder } from "@/lib/types";
 
 interface SortOption {
@@ -21,14 +22,16 @@ export default function SortControl({
   onChange,
 }: SortControlProps) {
   const ascending = order === "asc";
+  // Two listings can share a screen, a list behind a details modal's own.
+  const id = useId();
 
   return (
     <div className="flex items-center gap-1">
-      <label htmlFor="sort_field" className="sr-only">
+      <label htmlFor={id} className="sr-only">
         Sort by
       </label>
       <select
-        id="sort_field"
+        id={id}
         value={sort}
         onChange={(e) => onChange(e.target.value, order)}
         className="text-sm"

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getZoneStatus } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/datetime";
-import { SecondaryStatus, Transfer, ZoneStatus } from "@/lib/types";
+import { SecondaryStatus, TransferLog, ZoneStatus } from "@/lib/types";
 import Notice from "./Notice";
 
 interface ZoneStatusPanelProps {
@@ -130,7 +130,7 @@ export default function ZoneStatusPanel({
 }
 
 /** The latest transfer served for the zone: what it was, the serial it reached, and when. */
-function describeTransfer(transfer: Transfer): string {
+function describeTransfer(transfer: TransferLog): string {
   const kind =
     transfer.result !== "ok"
       ? transfer.result

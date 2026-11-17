@@ -24,10 +24,16 @@ import {
   SortOrder,
 } from "@/lib/types";
 import ChangeSourceBadge, { describeActor } from "./ChangeSourceBadge";
-import FilterPanel, { FilterField, FilterSelect } from "./FilterPanel";
+import { FilterField, FilterSelect } from "./FilterFields";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import SortControl from "./SortControl";
+import {
+  ListFooter,
+  ListToolbar,
+  PageSummary,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
 
 interface AuditLogFilters {
   entity: string;
@@ -186,56 +192,56 @@ export default function AuditLogList() {
   }
 
   const indexOfFirstRow = (currentPage - 1) * rowsPerPage;
-  const indexOfLastRow = indexOfFirstRow + (rows?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 pb-0 flex justify-end">
-        <SortControl
-          options={SORT_OPTIONS}
-          sort={sort}
-          order={order}
-          onChange={handleSortChange}
-        />
-      </div>
-      <div className="pt-4">
-        <FilterPanel
-          activeCount={activeFilterCount}
-          onReset={() => {
-            setFilters(defaultFilters);
-            handlePageChange(1);
-          }}
-        >
-          <FilterSelect
-            id="filter_audit_entity"
-            label="Entity"
-            value={filters.entity}
-            onChange={(value) => handleFilterChange("entity", value)}
-            options={ENTITY_OPTIONS}
+      <ListToolbar
+        filters={
+          <>
+            <FilterSelect
+              id="filter_audit_entity"
+              label="Entity"
+              value={filters.entity}
+              onChange={(value) => handleFilterChange("entity", value)}
+              options={ENTITY_OPTIONS}
+            />
+            <FilterField
+              id="filter_audit_entity_name"
+              label="Name"
+              value={filters.entity_name}
+              onChange={(value) => handleFilterChange("entity_name", value)}
+              placeholder="A grant's is its role's"
+            />
+            <FilterField
+              id="filter_audit_since"
+              label="From"
+              type="date"
+              value={filters.since}
+              onChange={(value) => handleFilterChange("since", value)}
+            />
+            <FilterField
+              id="filter_audit_until"
+              label="To"
+              type="date"
+              value={filters.until}
+              onChange={(value) => handleFilterChange("until", value)}
+            />
+          </>
+        }
+        activeFilterCount={activeFilterCount}
+        onResetFilters={() => {
+          setFilters(defaultFilters);
+          handlePageChange(1);
+        }}
+        actions={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
           />
-          <FilterField
-            id="filter_audit_entity_name"
-            label="Name"
-            value={filters.entity_name}
-            onChange={(value) => handleFilterChange("entity_name", value)}
-            placeholder="A grant's is its role's"
-          />
-          <FilterField
-            id="filter_audit_since"
-            label="From"
-            type="date"
-            value={filters.since}
-            onChange={(value) => handleFilterChange("since", value)}
-          />
-          <FilterField
-            id="filter_audit_until"
-            label="To"
-            type="date"
-            value={filters.until}
-            onChange={(value) => handleFilterChange("until", value)}
-          />
-        </FilterPanel>
-      </div>
+        }
+      />
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
@@ -250,39 +256,27 @@ export default function AuditLogList() {
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="w-44 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
                 When
               </th>
-              <th
-                scope="col"
-                className="w-44 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
                 Entity
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
-              <th
-                scope="col"
-                className="w-28 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-28 ${TABLE_HEADER_CLASS}`}>
                 Change
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 By
               </th>
               <th
                 scope="col"
-                className="hidden lg:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Detail
               </th>
@@ -333,23 +327,21 @@ export default function AuditLogList() {
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
-        <div className="mb-4 sm:mb-0">
-          <p className="text-sm text-gray-700">
-            {rows === null ? (
-              !error && "Loading the audit log..."
-            ) : rows.length > 0 ? (
-              <>
-                Showing{" "}
-                <span className="font-medium">{indexOfFirstRow + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastRow}</span> of{" "}
-                <span className="font-medium">{total}</span>
-              </>
-            ) : (
-              "No changes found"
-            )}
-          </p>
-        </div>
+      <ListFooter
+        summary={
+          rows === null ? (
+            !error && "Loading the audit log..."
+          ) : rows.length > 0 ? (
+            <PageSummary
+              offset={indexOfFirstRow}
+              count={rows.length}
+              total={total}
+            />
+          ) : (
+            "No changes found"
+          )
+        }
+      >
         <PaginationControls
           currentPage={currentPage}
           pageSize={rowsPerPage}
@@ -357,7 +349,7 @@ export default function AuditLogList() {
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
-      </div>
+      </ListFooter>
     </div>
   );
 }

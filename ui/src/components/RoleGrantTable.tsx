@@ -1,15 +1,13 @@
 import { Link } from "react-router-dom";
 import { formatDateTime } from "@/lib/datetime";
 import { RoleGrant } from "@/lib/types";
+import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 interface RoleGrantTableProps {
   grants: RoleGrant[];
   /** Offer a revoke per row; omitted for a read-only view. */
   onRevoke?: (grant: RoleGrant) => void;
 }
-
-const HEADER =
-  "px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider";
 
 /** A role's grants: the zone each reaches, its actions, and the record constraints. */
 export default function RoleGrantTable({
@@ -21,19 +19,22 @@ export default function RoleGrantTable({
       <table className="w-full text-left text-sm">
         <thead className="border-b border-gray-200 bg-gray-50">
           <tr>
-            <th scope="col" className={HEADER}>
+            <th scope="col" className={TABLE_HEADER_CLASS}>
               Zone
             </th>
-            <th scope="col" className={`${HEADER} w-2/5`}>
+            <th scope="col" className={`${TABLE_HEADER_CLASS} w-2/5`}>
               Actions
             </th>
-            <th scope="col" className={HEADER}>
+            <th scope="col" className={TABLE_HEADER_CLASS}>
               Pattern
             </th>
-            <th scope="col" className={HEADER}>
+            <th scope="col" className={TABLE_HEADER_CLASS}>
               Types
             </th>
-            <th scope="col" className={`hidden sm:table-cell ${HEADER}`}>
+            <th
+              scope="col"
+              className={`hidden sm:table-cell ${TABLE_HEADER_CLASS}`}
+            >
               Granted
             </th>
             {onRevoke && <th scope="col" className="px-6 py-3" />}

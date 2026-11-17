@@ -10,6 +10,15 @@ import Notice from "./Notice";
 import TsigKeyDetails from "./TsigKeyDetails";
 import { useToast } from "@/contexts/ToastContext";
 import RoleFilterSelect from "./RoleFilterSelect";
+import { SortValue } from "@/lib/sort";
+import { useRowSort } from "@/lib/useRowSort";
+import {
+  describeCount,
+  ListFooter,
+  ListToolbar,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import SortControl from "./SortControl";
 
 interface TsigKeyListProps {
   onCreateKey: () => void;
@@ -20,6 +29,22 @@ interface TsigKeyListProps {
   /** Called after a delete, for a parent showing counts. */
   onChange?: () => void;
 }
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "algorithm", label: "Algorithm" },
+  { value: "role_name", label: "Role" },
+  { value: "created_at", label: "Created" },
+] as const;
+
+type TsigKeySortField = (typeof SORT_OPTIONS)[number]["value"];
+
+const SORT_VALUES: Record<TsigKeySortField, (tsigKey: TsigKey) => SortValue> = {
+  name: (tsigKey) => tsigKey.name,
+  algorithm: (tsigKey) => tsigKey.algorithm,
+  role_name: (tsigKey) => tsigKey.role_name,
+  created_at: (tsigKey) => tsigKey.created_at,
+};
 
 export default function TsigKeyList({
   onCreateKey,
@@ -36,6 +61,7 @@ export default function TsigKeyList({
   const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const rowSort = useRowSort(SORT_VALUES, "name");
   const [refreshKey, setRefreshKey] = useState(0);
   // Rows fetched under another role filter are never drawn under this one.
   const roleFilter = roleName ?? "";
@@ -109,72 +135,80 @@ export default function TsigKeyList({
   }
 
   const query = searchQuery.trim().toLowerCase();
-  const visibleKeys = (tsigKeys ?? []).filter((tsigKey) =>
-    tsigKey.name.toLowerCase().includes(query),
+  const visibleKeys = rowSort.sorted(
+    (tsigKeys ?? []).filter((tsigKey) =>
+      tsigKey.name.toLowerCase().includes(query),
+    ),
   );
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row gap-2 mb-4 sm:mb-0">
-          <input
-            type="text"
-            placeholder="Search TSIG keys..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-auto"
-          />
-          {onRoleNameChange && (
-            <RoleFilterSelect
-              value={roleName ?? ""}
-              onChange={onRoleNameChange}
+      <ListToolbar
+        actions={
+          <>
+            <SortControl
+              options={SORT_OPTIONS}
+              sort={rowSort.sort}
+              order={rowSort.order}
+              onChange={rowSort.onChange}
             />
-          )}
-        </div>
-        <button onClick={onCreateKey} className="btn-primary w-full sm:w-auto">
-          Create TSIG Key
-        </button>
-      </div>
+            <button
+              onClick={onCreateKey}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Create TSIG Key
+            </button>
+          </>
+        }
+      >
+        <input
+          type="text"
+          placeholder="Search TSIG keys..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:w-auto"
+        />
+        {onRoleNameChange && (
+          <RoleFilterSelect
+            value={roleName ?? ""}
+            onChange={onRoleNameChange}
+          />
+        )}
+      </ListToolbar>
       {/* Not an early return: a rejected role filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
           {error}
         </Notice>
       )}
-      <div className="overflow-x-auto">
+      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
         {/* Fixed layout: column widths must not follow the page content. */}
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Algorithm
               </th>
               {!roleName && (
-                <th
-                  scope="col"
-                  className="w-40 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th scope="col" className={`w-40 ${TABLE_HEADER_CLASS}`}>
                   Role
                 </th>
               )}
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Created
               </th>
               <th
                 scope="col"
-                className="w-24 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -221,17 +255,15 @@ export default function TsigKeyList({
           <TsigKeyDetails tsigKey={selectedKey} />
         </Modal>
       )}
-      <div className="p-4">
-        <p className="text-sm text-gray-700">
-          {tsigKeys === null
+      <ListFooter
+        summary={
+          tsigKeys === null
             ? !error && "Loading TSIG keys..."
-            : visibleKeys.length > 0
-              ? `${visibleKeys.length} TSIG key${visibleKeys.length > 1 ? "s" : ""}`
-              : roleName
-                ? "No TSIG keys in this role"
-                : "No TSIG keys found"}
-        </p>
-      </div>
+            : visibleKeys.length === 0 && roleName
+              ? "No TSIG keys in this role"
+              : describeCount(visibleKeys.length, "TSIG key", "TSIG keys")
+        }
+      />
     </div>
   );
 }

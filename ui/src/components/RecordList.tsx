@@ -24,7 +24,7 @@ import {
 } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import { countActiveFilters, toFilterNumber } from "@/lib/form";
-import FilterPanel, { FilterField } from "./FilterPanel";
+import { FilterField } from "./FilterFields";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
@@ -32,6 +32,12 @@ import RecordDetails from "./RecordDetails";
 import SortControl from "./SortControl";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
+import {
+  ListFooter,
+  ListToolbar,
+  PageSummary,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
 
 interface RecordListProps {
   zoneName?: string;
@@ -271,142 +277,143 @@ export default function RecordList({
   }
 
   const indexOfFirstRecord = (currentPage - 1) * recordsPerPage;
-  const indexOfLastRecord = indexOfFirstRecord + (records?.length ?? 0);
 
   return (
     <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <div className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Search records..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              handlePageChange(1);
-            }}
-            className="w-full sm:w-auto mb-4 sm:mb-0 sm:mr-4"
-          />
-          <select
-            value={zoneName ?? ""}
-            onChange={(e) => handleUrlFilterChange("zoneName", e.target.value)}
-            aria-label="Filter by zone"
-            className="w-full sm:w-auto mb-4 sm:mb-0 sm:mr-4"
-          >
-            <option value="">All Zones</option>
-            {/* Keep a deep-linked zone selectable while zones load. */}
-            {zoneName && !zones.some((zone) => zone.name === zoneName) && (
-              <option value={zoneName}>{zoneName}</option>
-            )}
-            {zones.map((zone) => (
-              <option key={zone.id} value={zone.name}>
-                {zone.name}
-              </option>
-            ))}
-          </select>
-          <input
-            list="record-filter-types"
-            value={typeDraft}
-            onChange={(e) => setTypeDraft(e.target.value.toUpperCase())}
-            onBlur={() => {
-              if (typeDraft !== requestedType) {
-                handleUrlFilterChange("type", typeDraft);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-            aria-label="Filter by record type"
-            placeholder="All Types"
-            className="w-full sm:w-40"
-          />
-          <datalist id="record-filter-types">
-            {availableTypes.map((type) => (
-              <option key={type} value={type} />
-            ))}
-          </datalist>
-          <label
-            title="Include the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY) in the listing — read-only rows"
-            className="flex items-center space-x-2 text-sm mt-4 sm:mt-0 sm:ml-4 text-gray-600 cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              checked={signedView}
-              onChange={(e) =>
-                handleUrlFilterChange("signed", e.target.checked ? "true" : "")
-              }
+      <ListToolbar
+        filters={
+          <>
+            <FilterField
+              id="filter_record_name"
+              label="Name"
+              value={filters.name}
+              onChange={(value) => handleFilterChange("name", value)}
             />
-            <span className="whitespace-nowrap">Show DNSSEC records</span>
-          </label>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 sm:mt-0">
-          <SortControl
-            options={RECORD_SORT_OPTIONS}
-            sort={sort}
-            order={order}
-            onChange={handleSortChange}
-          />
-          {canCreateRecords(zoneName) && (
-            <button
-              onClick={onCreateRecord}
-              className="btn-primary w-full sm:w-auto"
-            >
-              Create Record
-            </button>
-          )}
-        </div>
-      </div>
-      <FilterPanel
-        activeCount={activeFilterCount}
-        onReset={() => {
+            <FilterField
+              id="filter_record_value"
+              label="Value contains"
+              value={filters.value}
+              onChange={(value) => handleFilterChange("value", value)}
+            />
+            <FilterField
+              id="filter_record_min_ttl"
+              label="Min TTL"
+              type="number"
+              value={filters.min_ttl}
+              onChange={(value) => handleFilterChange("min_ttl", value)}
+            />
+            <FilterField
+              id="filter_record_max_ttl"
+              label="Max TTL"
+              type="number"
+              value={filters.max_ttl}
+              onChange={(value) => handleFilterChange("max_ttl", value)}
+            />
+            <FilterField
+              id="filter_record_min_priority"
+              label="Min Priority"
+              type="number"
+              value={filters.min_priority}
+              onChange={(value) => handleFilterChange("min_priority", value)}
+            />
+            <FilterField
+              id="filter_record_max_priority"
+              label="Max Priority"
+              type="number"
+              value={filters.max_priority}
+              onChange={(value) => handleFilterChange("max_priority", value)}
+            />
+          </>
+        }
+        activeFilterCount={activeFilterCount}
+        onResetFilters={() => {
           setFilters(defaultFilters);
           handlePageChange(1);
         }}
+        actions={
+          <>
+            <SortControl
+              options={RECORD_SORT_OPTIONS}
+              sort={sort}
+              order={order}
+              onChange={handleSortChange}
+            />
+            {canCreateRecords(zoneName) && (
+              <button
+                onClick={onCreateRecord}
+                className="btn-primary w-full sm:w-auto"
+              >
+                Create Record
+              </button>
+            )}
+          </>
+        }
       >
-        <FilterField
-          id="filter_record_name"
-          label="Name"
-          value={filters.name}
-          onChange={(value) => handleFilterChange("name", value)}
+        <input
+          type="text"
+          placeholder="Search records..."
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            handlePageChange(1);
+          }}
+          className="w-full sm:w-auto"
         />
-        <FilterField
-          id="filter_record_value"
-          label="Value contains"
-          value={filters.value}
-          onChange={(value) => handleFilterChange("value", value)}
+        <select
+          value={zoneName ?? ""}
+          onChange={(e) => handleUrlFilterChange("zoneName", e.target.value)}
+          aria-label="Filter by zone"
+          className="w-full sm:w-auto"
+        >
+          <option value="">All Zones</option>
+          {/* Keep a deep-linked zone selectable while zones load. */}
+          {zoneName && !zones.some((zone) => zone.name === zoneName) && (
+            <option value={zoneName}>{zoneName}</option>
+          )}
+          {zones.map((zone) => (
+            <option key={zone.id} value={zone.name}>
+              {zone.name}
+            </option>
+          ))}
+        </select>
+        <input
+          list="record-filter-types"
+          value={typeDraft}
+          onChange={(e) => setTypeDraft(e.target.value.toUpperCase())}
+          onBlur={() => {
+            if (typeDraft !== requestedType) {
+              handleUrlFilterChange("type", typeDraft);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+          aria-label="Filter by record type"
+          placeholder="All Types"
+          className="w-full sm:w-40"
         />
-        <FilterField
-          id="filter_record_min_ttl"
-          label="Min TTL"
-          type="number"
-          value={filters.min_ttl}
-          onChange={(value) => handleFilterChange("min_ttl", value)}
-        />
-        <FilterField
-          id="filter_record_max_ttl"
-          label="Max TTL"
-          type="number"
-          value={filters.max_ttl}
-          onChange={(value) => handleFilterChange("max_ttl", value)}
-        />
-        <FilterField
-          id="filter_record_min_priority"
-          label="Min Priority"
-          type="number"
-          value={filters.min_priority}
-          onChange={(value) => handleFilterChange("min_priority", value)}
-        />
-        <FilterField
-          id="filter_record_max_priority"
-          label="Max Priority"
-          type="number"
-          value={filters.max_priority}
-          onChange={(value) => handleFilterChange("max_priority", value)}
-        />
-      </FilterPanel>
+        <datalist id="record-filter-types">
+          {availableTypes.map((type) => (
+            <option key={type} value={type} />
+          ))}
+        </datalist>
+        <label
+          title="Include the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY) in the listing — read-only rows"
+          className="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            checked={signedView}
+            onChange={(e) =>
+              handleUrlFilterChange("signed", e.target.checked ? "true" : "")
+            }
+          />
+          <span className="whitespace-nowrap">Show DNSSEC records</span>
+        </label>
+      </ListToolbar>
       {signedView && userPlaneOnly && (
         <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
           Derived rows are hidden while filtering by value, priority or a user
@@ -429,27 +436,21 @@ export default function RecordList({
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
-              <th
-                scope="col"
-                className="w-36 px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
+              <th scope="col" className={`w-36 ${TABLE_HEADER_CLASS}`}>
                 Type
               </th>
               <th
                 scope="col"
-                className="hidden md:table-cell px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Value
               </th>
               <th
                 scope="col"
-                className="w-40 px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className={`w-40 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -527,23 +528,21 @@ export default function RecordList({
           />
         </Modal>
       )}
-      <div className="flex flex-col sm:flex-row justify-between items-center p-4">
-        <div className="mb-4 sm:mb-0">
-          <p className="text-sm text-gray-700">
-            {records === null ? (
-              !error && "Loading records..."
-            ) : records.length > 0 ? (
-              <>
-                Showing{" "}
-                <span className="font-medium">{indexOfFirstRecord + 1}</span> to{" "}
-                <span className="font-medium">{indexOfLastRecord}</span> of{" "}
-                <span className="font-medium">{totalRecords}</span>
-              </>
-            ) : (
-              "No records found"
-            )}
-          </p>
-        </div>
+      <ListFooter
+        summary={
+          records === null ? (
+            !error && "Loading records..."
+          ) : records.length > 0 ? (
+            <PageSummary
+              offset={indexOfFirstRecord}
+              count={records.length}
+              total={totalRecords}
+            />
+          ) : (
+            "No records found"
+          )
+        }
+      >
         <PaginationControls
           currentPage={currentPage}
           pageSize={recordsPerPage}
@@ -551,7 +550,7 @@ export default function RecordList({
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
-      </div>
+      </ListFooter>
     </div>
   );
 }

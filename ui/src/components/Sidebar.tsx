@@ -20,6 +20,17 @@ const ACCESS_LINKS: NavLink[] = [
   { to: "/access/tsig-keys", label: "TSIG Keys" },
 ];
 
+const DNSSEC_LINKS: NavLink[] = [
+  { to: "/dnssec/zones", label: "Signed Zones" },
+  { to: "/dnssec/policies", label: "Policies" },
+];
+
+const LOG_LINKS: NavLink[] = [
+  { to: "/logs/audit", label: "Audit" },
+  { to: "/logs/access", label: "Access" },
+  { to: "/logs/transfer", label: "Transfer" },
+];
+
 const linkClasses = (pathname: string, path: string) => {
   const isActive = pathname.startsWith(path);
   return `block px-5 py-3 text-sm hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
@@ -142,15 +153,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </li>
             )}
             {allows("dnssec:read") && (
-              <li>
-                <Link
-                  to="/dnssec"
-                  className={linkClasses(pathname, "/dnssec")}
-                  onClick={onClose}
-                >
-                  DNSSEC
-                </Link>
-              </li>
+              <NavGroup
+                label="DNSSEC"
+                basePath="/dnssec"
+                links={DNSSEC_LINKS}
+                onNavigate={onClose}
+              />
             )}
             {allows("access:manage") && (
               <NavGroup
@@ -160,16 +168,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onNavigate={onClose}
               />
             )}
-            {allows("audit:read") && (
-              <li>
-                <Link
-                  to="/audit"
-                  className={linkClasses(pathname, "/audit")}
-                  onClick={onClose}
-                >
-                  Audit Log
-                </Link>
-              </li>
+            {allows("log:read") && (
+              <NavGroup
+                label="Logs"
+                basePath="/logs"
+                links={LOG_LINKS}
+                onNavigate={onClose}
+              />
             )}
             <li>
               <Link

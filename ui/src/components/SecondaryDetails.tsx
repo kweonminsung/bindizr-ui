@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
-import {
-  checkSecondary,
-  getSecondaryTransfers,
-  updateSecondary,
-} from "@/lib/api";
+import { Link } from "react-router-dom";
+import { checkSecondary, updateSecondary } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
   Secondary,
   SecondaryCheck,
-  SecondaryTransfers,
-  Transfer,
   TransferSummary,
   UpdateSecondaryPayload,
 } from "@/lib/types";
@@ -28,7 +23,6 @@ interface SecondaryDetailsProps {
 const TABS = [
   { id: "settings", label: "Settings" },
   { id: "check", label: "Check" },
-  { id: "transfers", label: "Transfers" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -49,32 +43,6 @@ export default function SecondaryDetails({
   const [submitting, setSubmitting] = useState(false);
   const [check, setCheck] = useState<SecondaryCheck | null>(null);
   const [checking, setChecking] = useState(false);
-  const [transfers, setTransfers] = useState<SecondaryTransfers | null>(null);
-  const [transfersError, setTransfersError] = useState<string | null>(null);
-  // Reloaded after a check, whose NOTIFY may start a transfer.
-  const [transfersKey, setTransfersKey] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setTransfersError(null);
-    getSecondaryTransfers(secondary.name)
-      .then((served) => {
-        if (!cancelled) setTransfers(served);
-      })
-      .catch((fetchError) => {
-        if (!cancelled) {
-          setTransfersError(
-            getErrorMessage(
-              fetchError,
-              "Failed to fetch the secondary's transfers",
-            ),
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [secondary.name, transfersKey]);
 
   useEffect(() => {
     setAddress(secondary.address);
@@ -88,7 +56,6 @@ export default function SecondaryDetails({
     setChecking(true);
     try {
       setCheck(await checkSecondary(secondary.name));
-      setTransfersKey((prev) => prev + 1);
     } catch (checkError) {
       toast.error(getErrorMessage(checkError, "Failed to check secondary"));
     } finally {
@@ -153,6 +120,19 @@ export default function SecondaryDetails({
                 {formatDateTime(secondary.created_at)}
               </p>
             </div>
+
+            {allows("log:read") && (
+              <p className="text-sm text-gray-500">
+                The transfers Bindizr answered its addresses are in the{" "}
+                <Link
+                  to={`/logs/transfer?secondary_name=${encodeURIComponent(secondary.name)}`}
+                  className="text-(--primary) hover:underline"
+                >
+                  transfer log
+                </Link>
+                .
+              </p>
+            )}
 
             {!canManage && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -261,15 +241,6 @@ export default function SecondaryDetails({
             {check && <CheckReport check={check} />}
           </div>
         )}
-
-        {activeTab === "transfers" &&
-          (transfersError ? (
-            <Notice tone="error">{transfersError}</Notice>
-          ) : transfers ? (
-            <TransfersReport transfers={transfers} />
-          ) : (
-            <p className="text-sm text-gray-500">Loading...</p>
-          ))}
       </div>
     </div>
   );
@@ -316,107 +287,8 @@ function CheckReport({ check }: { check: SecondaryCheck }) {
   );
 }
 
-/** What a transfer was: the kind and whether a delta, or that it was refused or failed. */
-function describeTransfer(transfer: Transfer): string {
-  if (transfer.result !== "ok") return transfer.result;
-  if (transfer.kind === "ixfr")
-    return transfer.incremental ? "IXFR delta" : "IXFR full";
-  return "AXFR";
-}
-
 /** How a secondary's zones were last served. */
 function describeSummary(summary: TransferSummary): string {
   if (summary.zones === 0) return "no transfers";
   return `${summary.zones} zones: ${summary.ixfr_delta} IXFR delta, ${summary.ixfr_full} IXFR full, ${summary.axfr} AXFR, ${summary.refused} refused, ${summary.failed} failed`;
-}
-
-function TransfersReport({ transfers }: { transfers: SecondaryTransfers }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-gray-600">
-        {describeSummary(transfers.summary)}
-      </p>
-      {transfers.transfers.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-gray-200">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Zone
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Transfer
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Transport
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Serial
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Address
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  At
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Error
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {transfers.transfers.map((transfer, index) => (
-                // A log row has no id and one address and zone repeat; the
-                // list is replaced whole on every fetch, so its position is stable.
-                <tr key={index}>
-                  <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
-                    {transfer.zone_name}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                    {describeTransfer(transfer)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                    {transfer.transport.toUpperCase()}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                    {transfer.serial ?? "-"}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                    {transfer.address}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                    {formatDateTime(transfer.at)}
-                  </td>
-                  <td className="px-6 py-4 text-gray-500">
-                    {transfer.error ?? "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
 }

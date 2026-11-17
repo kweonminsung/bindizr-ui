@@ -11,6 +11,7 @@ import {
 import Notice from "./Notice";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
+import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 interface ImportZonesFormProps {
   onApplied: () => void;
@@ -27,9 +28,6 @@ const RESULT_STYLES: Record<ImportResult, string> = {
   rejected: "bg-amber-100 text-amber-700",
   failed: "bg-red-100 text-red-700",
 };
-
-const HEADER =
-  "px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider";
 
 /** The zone names a list gives, one per line; blank and `#` lines are skipped. */
 const parseZoneNames = (list: string) =>
@@ -257,28 +255,28 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Zone
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Result
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Added
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Updated
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Deleted
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Unchanged
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Skipped
                   </th>
-                  <th scope="col" className={HEADER}>
+                  <th scope="col" className={TABLE_HEADER_CLASS}>
                     Error
                   </th>
                 </tr>
