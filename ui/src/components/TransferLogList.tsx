@@ -34,7 +34,6 @@ import {
 } from "./ListLayout";
 
 interface TransferLogFilters {
-  secondary_name: string;
   address: string;
   zone_name: string;
   result: string;
@@ -43,7 +42,6 @@ interface TransferLogFilters {
 }
 
 const defaultFilters: TransferLogFilters = {
-  secondary_name: "",
   address: "",
   zone_name: "",
   result: "",
@@ -97,11 +95,10 @@ export default function TransferLogList() {
     total: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // A secondary links here with its name, which seeds the filter once.
-  const [filters, setFilters] = useState<TransferLogFilters>(() => ({
-    ...defaultFilters,
-    secondary_name: searchParams.get("secondary_name") ?? "",
-  }));
+  const [filters, setFilters] = useState<TransferLogFilters>(defaultFilters);
+  // URL-backed like the page: a secondary links here with its name, and the
+  // sidebar's plain link clears it.
+  const secondaryName = searchParams.get("secondary_name") ?? "";
   const currentPage = getPageFromSearchParams(searchParams);
   const rowsPerPage = getPageSizeFromSearchParams(searchParams);
   const sort = getSortFromSearchParams(
@@ -113,7 +110,7 @@ export default function TransferLogList() {
   const activeFilterCount = countActiveFilters(filters);
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify({
-    secondary_name: filters.secondary_name.trim() || undefined,
+    secondary_name: secondaryName.trim() || undefined,
     address: filters.address,
     zone_name: filters.zone_name,
     result: toChoice<TransferResult>(TRANSFER_RESULTS, filters.result),
@@ -138,6 +135,17 @@ export default function TransferLogList() {
   const handleFilterChange = (key: keyof TransferLogFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     handlePageChange(1);
+  };
+
+  const handleSecondaryChange = (value: string) => {
+    const nextSearchParams = updatePageSearchParam(searchParams, 1);
+    if (value) {
+      nextSearchParams.set("secondary_name", value);
+    } else {
+      nextSearchParams.delete("secondary_name");
+    }
+    // Typing rewrites the entry rather than adding one per keystroke.
+    setSearchParams(nextSearchParams, { replace: true });
   };
 
   // URL-backed like the page: a sorted listing stays shareable.
@@ -187,6 +195,7 @@ export default function TransferLogList() {
   if (
     listing === null &&
     !error &&
+    secondaryName === "" &&
     activeFilterCount === 0 &&
     currentPage === 1
   ) {
@@ -202,13 +211,6 @@ export default function TransferLogList() {
       <ListToolbar
         filters={
           <>
-            <FilterField
-              id="filter_transfer_secondary_name"
-              label="Secondary"
-              value={filters.secondary_name}
-              onChange={(value) => handleFilterChange("secondary_name", value)}
-              placeholder="The addresses it resolves to now"
-            />
             <FilterField
               id="filter_transfer_address"
               label="Address"
@@ -259,7 +261,17 @@ export default function TransferLogList() {
             onChange={handleSortChange}
           />
         }
-      />
+      >
+        <input
+          type="text"
+          placeholder="Secondary"
+          title="The addresses this secondary resolves to now"
+          aria-label="Filter by secondary"
+          value={secondaryName}
+          onChange={(e) => handleSecondaryChange(e.target.value)}
+          className="w-full sm:w-auto"
+        />
+      </ListToolbar>
       {/* Not an early return: a rejected filter must stay correctable. */}
       {error && (
         <Notice tone="error" className="mx-4 mb-4">
