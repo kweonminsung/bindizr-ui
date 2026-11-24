@@ -31,11 +31,6 @@ const LOG_LINKS: NavLink[] = [
   { to: "/logs/transfer", label: "Transfer" },
 ];
 
-const SETTINGS_LINKS: NavLink[] = [
-  { to: "/settings/general", label: "General" },
-  { to: "/settings/webhooks", label: "Webhooks" },
-];
-
 const linkClasses = (pathname: string, path: string) => {
   const isActive = pathname.startsWith(path);
   return `block px-5 py-3 text-sm hover:bg-white hover:text-(--primary) transition-all duration-200 ease-in-out ${
@@ -194,12 +189,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onNavigate={onClose}
               />
             )}
-            <NavGroup
-              label="Settings"
-              basePath="/settings"
-              links={SETTINGS_LINKS}
-              onNavigate={onClose}
-            />
+            <li>
+              <Link
+                to="/settings/general"
+                className={linkClasses(pathname, "/settings")}
+                onClick={onClose}
+              >
+                Settings
+              </Link>
+            </li>
           </ul>
         </nav>
         <footer className="shrink-0 py-4 text-center text-xs text-gray-200">

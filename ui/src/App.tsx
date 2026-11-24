@@ -23,7 +23,6 @@ import ActivityLogPage from "@/pages/ActivityLogPage";
 import TransferLogPage from "@/pages/TransferLogPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
-import WebhooksPage from "@/pages/WebhooksPage";
 import { Action } from "@/lib/types";
 
 /** A page the token's role must permit `action` in all zones to open. */
@@ -238,12 +237,12 @@ function App() {
                       element={<SettingsPage />}
                     />
                     <Route
-                      path="/settings/webhooks"
-                      element={<WebhooksPage />}
-                    />
-                    <Route
                       path="/settings/dns"
                       element={<Navigate to="/zones" replace />}
+                    />
+                    <Route
+                      path="/settings/*"
+                      element={<Navigate to="/settings/general" replace />}
                     />
                   </Routes>
                 </div>

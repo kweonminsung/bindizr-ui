@@ -18,6 +18,7 @@ import {
 } from "@/lib/types";
 import Notice from "./Notice";
 import RoleGrantTable from "./RoleGrantTable";
+import SelectionButtons from "./SelectionButtons";
 import { useToast } from "@/contexts/ToastContext";
 
 /** The panel's two views; any other tab of the parent shows nothing here. */
@@ -50,6 +51,8 @@ const ZONE_ACTION_GROUPS = ["zone", "record", "dnssec"].map((resource) => ({
       action.startsWith(`${resource}:`) && !ALL_ZONES_ACTIONS.includes(action),
   ),
 }));
+
+const ZONE_ACTIONS = ZONE_ACTION_GROUPS.flatMap((group) => group.actions);
 
 const isRecordAction = (action: Action) => action.startsWith("record:");
 
@@ -168,6 +171,14 @@ export default function RoleGrantsPanel({
       prev.includes(action)
         ? prev.filter((item) => item !== action)
         : [...prev, action],
+    );
+  };
+
+  const setGroupSelected = (group: Action[], selected: boolean) => {
+    setActions((previous) =>
+      selected
+        ? [...new Set([...previous, ...group])]
+        : previous.filter((action) => !group.includes(action)),
     );
   };
 
@@ -296,13 +307,19 @@ export default function RoleGrantsPanel({
           >
             Add Grant
           </h3>
-          <fieldset className="space-y-2">
+          <fieldset disabled={submitting} className="space-y-2">
             <legend className="block text-sm font-medium text-gray-600 mb-1">
               Server-wide
             </legend>
             <p className="text-xs text-gray-500">
               Not tied to a zone, so these always hold across the server.
             </p>
+            <SelectionButtons
+              canSelectAll={serverActions.length < SERVER_ACTIONS.length}
+              canClear={serverActions.length > 0}
+              onSelectAll={() => setGroupSelected(SERVER_ACTIONS, true)}
+              onClear={() => setGroupSelected(SERVER_ACTIONS, false)}
+            />
             {SERVER_ACTIONS.map((action) => (
               <label
                 key={action}
@@ -324,7 +341,10 @@ export default function RoleGrantsPanel({
             ))}
           </fieldset>
 
-          <fieldset className="min-w-0 space-y-3 border-t border-gray-200 pt-4">
+          <fieldset
+            disabled={submitting}
+            className="min-w-0 space-y-3 border-t border-gray-200 pt-4"
+          >
             <legend className="sr-only">Zone</legend>
             <div>
               <label
@@ -358,6 +378,12 @@ export default function RoleGrantsPanel({
                 </select>
               )}
             </div>
+            <SelectionButtons
+              canSelectAll={zoneActions.length < ZONE_ACTIONS.length}
+              canClear={zoneActions.length > 0}
+              onSelectAll={() => setGroupSelected(ZONE_ACTIONS, true)}
+              onClear={() => setGroupSelected(ZONE_ACTIONS, false)}
+            />
             <div className="grid gap-4 @xl:grid-cols-2">
               {ZONE_ACTION_GROUPS.map((group) => (
                 <div key={group.resource} className="space-y-2">

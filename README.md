@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.2.0-rc.1">
-        <img src="https://img.shields.io/badge/Compatible-0.2.0--rc.1-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.2.0">
+        <img src="https://img.shields.io/badge/Compatible-0.2.0-success" />
     </a>
 </p>
 
@@ -52,16 +52,6 @@ Register secondary servers, select a TSIG key for signed NOTIFY, and pause a ser
 
 <img src="public/screenshots/secondaries.png" alt="Secondary list: one server signing NOTIFY under a TSIG key, one registered by hostname, and a disabled standby" width="1000" />
 
-### Webhooks
-
-Open **Settings → Webhooks**, enter an HTTP(S) endpoint and a signing secret, then select operations from the UI's catalog. Use **Send test** to check the receiver. **Delivery history** shows the latest 50 deliveries with the queue time, event, target, delivery status, HTTP status, and attempt count.
-
-The UI server queues events after it observes successful Bindizr responses through its proxy. A subscription uses the configured Bindizr connection and the usual permissions for each operation. The proxy observes JSON or gzip responses up to 16 MiB. A change still needs an observable response before the UI can queue its event. Keep the local SQLite database on a persistent volume to retain queued deliveries through restarts. Keep the UI behind its admin account or an authenticated proxy on shared deployments.
-
-The receiver gets a JSON POST with `id`, `type`, and `created_at`, the time Bindizr UI created the event. A server event uses the canonical operation name as its type, such as `record.create`, and includes its observed `result` and target when available. A successful response can confirm an operation without reporting whether it changed stored data. A test has the type `webhook.test`. Compute HMAC-SHA256 over `<timestamp>.<raw request body>` with the shared secret and compare the lowercase hex digest to the value after `sha256=` in `X-Bindizr-Webhook-Signature`. The Unix timestamp in seconds is in `X-Bindizr-Webhook-Timestamp`. The event ID and type are also in `X-Bindizr-Webhook-Id` and `X-Bindizr-Webhook-Event`.
-
-A 2xx response completes delivery. The server retries other statuses and network errors up to two more times, after five and ten seconds. The event ID stays the same, so the receiver can deduplicate retries. Use the final destination URL because the sender stops at a redirect response.
-
 ## Roles and credentials
 
 Roles hold permissions; API tokens and TSIG keys act under a role. Start in **Access Control → Roles**, define what a role may do, then issue the credentials that will use those permissions.
@@ -104,7 +94,7 @@ Three logs, each under Logs in the sidebar. The activity log covers management o
 ## Run with Docker
 
 ```bash
-docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.2.0-rc.1
+docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.2.0
 ```
 
 Or with Docker Compose:
@@ -115,7 +105,7 @@ docker compose up -d
 
 Then open <http://localhost:9000>.
 
-Run Bindizr separately. In the setup screen, enter its URL as reachable from the UI server, provide an API token if required, and test the connection. The token's role determines the available pages and actions; an optional UI admin account protects access to this UI instance.
+Run Bindizr 0.2.0 separately. In the setup screen, enter its URL as reachable from the UI server, provide an API token if required, and test the connection. The token's role determines the available pages and actions; an optional UI admin account protects access to this UI instance.
 
 A `v*` tag, or the Manual Release workflow, builds and pushes the amd64 and
 arm64 image; the Publish Image workflow pushes it under a tag you enter. To
@@ -128,6 +118,12 @@ push it from your own machine instead (the tag defaults to the version in
 
 These builds pass the selected image tag as `APP_VERSION` for the UI footer.
 Local frontend builds use `ui/package.json` unless `APP_VERSION` is set.
+
+### Updating Bindizr UI
+
+Pair Bindizr UI 0.2.0 with Bindizr 0.2.0. Its log pages and filters use the 0.2.0 API. See the [Bindizr release notes](https://kweonminsung.github.io/bindizr/changelog/0.2.0/) for the Bindizr clean-install steps.
+
+Keep the UI's `/app/database.db` when replacing its container to retain settings and credentials. Reuse the existing persistent mount or stop the old container and copy the database out before removing it. Update the UI's configured API token after creating credentials in the new Bindizr instance.
 
 ## Getting Started
 
@@ -157,7 +153,7 @@ Open <http://localhost:9000>. The Go server forwards frontend requests to Vite o
 
 ## Dependencies
 
-- [Go](https://golang.org/) v1.27.3 or higher
+- [Go](https://golang.org/) v1.27.4 or higher
 - [Sqlite3](https://sqlite.org/)
 - [Node.js](https://nodejs.org) v24 or higher
 - [React](https://reactjs.org/) v19
