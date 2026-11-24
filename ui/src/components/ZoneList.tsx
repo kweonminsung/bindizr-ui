@@ -626,8 +626,19 @@ export default function ZoneList({
             zone={selectedZone}
             initialTab={focusTab}
             onZoneChanged={(updatedZone) => {
-              // A rename or a new serial makes the name-based sync above miss.
-              setSelectedZone(updatedZone);
+              setSelectedZone((current) =>
+                current?.id === updatedZone.id ? updatedZone : current,
+              );
+              setRefreshKey((prev) => prev + 1);
+            }}
+            onSerialChanged={(serial) => {
+              // A late response can arrive after another zone edit advances the serial.
+              setSelectedZone((current) =>
+                current?.id === selectedZone.id &&
+                current.serial === selectedZone.serial
+                  ? { ...current, serial }
+                  : current,
+              );
               setRefreshKey((prev) => prev + 1);
             }}
             onDnssecChanged={handleDnssecChanged}

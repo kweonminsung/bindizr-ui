@@ -13,6 +13,7 @@ interface ZoneDetailsProps {
   /** The tab a link opens on; the zone's own unless it names a visible one. */
   initialTab?: string | null;
   onZoneChanged: (zone: Zone) => void;
+  onSerialChanged: (serial: number) => void;
   onDnssecChanged?: (zoneName: string, enabled: boolean) => void;
 }
 
@@ -37,6 +38,7 @@ export default function ZoneDetails({
   zone,
   initialTab,
   onZoneChanged,
+  onSerialChanged,
   onDnssecChanged,
 }: ZoneDetailsProps) {
   const { allows } = useBindizrToken();
@@ -190,9 +192,7 @@ export default function ZoneDetails({
           <ZoneVersions
             zone={zone}
             // A rollback advances the serial, dropping the zone out of a filter.
-            onRolledBack={(result) =>
-              onZoneChanged({ ...zone, serial: result.new_serial })
-            }
+            onRolledBack={(result) => onSerialChanged(result.new_serial)}
           />
         )}
 
@@ -205,7 +205,7 @@ export default function ZoneDetails({
         )}
 
         {activeTab === "sync" && (
-          <ZoneSyncTab zone={zone} onZoneChanged={onZoneChanged} />
+          <ZoneSyncTab zone={zone} onSerialChanged={onSerialChanged} />
         )}
       </div>
     </div>
