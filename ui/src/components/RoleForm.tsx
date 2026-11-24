@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { createRole } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { Role } from "@/lib/types";
+import { RoleResponse } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
 
 interface RoleFormProps {
-  onSuccess: (role: Role) => void;
+  onSuccess: (role: RoleResponse) => void;
   onCancel: () => void;
 }
 

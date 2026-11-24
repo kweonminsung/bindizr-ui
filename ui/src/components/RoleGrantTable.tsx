@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { formatDateTime } from "@/lib/datetime";
-import { RoleGrant } from "@/lib/types";
+import { RoleGrantResponse } from "@/lib/types";
 import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 interface RoleGrantTableProps {
-  grants: RoleGrant[];
+  grants: RoleGrantResponse[];
   /** Offer a revoke per row; omitted for a read-only view. */
-  onRevoke?: (grant: RoleGrant) => void;
+  onRevoke?: (grant: RoleGrantResponse) => void;
 }
 
 /** A role's grants: the zone each reaches, its actions, and the record constraints. */
@@ -48,7 +48,7 @@ export default function RoleGrantTable({
                   <span className="font-medium text-gray-900">All zones</span>
                 ) : (
                   <Link
-                    to={`/records?zoneName=${encodeURIComponent(grant.zone_name)}`}
+                    to={`/records?zone_name=${encodeURIComponent(grant.zone_name)}`}
                     className="font-medium text-blue-600 hover:underline"
                   >
                     {grant.zone_name}

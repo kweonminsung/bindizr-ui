@@ -12,9 +12,9 @@ import {
   ACTIONS,
   ALL_ZONES_ACTIONS,
   Action,
-  Role,
-  RoleGrant,
-  Zone,
+  RoleResponse,
+  RoleGrantResponse,
+  ZoneResponse,
 } from "@/lib/types";
 import Notice from "./Notice";
 import RoleGrantTable from "./RoleGrantTable";
@@ -24,7 +24,7 @@ import { useToast } from "@/contexts/ToastContext";
 export type RoleGrantsView = "grants" | "grant";
 
 interface RoleGrantsPanelProps {
-  role: Role;
+  role: RoleResponse;
   view: RoleGrantsView | null;
   onViewChange: (view: RoleGrantsView) => void;
   /** Called after a grant or revoke, for a parent showing counts. */
@@ -70,8 +70,8 @@ export default function RoleGrantsPanel({
   onChange,
 }: RoleGrantsPanelProps) {
   const toast = useToast();
-  const [grants, setGrants] = useState<RoleGrant[]>([]);
-  const [zones, setZones] = useState<Zone[]>([]);
+  const [grants, setGrants] = useState<RoleGrantResponse[]>([]);
+  const [zones, setZones] = useState<ZoneResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [zonesError, setZonesError] = useState<string | null>(null);
@@ -125,7 +125,7 @@ export default function RoleGrantsPanel({
   // wants, but the UI lists nothing for them to act on. Name and type
   // coverage is the server's to decide, so only an unconstrained read in
   // this zone settles it here; anything narrower keeps the hint.
-  const coversNewGrant = (grant: RoleGrant, read: Action) =>
+  const coversNewGrant = (grant: RoleGrantResponse, read: Action) =>
     grant.actions.includes(read) &&
     (grant.zone_name === null ||
       (zoneName !== ALL_ZONES &&
@@ -206,7 +206,9 @@ export default function RoleGrantsPanel({
       setRecordTypes(DEFAULT_TYPES);
       onViewChange("grants");
     } catch (grantError) {
-      toast.error(getErrorMessage(grantError, "Failed to grant the role"));
+      toast.error(
+        getErrorMessage(grantError, "Failed to add a grant to this role"),
+      );
     } finally {
       // Once after the loop: per-grant refreshes race, and a partial success
       // still changed the role.
@@ -215,7 +217,7 @@ export default function RoleGrantsPanel({
     }
   };
 
-  const handleRevoke = async (grant: RoleGrant) => {
+  const handleRevoke = async (grant: RoleGrantResponse) => {
     if (
       !window.confirm(
         `Revoke ${grant.actions.join(", ")} in ${grant.zone_name ?? "all zones"} from "${role.name}"?`,

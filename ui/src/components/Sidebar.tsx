@@ -26,9 +26,14 @@ const DNSSEC_LINKS: NavLink[] = [
 ];
 
 const LOG_LINKS: NavLink[] = [
-  { to: "/logs/audit", label: "Audit" },
+  { to: "/logs/activity", label: "Activity" },
   { to: "/logs/access", label: "Access" },
   { to: "/logs/transfer", label: "Transfer" },
+];
+
+const SETTINGS_LINKS: NavLink[] = [
+  { to: "/settings/general", label: "General" },
+  { to: "/settings/webhooks", label: "Webhooks" },
 ];
 
 const linkClasses = (pathname: string, path: string) => {
@@ -162,7 +167,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}
             {allows("access:manage") && (
               <NavGroup
-                label="Access"
+                label="Access Control"
                 basePath="/access"
                 links={ACCESS_LINKS}
                 onNavigate={onClose}
@@ -176,15 +181,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onNavigate={onClose}
               />
             )}
-            <li>
-              <Link
-                to="/settings"
-                className={linkClasses(pathname, "/settings")}
-                onClick={onClose}
-              >
-                Settings
-              </Link>
-            </li>
+            <NavGroup
+              label="Settings"
+              basePath="/settings"
+              links={SETTINGS_LINKS}
+              onNavigate={onClose}
+            />
           </ul>
         </nav>
         <footer className="text-center text-xs text-gray-200 py-4">

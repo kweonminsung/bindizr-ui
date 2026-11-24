@@ -3,7 +3,7 @@ import { deleteRole, getRoles } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
-import { Role } from "@/lib/types";
+import { RoleResponse } from "@/lib/types";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import BuiltinBadge from "./BuiltinBadge";
@@ -24,10 +24,11 @@ interface RoleListProps {
 }
 
 /** Whether a token or key still authenticates into the role. */
-const isHeld = (role: Role) => role.token_count + role.tsig_key_count > 0;
+const isHeld = (role: RoleResponse) =>
+  role.token_count + role.tsig_key_count > 0;
 
 /** "2 API tokens and 1 TSIG key", naming only the kinds present. */
-const describeHolders = (role: Role) => {
+const describeHolders = (role: RoleResponse) => {
   const counted = (count: number, noun: string) =>
     `${count} ${noun}${count === 1 ? "" : "s"}`;
   const parts: string[] = [];
@@ -47,7 +48,7 @@ const SORT_OPTIONS = [
 
 type RoleSortField = (typeof SORT_OPTIONS)[number]["value"];
 
-const SORT_VALUES: Record<RoleSortField, (role: Role) => SortValue> = {
+const SORT_VALUES: Record<RoleSortField, (role: RoleResponse) => SortValue> = {
   name: (role) => role.name,
   grant_count: (role) => role.grant_count,
   credential_count: (role) => role.token_count + role.tsig_key_count,
@@ -56,8 +57,8 @@ const SORT_VALUES: Record<RoleSortField, (role: Role) => SortValue> = {
 
 export default function RoleList({ onCreateRole }: RoleListProps) {
   const toast = useToast();
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [selectedRole, setSelectedRole] = useState<RoleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,7 +94,7 @@ export default function RoleList({ onCreateRole }: RoleListProps) {
     };
   }, [refreshKey]);
 
-  const handleDelete = async (role: Role) => {
+  const handleDelete = async (role: RoleResponse) => {
     if (!window.confirm(`Delete "${role.name}" and its grants?`)) {
       return;
     }

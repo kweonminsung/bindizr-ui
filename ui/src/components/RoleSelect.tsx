@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getRoles } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { Role } from "@/lib/types";
+import { RoleResponse } from "@/lib/types";
 import Notice from "./Notice";
 
 interface RoleSelectProps {
@@ -23,7 +23,7 @@ export default function RoleSelect({
   hint,
   fixed = false,
 }: RoleSelectProps) {
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

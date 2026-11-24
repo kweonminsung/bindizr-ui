@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Record, SignedRecord } from "@/lib/types";
+import { Record, RecordResponse } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import RecordForm from "./RecordForm";
 
 interface RecordDetailsProps {
   /** A user record, or a derived DNSSEC row which is shown read-only. */
-  record: SignedRecord;
+  record: RecordResponse;
   onRecordChanged: (record: Record) => void;
   defaultEditing?: boolean;
 }

@@ -31,3 +31,21 @@ export function getErrorCode(error: unknown) {
 export function getErrorStatus(error: unknown) {
   return error instanceof ApiError ? error.status : undefined;
 }
+
+export async function readResponseError(response: Response, fallback: string) {
+  const text = await response.text();
+  if (!text) {
+    return { message: fallback };
+  }
+
+  try {
+    const data = JSON.parse(text) as {
+      error?: string;
+      message?: string;
+      code?: ErrorCode;
+    };
+    return { message: data.error || data.message || text, code: data.code };
+  } catch {
+    return { message: text };
+  }
+}

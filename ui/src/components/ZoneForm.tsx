@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { createZone, importZone, updateZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber, toRequiredNumber } from "@/lib/form";
-import { MAX_TTL, Zone, ZonePayload } from "@/lib/types";
+import { MAX_TTL, ZoneResponse, CreateZoneRequest } from "@/lib/types";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneFormProps {
-  zone: Zone | null;
-  onSuccess: (zone: Zone) => void;
+  zone: ZoneResponse | null;
+  onSuccess: (zone: ZoneResponse) => void;
   onCancel: () => void;
 }
 
@@ -92,7 +92,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
     e.preventDefault();
 
     try {
-      const payload: ZonePayload = {
+      const payload: CreateZoneRequest = {
         name: formData.name,
         mname: formData.mname,
         rname: formData.rname,
@@ -106,7 +106,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
         description: formData.description.trim(),
       };
 
-      let savedZone: Zone;
+      let savedZone: ZoneResponse;
 
       if (zone) {
         savedZone = await updateZone(zone.name, {
@@ -370,7 +370,7 @@ export default function ZoneForm({ zone, onSuccess, onCancel }: ZoneFormProps) {
                 Enabled
               </span>
               <span className="block text-sm text-gray-500">
-                Disabled, the secondaries drop the zone. Its records stay here,
+                Disabling the zone removes it from the catalog. Its records stay
                 editable.
               </span>
             </span>

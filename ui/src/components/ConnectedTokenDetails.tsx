@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { getSelfTokenGrants } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { ApiToken, RoleGrant } from "@/lib/types";
+import { ApiTokenResponse, RoleGrantResponse } from "@/lib/types";
 import { ExpiredTokenBadge, TokenMetadata } from "./TokenDetails";
 import Notice from "./Notice";
 import RoleGrantTable from "./RoleGrantTable";
 
 interface ConnectedTokenDetailsProps {
   /** The token the UI presents to Bindizr. */
-  token: ApiToken;
+  token: ApiTokenResponse;
 }
 
 /** Modal body: the connected token's metadata and its role's grants. */
 export default function ConnectedTokenDetails({
   token,
 }: ConnectedTokenDetailsProps) {
-  const [grants, setGrants] = useState<RoleGrant[]>([]);
+  const [grants, setGrants] = useState<RoleGrantResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

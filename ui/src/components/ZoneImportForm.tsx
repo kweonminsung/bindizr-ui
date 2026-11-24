@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { importZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { IMPORT_MODES, ImportMode, ImportZoneResult, Zone } from "@/lib/types";
+import {
+  IMPORT_MODES,
+  IMPORT_MODE_DESCRIPTIONS,
+  ImportMode,
+  ImportZoneResponse,
+  ZoneResponse,
+} from "@/lib/types";
 import Notice from "./Notice";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneImportFormProps {
-  zone: Zone;
+  zone: ZoneResponse;
   onApplied: () => void;
 }
-
-const MODE_DESCRIPTIONS: Record<ImportMode, string> = {
-  append: "Only add records that do not exist yet.",
-  upsert: "Add new records and update TTLs of existing ones.",
-  replace: "Make the zone match the file exactly, deleting extra records.",
-};
 
 export default function ZoneImportForm({
   zone,
@@ -33,7 +33,7 @@ export default function ZoneImportForm({
   const [mode, setMode] = useState<ImportMode>("append");
   const [dryRun, setDryRun] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<ImportZoneResult | null>(null);
+  const [result, setResult] = useState<ImportZoneResponse | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,7 +149,7 @@ export default function ZoneImportForm({
             ))}
           </select>
           <p className="text-sm text-gray-500 mt-1">
-            {MODE_DESCRIPTIONS[mode]}
+            {IMPORT_MODE_DESCRIPTIONS[mode]}
           </p>
         </div>
         <label className="flex items-center space-x-2 text-sm text-gray-600">
@@ -200,7 +200,13 @@ export default function ZoneImportForm({
 
       <div className="flex justify-end pt-4">
         <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? "Importing..." : dryRun ? "Validate" : "Import"}
+          {submitting
+            ? dryRun
+              ? "Preparing preview…"
+              : "Importing…"
+            : dryRun
+              ? "Preview import"
+              : "Import"}
         </button>
       </div>
     </form>

@@ -8,12 +8,17 @@ import React, {
 } from "react";
 import { getPermissions, getSelfToken } from "@/lib/api";
 import { zoneKey } from "@/lib/grants";
-import { Action, ApiToken, Permissions, PermittedActions } from "@/lib/types";
+import {
+  Action,
+  ApiTokenResponse,
+  PermissionsResponse,
+  PermittedActionsResponse,
+} from "@/lib/types";
 import { useAuth } from "./AuthContext";
 
 interface BindizrTokenContextType {
   /** The UI's own token; null when Bindizr runs without auth or the lookup failed. */
-  self: ApiToken | null;
+  self: ApiTokenResponse | null;
   /** Whether the caller may do `action` in the named zone, or in all zones
    * when none is named; true if the lookup failed, as the API decides. */
   allows: (action: Action, zoneName?: string) => boolean;
@@ -53,9 +58,11 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
 }) => {
   const { isAuthenticated, setupComplete, accountEnabled } = useAuth();
   const canLookup = setupComplete && (!accountEnabled || isAuthenticated);
-  const [self, setSelf] = useState<ApiToken | null>(null);
+  const [self, setSelf] = useState<ApiTokenResponse | null>(null);
   /** Null when the lookup failed: everything is offered, the API decides. */
-  const [permissions, setPermissions] = useState<Permissions | null>(null);
+  const [permissions, setPermissions] = useState<PermissionsResponse | null>(
+    null,
+  );
   const [resolved, setResolved] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -80,7 +87,7 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     const byZone = new Map(
       (permissions?.zones ?? []).map((zone) => [zoneKey(zone.zone_name), zone]),
     );
-    return (zoneName?: string): PermittedActions | undefined =>
+    return (zoneName?: string): PermittedActionsResponse | undefined =>
       (zoneName === undefined ? undefined : byZone.get(zoneKey(zoneName))) ??
       permissions?.all_zones;
   }, [permissions]);

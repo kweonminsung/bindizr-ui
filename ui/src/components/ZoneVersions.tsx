@@ -5,10 +5,10 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRecordValue } from "@/lib/recordValue";
 import {
-  RollbackZoneResult,
-  VersionDetail,
-  Zone,
-  ZoneVersion,
+  RollbackZoneResponse,
+  GetZoneVersionResponse,
+  ZoneResponse,
+  ZoneVersionResponse,
   ZoneVersionListQuery,
 } from "@/lib/types";
 import ChangeSourceBadge, { describeActor } from "./ChangeSourceBadge";
@@ -19,8 +19,8 @@ import { useToast } from "@/contexts/ToastContext";
 import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 interface ZoneVersionsProps {
-  zone: Zone;
-  onRolledBack: (result: RollbackZoneResult) => void;
+  zone: ZoneResponse;
+  onRolledBack: (result: RollbackZoneResponse) => void;
 }
 
 export default function ZoneVersions({
@@ -38,12 +38,13 @@ export default function ZoneVersions({
     allowsWholeZone("record:delete", zone.name);
   const [listing, setListing] = useState<{
     request: string;
-    versions: ZoneVersion[];
+    versions: ZoneVersionResponse[];
     total: number;
   } | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [showAll, setShowAll] = useState(false);
+  const [includeSignerOnlyVersions, setIncludeSignerOnlyVersions] =
+    useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   // Rows fetched for another page or view are never drawn under this one.
@@ -52,20 +53,20 @@ export default function ZoneVersions({
     {
       limit: pageSize,
       offset: (page - 1) * pageSize,
-      include_signer_serials: showAll,
+      include_signer_only_versions: includeSignerOnlyVersions,
     } satisfies ZoneVersionListQuery,
   ]);
   const versions = listing?.request === request ? listing.versions : null;
   const total = listing?.total ?? 0;
 
-  const [detail, setDetail] = useState<VersionDetail | null>(null);
+  const [detail, setDetail] = useState<GetZoneVersionResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [diffFrom, setDiffFrom] = useState<number | null>(null);
 
-  const [preview, setPreview] = useState<RollbackZoneResult | null>(null);
+  const [preview, setPreview] = useState<RollbackZoneResponse | null>(null);
   const [rollbackPending, setRollbackPending] = useState(false);
   const [rollbackResult, setRollbackResult] =
-    useState<RollbackZoneResult | null>(null);
+    useState<RollbackZoneResponse | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -147,7 +148,7 @@ export default function ZoneVersions({
     }
   };
 
-  const renderSummary = (result: RollbackZoneResult) =>
+  const renderSummary = (result: RollbackZoneResponse) =>
     `${result.summary.added} added, ${result.summary.deleted} deleted, ${result.summary.unchanged} unchanged, SOA ${
       result.summary.soa_changed ? "changed" : "unchanged"
     }`;
@@ -337,13 +338,13 @@ export default function ZoneVersions({
         <label className="flex items-center space-x-2 text-sm text-gray-600">
           <input
             type="checkbox"
-            checked={showAll}
+            checked={includeSignerOnlyVersions}
             onChange={(e) => {
-              setShowAll(e.target.checked);
+              setIncludeSignerOnlyVersions(e.target.checked);
               setPage(1);
             }}
           />
-          <span>Include signer-only serials</span>
+          <span>Include signer-only versions</span>
         </label>
       </div>
 
@@ -397,12 +398,10 @@ export default function ZoneVersions({
                   </td>
                   <td className="px-6 py-4 text-gray-500">
                     <span className="break-all">
-                      {version.changed_by
-                        ? describeActor(version.changed_by)
-                        : "—"}
+                      {version.actor ? describeActor(version.actor) : "—"}
                     </span>
                     <ChangeSourceBadge
-                      source={version.change_source}
+                      source={version.source}
                       className="ml-2"
                     />
                   </td>

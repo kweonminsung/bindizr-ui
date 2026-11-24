@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getAccessLogPage } from "@/lib/api";
-import { formatDateTime, toDayEnd, toDayStart } from "@/lib/datetime";
+import { formatDateTime, toNextDayStart, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { countActiveFilters } from "@/lib/form";
 import {
@@ -16,7 +16,7 @@ import {
 import {
   ACCESS_RESULTS,
   ACCESS_SOURCES,
-  AccessLog,
+  AccessLogResponse,
   AccessLogListQuery,
   AccessResult,
   AccessSource,
@@ -24,9 +24,13 @@ import {
   AccessLogSortField,
   SortOrder,
 } from "@/lib/types";
-import { describeActor } from "./ChangeSourceBadge";
+import ChangeSourceBadge, {
+  CHANGE_SOURCE_LABELS,
+  describeActor,
+} from "./ChangeSourceBadge";
 import { FilterField, FilterSelect } from "./FilterFields";
 import Notice from "./Notice";
+import Badge from "./Badge";
 import PaginationControls from "./PaginationControls";
 import SortControl from "./SortControl";
 import {
@@ -39,8 +43,8 @@ import {
 interface AccessLogFilters {
   source: string;
   result: string;
-  caller_name: string;
-  address: string;
+  actor_name: string;
+  client_ip: string;
   since: string;
   until: string;
 }
@@ -48,43 +52,47 @@ interface AccessLogFilters {
 const defaultFilters: AccessLogFilters = {
   source: "",
   result: "",
-  caller_name: "",
-  address: "",
+  actor_name: "",
+  client_ip: "",
   since: "",
   until: "",
-};
-
-const SOURCE_LABELS: Record<AccessSource, string> = {
-  api: "HTTP API",
-  nsupdate: "nsupdate",
 };
 
 const SOURCE_OPTIONS = [
   { value: "", label: "Any" },
   ...ACCESS_SOURCES.map((source) => ({
     value: source,
-    label: SOURCE_LABELS[source],
+    label: CHANGE_SOURCE_LABELS[source],
   })),
 ] as const;
 
-const RESULT_OPTIONS = [
-  { value: "", label: "Any" },
-  ...ACCESS_RESULTS.map((result) => ({ value: result, label: result })),
-] as const;
-
-const RESULT_STYLES: Record<AccessResult, string> = {
-  ok: "bg-green-100 text-green-700",
-  denied: "bg-red-100 text-red-700",
-  failed: "bg-amber-100 text-amber-700",
+const RESULT_LABELS: Record<AccessResult, string> = {
+  ok: "OK",
+  denied: "Denied",
+  failed: "Failed",
 };
 
+const RESULT_OPTIONS = [
+  { value: "", label: "Any" },
+  ...ACCESS_RESULTS.map((result) => ({
+    value: result,
+    label: RESULT_LABELS[result],
+  })),
+] as const;
+
+const RESULT_TONES = {
+  ok: "success",
+  denied: "danger",
+  failed: "warning",
+} as const satisfies Record<AccessResult, string>;
+
 const SORT_OPTIONS = [
-  { value: "requested_at", label: "Time" },
+  { value: "requested_at", label: "Request time" },
   { value: "source", label: "Source" },
   { value: "target", label: "Request" },
-  { value: "status", label: "Status" },
+  { value: "response_code", label: "Response code" },
   { value: "result", label: "Result" },
-  { value: "address", label: "Address" },
+  { value: "client_ip", label: "Client IP" },
 ] as const;
 
 const DEFAULT_SORT: AccessLogSortField = "requested_at";
@@ -102,7 +110,7 @@ export default function AccessLogList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [listing, setListing] = useState<{
     request: string;
-    rows: AccessLog[];
+    rows: AccessLogResponse[];
     total: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,17 +128,18 @@ export default function AccessLogList() {
   const request = JSON.stringify({
     source: toChoice<AccessSource>(ACCESS_SOURCES, filters.source),
     result: toChoice<AccessResult>(ACCESS_RESULTS, filters.result),
-    caller_name: filters.caller_name,
-    address: filters.address,
+    actor_name: filters.actor_name,
+    client_ip: filters.client_ip,
     since: toDayStart(filters.since),
-    until: toDayEnd(filters.until),
+    until: toNextDayStart(filters.until),
     sort,
     order,
     limit: rowsPerPage,
     offset: (currentPage - 1) * rowsPerPage,
   } satisfies AccessLogListQuery);
-  const rows = listing?.request === request ? listing.rows : null;
-  const total = listing?.total ?? 0;
+  const current = listing?.request === request ? listing : null;
+  const rows = current?.rows ?? null;
+  const total = current?.total ?? 0;
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -222,29 +231,29 @@ export default function AccessLogList() {
               options={RESULT_OPTIONS}
             />
             <FilterField
-              id="filter_access_caller_name"
-              label="Caller"
-              value={filters.caller_name}
-              onChange={(value) => handleFilterChange("caller_name", value)}
+              id="filter_access_actor_name"
+              label="Actor name"
+              value={filters.actor_name}
+              onChange={(value) => handleFilterChange("actor_name", value)}
               placeholder="A token or TSIG key name"
             />
             <FilterField
-              id="filter_access_address"
-              label="Address"
-              value={filters.address}
-              onChange={(value) => handleFilterChange("address", value)}
+              id="filter_access_client_ip"
+              label="Client IP"
+              value={filters.client_ip}
+              onChange={(value) => handleFilterChange("client_ip", value)}
               placeholder="192.0.2.10"
             />
             <FilterField
               id="filter_access_since"
-              label="From"
+              label="From (UTC)"
               type="date"
               value={filters.since}
               onChange={(value) => handleFilterChange("since", value)}
             />
             <FilterField
               id="filter_access_until"
-              label="To"
+              label="To (UTC)"
               type="date"
               value={filters.until}
               onChange={(value) => handleFilterChange("until", value)}
@@ -290,21 +299,27 @@ export default function AccessLogList() {
               </th>
               <th
                 scope="col"
+                className={`hidden sm:table-cell w-32 ${TABLE_HEADER_CLASS}`}
+              >
+                Response code
+              </th>
+              <th
+                scope="col"
                 className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
-                Caller
+                Actor
               </th>
               <th
                 scope="col"
                 className={`hidden md:table-cell w-40 ${TABLE_HEADER_CLASS}`}
               >
-                Address
+                Client IP
               </th>
               <th
                 scope="col"
                 className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
               >
-                Error
+                Error code
               </th>
             </tr>
           </thead>
@@ -323,31 +338,30 @@ export default function AccessLogList() {
                   {row.method} {row.target}
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      RESULT_STYLES[row.result] ?? "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {row.result}
+                  <Badge tone={RESULT_TONES[row.result]}>
+                    {RESULT_LABELS[row.result] ?? row.result}
+                  </Badge>
+                  <span className="ml-2 text-gray-500 sm:hidden">
+                    {row.response_code}
                   </span>
-                  <span className="ml-2 text-gray-500">{row.status}</span>
+                </td>
+                <td className="hidden sm:table-cell px-6 py-4 text-gray-500">
+                  {row.response_code}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   <span className="break-all">
-                    {row.caller ? describeActor(row.caller) : "—"}
+                    {row.actor ? describeActor(row.actor) : "—"}
                   </span>
-                  <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                    {SOURCE_LABELS[row.source] ?? row.source}
-                  </span>
+                  <ChangeSourceBadge source={row.source} className="ml-2" />
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {row.address}
+                  {row.client_ip}
                 </td>
                 <td
                   className="hidden lg:table-cell truncate px-6 py-4 text-gray-500"
-                  title={row.error ?? undefined}
+                  title={row.error_code ?? undefined}
                 >
-                  {row.error ?? "—"}
+                  {row.error_code ?? "—"}
                 </td>
               </tr>
             ))}

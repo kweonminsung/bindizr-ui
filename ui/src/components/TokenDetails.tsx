@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { formatDateTime } from "@/lib/datetime";
-import { ApiToken } from "@/lib/types";
+import { ApiTokenResponse } from "@/lib/types";
 import Notice from "./Notice";
 import RoleNote from "./RoleNote";
 import { useToast } from "@/contexts/ToastContext";
 
 interface TokenDetailsProps {
-  token: ApiToken;
+  token: ApiTokenResponse;
   /** Only the create response carries it. */
   secret?: string | null;
 }
 
-export const isTokenExpired = (token: ApiToken) =>
+export const isTokenExpired = (token: ApiTokenResponse) =>
   !!token.expires_at && new Date(token.expires_at).getTime() < Date.now();
 
 /** The expiry pill placed beside the token's name, when it has expired. */
-export function ExpiredTokenBadge({ token }: { token: ApiToken }) {
+export function ExpiredTokenBadge({ token }: { token: ApiTokenResponse }) {
   if (!isTokenExpired(token)) {
     return null;
   }
@@ -27,7 +27,7 @@ export function ExpiredTokenBadge({ token }: { token: ApiToken }) {
 }
 
 interface TokenMetadataProps {
-  token: ApiToken;
+  token: ApiTokenResponse;
   /** Add the name row when the heading does not carry it. */
   showName?: boolean;
 }

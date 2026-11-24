@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { exportZone } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { Zone } from "@/lib/types";
+import { ZoneResponse } from "@/lib/types";
 import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneExportProps {
-  zone: Zone;
+  zone: ZoneResponse;
 }
 
 export default function ZoneExport({ zone }: ZoneExportProps) {
   const toast = useToast();
   const [content, setContent] = useState("");
-  const [signed, setSigned] = useState(false);
+  const [includeDnssec, setIncludeDnssec] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -24,7 +24,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
       setLoading(true);
       setError(null);
       try {
-        const text = await exportZone(zone.name, signed);
+        const text = await exportZone(zone.name, includeDnssec);
         if (active) {
           setContent(text);
         }
@@ -44,7 +44,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
     return () => {
       active = false;
     };
-  }, [zone.name, signed]);
+  }, [zone.name, includeDnssec]);
 
   useEffect(() => {
     if (!copied) {
@@ -70,7 +70,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${zone.name}${signed ? ".signed" : ""}.zone`;
+    anchor.download = `${zone.name}${includeDnssec ? ".signed" : ""}.zone`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -102,7 +102,7 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
       </div>
 
       <p className="text-sm text-gray-500">
-        The zone rendered as BIND master-file text.
+        The zone rendered as BIND zone file text.
       </p>
 
       <label
@@ -111,11 +111,11 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
       >
         <input
           type="checkbox"
-          checked={signed}
-          onChange={(e) => setSigned(e.target.checked)}
+          checked={includeDnssec}
+          onChange={(e) => setIncludeDnssec(e.target.checked)}
         />
         <span className="border-b border-dotted border-gray-400 cursor-help">
-          Signed view
+          Include generated DNSSEC records
         </span>
       </label>
 

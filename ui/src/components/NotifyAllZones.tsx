@@ -54,12 +54,12 @@ export default function NotifyAllZones({
 
       <Modal isOpen={isOpen} onClose={close}>
         <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Notify All Zones
+          Notify All Enabled Zones
         </h2>
 
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            Ask the secondaries to pull the latest data for all zones.
+            Send NOTIFY to secondaries for all enabled zones.
           </p>
 
           <label className="flex items-start space-x-2 text-sm text-gray-600">
@@ -71,8 +71,7 @@ export default function NotifyAllZones({
               className="mt-1"
             />
             <span>
-              Bump all zones&apos; serials first, so secondaries transfer even
-              when nothing changed.
+              Bump the SOA serial for each enabled zone before sending NOTIFY.
             </span>
           </label>
         </div>

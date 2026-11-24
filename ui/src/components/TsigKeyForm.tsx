@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { createTsigKey } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { TSIG_ALGORITHMS, TsigAlgorithm, TsigKey } from "@/lib/types";
+import { TSIG_ALGORITHMS, TsigAlgorithm, TsigKeyWithSecret } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
 import RoleSelect from "./RoleSelect";
 
 interface TsigKeyFormProps {
-  onSuccess: (tsigKey: TsigKey) => void;
+  onSuccess: (tsigKey: TsigKeyWithSecret) => void;
   onCancel: () => void;
   /** Creates in this role, leaving the role picker fixed. */
   roleName?: string;

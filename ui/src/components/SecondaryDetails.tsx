@@ -4,20 +4,20 @@ import { checkSecondary, updateSecondary } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import {
-  Secondary,
-  SecondaryCheck,
-  TransferSummary,
-  UpdateSecondaryPayload,
+  SecondaryResponse,
+  CheckSecondaryResponse,
+  TransferSummaryResponse,
+  UpdateSecondaryRequest,
 } from "@/lib/types";
 import Notice from "./Notice";
-import NotifyKeySelect from "./NotifyKeySelect";
+import NotifyTsigKeySelect from "./NotifyTsigKeySelect";
 import TabBar from "./TabBar";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 
 interface SecondaryDetailsProps {
-  secondary: Secondary;
-  onUpdated: (secondary: Secondary) => void;
+  secondary: SecondaryResponse;
+  onUpdated: (secondary: SecondaryResponse) => void;
 }
 
 const TABS = [
@@ -39,15 +39,17 @@ export default function SecondaryDetails({
   const [activeTab, setActiveTab] = useState<TabId>("settings");
   const [address, setAddress] = useState(secondary.address);
   const [enabled, setEnabled] = useState(secondary.enabled);
-  const [notifyKey, setNotifyKey] = useState(secondary.notify_key_name ?? "");
+  const [notifyTsigKey, setNotifyTsigKey] = useState(
+    secondary.notify_tsig_key_name ?? "",
+  );
   const [submitting, setSubmitting] = useState(false);
-  const [check, setCheck] = useState<SecondaryCheck | null>(null);
+  const [check, setCheck] = useState<CheckSecondaryResponse | null>(null);
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     setAddress(secondary.address);
     setEnabled(secondary.enabled);
-    setNotifyKey(secondary.notify_key_name ?? "");
+    setNotifyTsigKey(secondary.notify_tsig_key_name ?? "");
     setCheck(null);
     setActiveTab("settings");
   }, [secondary]);
@@ -66,15 +68,15 @@ export default function SecondaryDetails({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const payload: UpdateSecondaryPayload = {};
+    const payload: UpdateSecondaryRequest = {};
     if (address.trim() !== secondary.address) {
       payload.address = address.trim();
     }
     if (enabled !== secondary.enabled) {
       payload.enabled = enabled;
     }
-    if (notifyKey !== (secondary.notify_key_name ?? "")) {
-      payload.notify_key_name = notifyKey;
+    if (notifyTsigKey !== (secondary.notify_tsig_key_name ?? "")) {
+      payload.notify_tsig_key_name = notifyTsigKey;
     }
     if (Object.keys(payload).length === 0) {
       toast.error("Nothing to change.");
@@ -115,7 +117,7 @@ export default function SecondaryDetails({
         {activeTab === "settings" && (
           <div className="space-y-4">
             <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Registered</p>
+              <p className="text-sm text-gray-500">Created</p>
               <p className="text-base text-gray-900">
                 {formatDateTime(secondary.created_at)}
               </p>
@@ -143,9 +145,9 @@ export default function SecondaryDetails({
                   </p>
                 </div>
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-                  <p className="text-sm text-gray-500">NOTIFY Key</p>
+                  <p className="text-sm text-gray-500">NOTIFY TSIG key</p>
                   <p className="text-base text-gray-900 break-all">
-                    {secondary.notify_key_name ?? "Unsigned"}
+                    {secondary.notify_tsig_key_name ?? "Unsigned"}
                   </p>
                 </div>
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
@@ -179,15 +181,15 @@ export default function SecondaryDetails({
                 </div>
                 <div>
                   <label
-                    htmlFor="edit_notify_key"
+                    htmlFor="edit_notify_tsig_key"
                     className="block text-sm font-medium text-gray-600 mb-1"
                   >
-                    NOTIFY Key
+                    NOTIFY TSIG key
                   </label>
-                  <NotifyKeySelect
-                    id="edit_notify_key"
-                    value={notifyKey}
-                    onChange={setNotifyKey}
+                  <NotifyTsigKeySelect
+                    id="edit_notify_tsig_key"
+                    value={notifyTsigKey}
+                    onChange={setNotifyTsigKey}
                   />
                 </div>
                 <label className="flex items-start space-x-2 text-sm text-gray-600">
@@ -246,7 +248,7 @@ export default function SecondaryDetails({
   );
 }
 
-function CheckReport({ check }: { check: SecondaryCheck }) {
+function CheckReport({ check }: { check: CheckSecondaryResponse }) {
   const catalog = check.catalog;
   const catalogLine =
     catalog.visible_serial == null
@@ -288,7 +290,7 @@ function CheckReport({ check }: { check: SecondaryCheck }) {
 }
 
 /** How a secondary's zones were last served. */
-function describeSummary(summary: TransferSummary): string {
+function describeSummary(summary: TransferSummaryResponse): string {
   if (summary.zones === 0) return "no transfers";
   return `${summary.zones} zones: ${summary.ixfr_delta} IXFR delta, ${summary.ixfr_full} IXFR full, ${summary.axfr} AXFR, ${summary.refused} refused, ${summary.failed} failed`;
 }

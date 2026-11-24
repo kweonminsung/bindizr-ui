@@ -1,8 +1,13 @@
+import { describeTransferType, TRANSFER_RESULT_LABELS } from "@/lib/transfer";
 import { useEffect, useState } from "react";
 import { getZoneStatus } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/datetime";
-import { SecondaryStatus, TransferLog, ZoneStatus } from "@/lib/types";
+import {
+  SecondaryStatus,
+  TransferLogResponse,
+  ZoneStatusResponse,
+} from "@/lib/types";
 import Notice from "./Notice";
 
 interface ZoneStatusPanelProps {
@@ -31,7 +36,7 @@ export default function ZoneStatusPanel({
   zoneName,
   refreshToken = 0,
 }: ZoneStatusPanelProps) {
-  const [status, setStatus] = useState<ZoneStatus | null>(null);
+  const [status, setStatus] = useState<ZoneStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -129,15 +134,17 @@ export default function ZoneStatusPanel({
   );
 }
 
-/** The latest transfer served for the zone: what it was, the serial it reached, and when. */
-function describeTransfer(transfer: TransferLog): string {
-  const kind =
-    transfer.result !== "ok"
-      ? transfer.result
-      : transfer.kind === "ixfr"
-        ? transfer.incremental
-          ? "IXFR delta"
-          : "IXFR full"
-        : "AXFR";
-  return `${kind} over ${transfer.transport.toUpperCase()} ${transfer.serial ?? "-"} at ${formatDateTime(transfer.at)}`;
+/** Summarize the latest recorded transfer attempt. */
+function describeTransfer(transfer: TransferLogResponse): string {
+  const type = describeTransferType(transfer);
+  const result = TRANSFER_RESULT_LABELS[transfer.result] ?? transfer.result;
+  const serial =
+    transfer.serial === null || transfer.serial === undefined
+      ? ""
+      : " · serial " + transfer.serial;
+  return [
+    type + " over " + transfer.transport.toUpperCase(),
+    result + serial,
+    formatDateTime(transfer.created_at),
+  ].join(" · ");
 }

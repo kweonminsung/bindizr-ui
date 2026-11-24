@@ -4,21 +4,23 @@ import Modal from "@/components/Modal";
 import TokenDetails from "@/components/TokenDetails";
 import TokenForm from "@/components/TokenForm";
 import TokenList from "@/components/TokenList";
-import { CreatedToken } from "@/lib/types";
+import { CreateApiTokenResponse } from "@/lib/types";
 
 export default function TokensPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [createdToken, setCreatedToken] = useState<CreatedToken | null>(null);
+  const [createdToken, setCreatedToken] =
+    useState<CreateApiTokenResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   // The role filter lives in the URL, so a filtered listing can be linked.
   const [searchParams, setSearchParams] = useSearchParams();
-  const roleName = searchParams.get("role") ?? "";
+  const roleName =
+    searchParams.get("role_name") ?? searchParams.get("role") ?? "";
 
   const handleRoleNameChange = (name: string) => {
-    setSearchParams(name ? { role: name } : {}, { replace: true });
+    setSearchParams(name ? { role_name: name } : {}, { replace: true });
   };
 
-  const handleCreated = (created: CreatedToken) => {
+  const handleCreated = (created: CreateApiTokenResponse) => {
     setIsFormOpen(false);
     setRefreshKey((prev) => prev + 1);
     setCreatedToken(created);

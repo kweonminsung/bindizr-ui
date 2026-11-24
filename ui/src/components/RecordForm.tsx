@@ -9,7 +9,7 @@ import {
   Record,
   RECORD_TYPES,
   RecordType,
-  Zone,
+  ZoneResponse,
 } from "@/lib/types";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -20,7 +20,7 @@ interface RecordFormProps {
   onSuccess: (record: Record) => void;
   onCancel: () => void;
   /** Zone picker options, only needed when creating without a fixed zone. */
-  zones?: Zone[];
+  zones?: ZoneResponse[];
 }
 
 interface RecordFormData {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getRoles } from "@/lib/api";
-import { Role } from "@/lib/types";
+import { RoleResponse } from "@/lib/types";
 
 interface RoleFilterSelectProps {
   /** The selected role's name; empty for every role. */
@@ -13,7 +13,7 @@ export default function RoleFilterSelect({
   value,
   onChange,
 }: RoleFilterSelectProps) {
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
 
   useEffect(() => {
     let active = true;

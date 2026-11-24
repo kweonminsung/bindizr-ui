@@ -2,7 +2,11 @@ import { useState } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getRole } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
-import { CreatedToken, Role, TsigKey } from "@/lib/types";
+import {
+  CreateApiTokenResponse,
+  RoleResponse,
+  TsigKeyWithSecret,
+} from "@/lib/types";
 import Modal from "./Modal";
 import BuiltinBadge from "./BuiltinBadge";
 import RoleGrantsPanel, { RoleGrantsView } from "./RoleGrantsPanel";
@@ -17,14 +21,19 @@ import TsigKeyList from "./TsigKeyList";
 type RoleTab = RoleGrantsView | "tokens" | "keys";
 
 /** A role's metadata above its grants and the tokens and keys in it. */
-export default function RoleDetails({ role: initialRole }: { role: Role }) {
+export default function RoleDetails({
+  role: initialRole,
+}: {
+  role: RoleResponse;
+}) {
   const { self, refresh: refreshConnectedToken } = useBindizrToken();
   const [role, setRole] = useState(initialRole);
   const [tab, setTab] = useState<RoleTab>("grants");
   const [tokenFormOpen, setTokenFormOpen] = useState(false);
-  const [createdToken, setCreatedToken] = useState<CreatedToken | null>(null);
+  const [createdToken, setCreatedToken] =
+    useState<CreateApiTokenResponse | null>(null);
   const [keyFormOpen, setKeyFormOpen] = useState(false);
-  const [createdKey, setCreatedKey] = useState<TsigKey | null>(null);
+  const [createdKey, setCreatedKey] = useState<TsigKeyWithSecret | null>(null);
   // Remounts a list after a create made elsewhere in this view.
   const [listKey, setListKey] = useState(0);
 

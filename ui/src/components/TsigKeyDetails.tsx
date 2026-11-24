@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { getTsigKey } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
-import { TsigKey } from "@/lib/types";
+import { TsigKeyResponse, TsigKeyWithSecret } from "@/lib/types";
 import RoleNote from "./RoleNote";
 import { useToast } from "@/contexts/ToastContext";
 
 interface TsigKeyDetailsProps {
-  tsigKey: TsigKey;
+  tsigKey: TsigKeyResponse | TsigKeyWithSecret;
   isNew?: boolean;
 }
 
@@ -20,6 +20,7 @@ export default function TsigKeyDetails({
   const [revealed, setRevealed] = useState(isNew);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const secret = "secret" in detail ? detail.secret : undefined;
 
   useEffect(() => {
     setDetail(tsigKey);
@@ -27,7 +28,8 @@ export default function TsigKeyDetails({
     setCopied(false);
 
     // The list response omits secrets, so fetch the key on its own to read one.
-    if (tsigKey.secret) {
+    if ("secret" in tsigKey) {
+      setLoading(false);
       return;
     }
 
@@ -56,12 +58,12 @@ export default function TsigKeyDetails({
   }, [tsigKey, isNew]);
 
   const handleCopy = async () => {
-    if (!detail.secret) {
+    if (!secret) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(detail.secret);
+      await navigator.clipboard.writeText(secret);
       setCopied(true);
     } catch {
       toast.error("Failed to copy the secret to the clipboard");
@@ -97,7 +99,7 @@ export default function TsigKeyDetails({
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">Secret</p>
-              {detail.secret && (
+              {secret && (
                 <div className="space-x-3 text-sm">
                   <button
                     type="button"
@@ -119,11 +121,11 @@ export default function TsigKeyDetails({
             <p className="text-sm text-gray-900 font-mono break-all mt-1">
               {loading
                 ? "Loading..."
-                : !detail.secret
+                : !secret
                   ? "-"
                   : revealed
-                    ? detail.secret
-                    : "•".repeat(detail.secret.length)}
+                    ? secret
+                    : "•".repeat(secret.length)}
             </p>
           </div>
         </div>

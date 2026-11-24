@@ -7,12 +7,13 @@ import {
   DNSSEC_DENIAL_MODES,
   DnssecAlgorithm,
   DnssecDenialMode,
-  DnssecPolicy,
+  DnssecKeyLayout,
+  DnssecPolicyResponse,
 } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
 
 interface DnssecPolicyFormProps {
-  onSuccess: (policy: DnssecPolicy) => void;
+  onSuccess: (policy: DnssecPolicyResponse) => void;
   onCancel: () => void;
 }
 
@@ -52,7 +53,7 @@ export default function DnssecPolicyForm({
   const [denial, setDenial] = useState<DnssecDenialMode>(
     DNSSEC_DENIAL_MODES[0],
   );
-  const [splitKeys, setSplitKeys] = useState(false);
+  const [keyLayout, setKeyLayout] = useState<DnssecKeyLayout>("csk");
   const [timing, setTiming] = useState<Record<TimingKey, string>>({
     signature_validity_days: "",
     signature_refresh_days: "",
@@ -69,7 +70,7 @@ export default function DnssecPolicyForm({
         name: name.trim(),
         algorithm,
         denial,
-        split_keys: splitKeys,
+        key_layout: keyLayout,
         signature_validity_days: toOptionalNumber(
           timing.signature_validity_days,
           "Signature validity",
@@ -170,8 +171,8 @@ export default function DnssecPolicyForm({
         <label className="flex items-start space-x-2 text-sm text-gray-600">
           <input
             type="checkbox"
-            checked={splitKeys}
-            onChange={(e) => setSplitKeys(e.target.checked)}
+            checked={keyLayout === "split"}
+            onChange={(e) => setKeyLayout(e.target.checked ? "split" : "csk")}
             className="mt-1"
           />
           <span>

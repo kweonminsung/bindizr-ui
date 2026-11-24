@@ -57,7 +57,11 @@ func TestBindizrURLRejectsInvalidUpstreams(t *testing.T) {
 func TestBindizrProxyURLPreservesBasePathEscapedSegmentsAndQuery(t *testing.T) {
 	baseURL := " https://bindizr.example/custom%2Fprefix/ "
 	request := httptest.NewRequest(http.MethodGet, "/%61pi/bindizr/proxy/zones/branch%2Fteam.example?name=a%2Fb&name=c&blank=", nil)
-	target, err := buildBindizrProxyURL(baseURL, request)
+	suffix, err := bindizrProxySuffix(request.URL.EscapedPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := buildBindizrProxyURL(baseURL, suffix, request.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +74,7 @@ func TestBindizrProxyURLPreservesBasePathEscapedSegmentsAndQuery(t *testing.T) {
 func TestBindizrSettingsRejectsInvalidURLBeforeSaving(t *testing.T) {
 	useSettingsDatabase(t)
 	request := httptest.NewRequest(http.MethodPost, "/api/bindizr/settings", strings.NewReader(
-		`{"bindizrUrl":"http://user:private-fixture@bindizr.example","secretKey":"token-fixture"}`,
+		`{"bindizrUrl":"http://user:private-fixture@bindizr.example","apiToken":"token-fixture"}`,
 	))
 	recorder := httptest.NewRecorder()
 	BindizrSettingsHandler(recorder, request)
@@ -86,19 +90,19 @@ func TestBindizrSettingsRejectsInvalidURLBeforeSaving(t *testing.T) {
 
 func TestBindizrSettingsPreservesConnectionWhenTokenWriteFails(t *testing.T) {
 	database := useSettingsDatabase(t)
-	previous := db.BindizrConnection{URL: "https://original.example/path", Token: "previous-token"}
+	previous := db.BindizrConnection{URL: "https://original.example/path", APIToken: "previous-token"}
 	if err := db.SaveBindizrConnection(t.Context(), previous); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.Exec(`
-		CREATE TRIGGER fail_token_write BEFORE INSERT ON settings WHEN NEW.key = 'secret_key'
+		CREATE TRIGGER fail_token_write BEFORE INSERT ON settings WHEN NEW.key = 'api_token'
 		BEGIN SELECT RAISE(ABORT, 'private-db-diagnostic'); END
 	`); err != nil {
 		t.Fatal(err)
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/api/bindizr/settings", strings.NewReader(
-		`{"bindizrUrl":"https://replacement.example","secretKey":"new-token"}`,
+		`{"bindizrUrl":"https://replacement.example","apiToken":"new-token"}`,
 	))
 	recorder := httptest.NewRecorder()
 	BindizrSettingsHandler(recorder, request)
@@ -120,7 +124,7 @@ func TestSetupPreservesSettingsWhenCompletionWriteFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodPost, "/api/public/settings", strings.NewReader(
-		`{"bindizrUrl":"https://bindizr.example/path","secretKey":"token-fixture"}`,
+		`{"bindizrUrl":"https://bindizr.example/path","apiToken":"token-fixture"}`,
 	))
 	recorder := httptest.NewRecorder()
 	PublicSettingsHandler(recorder, request)
@@ -136,11 +140,11 @@ func TestSetupPreservesSettingsWhenCompletionWriteFails(t *testing.T) {
 
 func TestSetupPreservesFirstCompletedConnection(t *testing.T) {
 	useSettingsDatabase(t)
-	previous := db.BindizrConnection{URL: "https://original.example/path", Token: "previous-token"}
+	previous := db.BindizrConnection{URL: "https://original.example/path", APIToken: "previous-token"}
 	if written, err := db.CompleteSetup(t.Context(), previous, "operator", "password-hash"); !written || err != nil {
 		t.Fatalf("first setup failed: %v", err)
 	}
-	replacement := db.BindizrConnection{URL: "https://replacement.example", Token: "new-token"}
+	replacement := db.BindizrConnection{URL: "https://replacement.example", APIToken: "new-token"}
 	if written, err := db.CompleteSetup(t.Context(), replacement, "", ""); written || err != nil {
 		t.Fatalf("duplicate setup unexpectedly wrote settings: %v", err)
 	}
@@ -166,13 +170,13 @@ func TestBindizrProxyRejectsUpstreamRedirects(t *testing.T) {
 	}))
 	defer server.Close()
 
-	connection := db.BindizrConnection{URL: server.URL, Token: "bindizr-fixture"}
+	connection := db.BindizrConnection{URL: server.URL, APIToken: "bindizr-fixture"}
 	if err := db.SaveBindizrConnection(t.Context(), connection); err != nil {
 		t.Fatal(err)
 	}
 	request := httptest.NewRequest(http.MethodGet, "/api/bindizr/proxy/zones", nil)
 	recorder := httptest.NewRecorder()
-	BindizrProxyHandler(recorder, request)
+	BindizrProxyHandler(nil)(recorder, request)
 
 	if recorder.Code != http.StatusBadGateway || recorder.Header().Get("Location") != "" || followed.Load() {
 		t.Fatalf("upstream redirect was not rejected: %d %s", recorder.Code, recorder.Body.String())
@@ -195,7 +199,7 @@ func TestBindizrProxyWithholdsCookiesAndPreservesAPIResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	connection := db.BindizrConnection{URL: server.URL + "/prefix", Token: "bindizr-fixture"}
+	connection := db.BindizrConnection{URL: server.URL + "/prefix", APIToken: "bindizr-fixture"}
 	if err := db.SaveBindizrConnection(t.Context(), connection); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +207,7 @@ func TestBindizrProxyWithholdsCookiesAndPreservesAPIResponse(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer browser-fixture")
 	request.Header.Set("Cookie", "session=browser-fixture")
 	recorder := httptest.NewRecorder()
-	BindizrProxyHandler(recorder, request)
+	BindizrProxyHandler(nil)(recorder, request)
 
 	if recorder.Code != http.StatusForbidden || recorder.Header().Get("Content-Type") != "application/json" ||
 		recorder.Header().Get("Set-Cookie") != "" || recorder.Body.String() != `{"code":"FORBIDDEN","error":"record update not permitted"}` {

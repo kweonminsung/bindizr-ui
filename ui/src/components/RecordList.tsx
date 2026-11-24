@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getRecordsPage, getSignedRecordsPage, deleteRecord } from "@/lib/api";
+import {
+  getRecordsPage,
+  getRecordsWithDnssecPage,
+  deleteRecord,
+} from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage } from "@/lib/errors";
 import {
@@ -18,9 +22,9 @@ import {
   RECORD_TYPES,
   RecordListQuery,
   RecordSortField,
-  SignedRecord,
+  RecordResponse,
   SortOrder,
-  Zone,
+  ZoneResponse,
 } from "@/lib/types";
 import { formatRecordValue } from "@/lib/recordValue";
 import { countActiveFilters, toFilterNumber } from "@/lib/form";
@@ -41,7 +45,7 @@ import {
 
 interface RecordListProps {
   zoneName?: string;
-  zones?: Zone[];
+  zones?: ZoneResponse[];
   onCreateRecord: () => void;
 }
 
@@ -94,10 +98,10 @@ export default function RecordList({
   const order = getOrderFromSearchParams(searchParams);
   const [listing, setListing] = useState<{
     request: string;
-    records: SignedRecord[];
+    records: RecordResponse[];
     total: number;
   } | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<SignedRecord | null>(
+  const [selectedRecord, setSelectedRecord] = useState<RecordResponse | null>(
     null,
   );
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -106,9 +110,11 @@ export default function RecordList({
   const currentPage = getPageFromSearchParams(searchParams);
   const recordsPerPage = getPageSizeFromSearchParams(searchParams);
   const [searchQuery, setSearchQuery] = useState("");
-  const signedView = searchParams.get("signed") === "true";
+  const includeDnssec =
+    (searchParams.get("include_dnssec") ?? searchParams.get("signed")) ===
+    "true";
   const typeParam = searchParams.get("type") ?? "";
-  const availableTypes: readonly string[] = signedView
+  const availableTypes: readonly string[] = includeDnssec
     ? SIGNED_FILTER_TYPES
     : RECORD_TYPES;
   const selectedType = typeParam;
@@ -118,7 +124,7 @@ export default function RecordList({
   const derivedTypeSelected = DERIVED_RECORD_TYPES.includes(
     selectedType as (typeof DERIVED_RECORD_TYPES)[number],
   );
-  // These filters force the user plane, where `signed` adds nothing.
+  // These filters force the user plane, where there are no generated DNSSEC records.
   const userPlaneOnly =
     searchQuery.trim() !== "" ||
     filters.value.trim() !== "" ||
@@ -127,7 +133,9 @@ export default function RecordList({
     (selectedType !== "" && !derivedTypeSelected);
   // The user-plane endpoint rejects a derived type outright; the URL keeps it.
   const requestedType =
-    (!signedView || userPlaneOnly) && derivedTypeSelected ? "" : selectedType;
+    (!includeDnssec || userPlaneOnly) && derivedTypeSelected
+      ? ""
+      : selectedType;
   const [typeDraft, setTypeDraft] = useState(requestedType);
 
   useEffect(() => {
@@ -136,7 +144,7 @@ export default function RecordList({
 
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify([
-    signedView && !userPlaneOnly,
+    includeDnssec && !userPlaneOnly,
     {
       zone_name: zoneName,
       search: searchQuery,
@@ -193,10 +201,12 @@ export default function RecordList({
 
   // URL-backed filters: deep links stay shareable, the form follows the zone.
   const handleUrlFilterChange = (
-    key: "zoneName" | "type" | "signed",
+    key: "zone_name" | "type" | "include_dnssec",
     value: string,
   ) => {
     const nextSearchParams = updatePageSearchParam(filterSearchParams, 1);
+    if (key === "zone_name") nextSearchParams.delete("zoneName");
+    if (key === "include_dnssec") nextSearchParams.delete("signed");
     if (value) {
       nextSearchParams.set(key, value);
     } else {
@@ -211,8 +221,11 @@ export default function RecordList({
     async function fetchRecords() {
       setError(null);
       try {
-        const [signed, query]: [boolean, RecordListQuery] = JSON.parse(request);
-        const fetchPage = signed ? getSignedRecordsPage : getRecordsPage;
+        const [includeDnssec, query]: [boolean, RecordListQuery] =
+          JSON.parse(request);
+        const fetchPage = includeDnssec
+          ? getRecordsWithDnssecPage
+          : getRecordsPage;
         const data = await fetchPage(query);
         if (active) {
           setListing({
@@ -235,7 +248,7 @@ export default function RecordList({
     };
   }, [refreshKey, request]);
 
-  const handleDelete = async (record: SignedRecord) => {
+  const handleDelete = async (record: RecordResponse) => {
     if (record.id == null) {
       return;
     }
@@ -254,7 +267,7 @@ export default function RecordList({
     }
   };
 
-  const handleShowDetails = (record: SignedRecord, editing = false) => {
+  const handleShowDetails = (record: RecordResponse, editing = false) => {
     setSelectedRecord(record);
     setDetailEditing(editing);
     setIsDetailModalOpen(true);
@@ -361,7 +374,7 @@ export default function RecordList({
         />
         <select
           value={zoneName ?? ""}
-          onChange={(e) => handleUrlFilterChange("zoneName", e.target.value)}
+          onChange={(e) => handleUrlFilterChange("zone_name", e.target.value)}
           aria-label="Filter by zone"
           className="w-full sm:w-auto"
         >
@@ -406,15 +419,20 @@ export default function RecordList({
         >
           <input
             type="checkbox"
-            checked={signedView}
+            checked={includeDnssec}
             onChange={(e) =>
-              handleUrlFilterChange("signed", e.target.checked ? "true" : "")
+              handleUrlFilterChange(
+                "include_dnssec",
+                e.target.checked ? "true" : "",
+              )
             }
           />
-          <span className="whitespace-nowrap">Show DNSSEC records</span>
+          <span className="whitespace-nowrap">
+            Include generated DNSSEC records
+          </span>
         </label>
       </ListToolbar>
-      {signedView && userPlaneOnly && (
+      {includeDnssec && userPlaneOnly && (
         <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
           Derived rows are hidden while filtering by value, priority or a user
           record type.

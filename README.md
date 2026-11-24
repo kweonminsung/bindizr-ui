@@ -14,13 +14,13 @@
 
 A web interface for [Bindizr](https://github.com/kweonminsung/bindizr): manage DNS zones and records, sign and synchronize zones, and delegate access through roles.
 
-[Features](#features) · [Roles and credentials](#roles-and-credentials) · [Audit log](#audit-log) · [Run with Docker](#run-with-docker) · [Getting Started](#getting-started)
+[Features](#features) · [Roles and credentials](#roles-and-credentials) · [Activity log](#logs) · [Run with Docker](#run-with-docker) · [Getting Started](#getting-started)
 
 <img src="public/screenshots/zones.png" alt="Zone list with DNSSEC and disabled badges, search, filters, and record, import, and export actions" width="1000" />
 
 ## Features
 
-Work with DNS data in **Zones** and **Records**, then manage signing in **DNSSEC** and propagation in **Secondaries**. Use [roles](#roles-and-credentials) to delegate these operations and the [audit log](#audit-log) to review administrative changes. Screenshots show a running instance with example data.
+Work with DNS data in **Zones** and **Records**, then manage signing in **DNSSEC** and propagation in **Secondaries**. Use [roles](#roles-and-credentials) to delegate these operations and the [activity log](#logs) to review administrative changes. Screenshots show a running instance with example data.
 
 ### Zone and record management
 
@@ -48,13 +48,23 @@ Use the DNSSEC overview to check signed zones, then open a zone to inspect its s
 
 ### Secondary synchronization
 
-Register secondary servers, select a TSIG key for signed NOTIFY, and pause a server without removing it. Check serials and reachability, inspect AXFR/IXFR transfer history, or send NOTIFY for one or all zones, optionally advancing the serial.
+Register secondary servers, select a TSIG key for signed NOTIFY, and pause a server without removing it. Check serials and reachability, inspect AXFR/IXFR transfer history, or send NOTIFY for one zone or all enabled zones, optionally advancing the serial.
 
 <img src="public/screenshots/secondaries.png" alt="Secondary list: one server signing NOTIFY under a TSIG key, one registered by hostname, and a disabled standby" width="1000" />
 
+### Webhooks
+
+Open **Settings → Webhooks**, enter an HTTP(S) endpoint and a signing secret, then select operations from the UI's catalog. Use **Send test** to check the receiver. **Delivery history** shows the latest 50 deliveries with the queue time, event, target, delivery status, HTTP status, and attempt count.
+
+The UI server queues events after it observes successful Bindizr responses through its proxy. A subscription uses the configured Bindizr connection and the usual permissions for each operation. The proxy observes JSON or gzip responses up to 16 MiB. A change still needs an observable response before the UI can queue its event. Keep the local SQLite database on a persistent volume to retain queued deliveries through restarts. Keep the UI behind its admin account or an authenticated proxy on shared deployments.
+
+The receiver gets a JSON POST with `id`, `type`, and `created_at`, the time Bindizr UI created the event. A server event uses the canonical operation name as its type, such as `record.create`, and includes its observed `result` and target when available. A successful response can confirm an operation without reporting whether it changed stored data. A test has the type `webhook.test`. Compute HMAC-SHA256 over `<timestamp>.<raw request body>` with the shared secret and compare the lowercase hex digest to the value after `sha256=` in `X-Bindizr-Webhook-Signature`. The Unix timestamp in seconds is in `X-Bindizr-Webhook-Timestamp`. The event ID and type are also in `X-Bindizr-Webhook-Id` and `X-Bindizr-Webhook-Event`.
+
+A 2xx response completes delivery. The server retries other statuses and network errors up to two more times, after five and ten seconds. The event ID stays the same, so the receiver can deduplicate retries. Use the final destination URL because the sender stops at a redirect response.
+
 ## Roles and credentials
 
-Roles hold permissions; API tokens and TSIG keys act under a role. Start in **Access → Roles**, define what a role may do, then issue the credentials that will use those permissions.
+Roles hold permissions; API tokens and TSIG keys act under a role. Start in **Access Control → Roles**, define what a role may do, then issue the credentials that will use those permissions.
 
 ### 1. Create a role for each purpose
 
@@ -89,9 +99,7 @@ Generate or import TSIG keys for dynamic updates and zone transfers. Existing ke
 
 ## Logs
 
-Three logs, each under Logs in the sidebar. The audit log covers role, grant and credential changes, secondary and DNSSEC policy administration, zone DNSSEC settings and zone deletions. Filter it by entity, name or date. DNS data edits appear in the zone's version history. The access log shows every API request and nsupdate Bindizr answered, denied or failed, by caller, address and result. The transfer log shows the transfers Bindizr served, by secondary, address, zone and result. Reading these logs requires `log:read`.
-
-<img src="public/screenshots/audit-log.png" alt="Audit log showing role grants, API token and TSIG key creation, with the acting token and source of each change" width="1000" />
+Three logs, each under Logs in the sidebar. The activity log covers management operations and committed DNS changes. Filter it by operation, result, target, or date. DNS data edits also appear in the zone's version history. The access log shows management requests and nsupdates by actor, client IP, and result. The transfer log shows zone transfer attempts by secondary, client IP, zone, and result. Reading these logs requires `log:read`.
 
 ## Run with Docker
 

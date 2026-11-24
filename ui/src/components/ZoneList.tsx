@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZone, getZonesPage, deleteZone, getDnssecStatus } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
-import { toDayEnd, toDayStart } from "@/lib/datetime";
+import { toNextDayStart, toDayStart } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/lib/pageQuery";
 import {
   SortOrder,
-  Zone,
+  ZoneResponse,
   ZONE_SORT_FIELDS,
   ZoneListQuery,
   ZoneSortField,
@@ -56,9 +56,9 @@ interface ZoneFilters {
   min_serial: string;
   max_serial: string;
   /** "" any, "true" signed, "false" unsigned. */
-  signed: string;
-  created_after: string;
-  created_before: string;
+  dnssec_enabled: string;
+  since: string;
+  until: string;
 }
 
 const defaultFilters: ZoneFilters = {
@@ -70,15 +70,15 @@ const defaultFilters: ZoneFilters = {
   serial: "",
   min_serial: "",
   max_serial: "",
-  signed: "",
-  created_after: "",
-  created_before: "",
+  dnssec_enabled: "",
+  since: "",
+  until: "",
 };
 
-const SIGNED_OPTIONS = [
+const DNSSEC_OPTIONS = [
   { value: "", label: "Any" },
-  { value: "true", label: "Signed" },
-  { value: "false", label: "Unsigned" },
+  { value: "true", label: "Enabled" },
+  { value: "false", label: "Disabled" },
 ] as const;
 
 const ZONE_SORT_OPTIONS = [
@@ -105,13 +105,13 @@ export default function ZoneList({
   const { focusName, focusTab, clearFocusName } = useFocusName();
   const [listing, setListing] = useState<{
     request: string;
-    zones: Zone[];
+    zones: ZoneResponse[];
     total: number;
   } | null>(null);
-  const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
+  const [selectedZone, setSelectedZone] = useState<ZoneResponse | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [importingZone, setImportingZone] = useState<Zone | null>(null);
-  const [exportingZone, setExportingZone] = useState<Zone | null>(null);
+  const [importingZone, setImportingZone] = useState<ZoneResponse | null>(null);
+  const [exportingZone, setExportingZone] = useState<ZoneResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const currentPage = getPageFromSearchParams(searchParams);
   const zonesPerPage = getPageSizeFromSearchParams(searchParams);
@@ -140,9 +140,12 @@ export default function ZoneList({
     serial: toFilterNumber(filters.serial),
     min_serial: toFilterNumber(filters.min_serial),
     max_serial: toFilterNumber(filters.max_serial),
-    signed: filters.signed === "" ? undefined : filters.signed === "true",
-    created_after: toDayStart(filters.created_after),
-    created_before: toDayEnd(filters.created_before),
+    dnssec_enabled:
+      filters.dnssec_enabled === ""
+        ? undefined
+        : filters.dnssec_enabled === "true",
+    since: toDayStart(filters.since),
+    until: toNextDayStart(filters.until),
     sort,
     order,
     limit: zonesPerPage,
@@ -283,7 +286,7 @@ export default function ZoneList({
     };
   }, [zones, allows]);
 
-  const handleDelete = async (zone: Zone) => {
+  const handleDelete = async (zone: ZoneResponse) => {
     // A zone delete cannot be undone, so the counts go in the prompt rather
     // than in a toast once everything is already gone.
     let preview;
@@ -323,7 +326,7 @@ export default function ZoneList({
     }
   };
 
-  const handleShowDetails = (zone: Zone) => {
+  const handleShowDetails = (zone: ZoneResponse) => {
     setSelectedZone(zone);
     setIsDetailModalOpen(true);
   };
@@ -431,25 +434,25 @@ export default function ZoneList({
               onChange={(value) => handleFilterChange("max_serial", value)}
             />
             <FilterSelect
-              id="filter_zone_signed"
+              id="filter_zone_dnssec_enabled"
               label="DNSSEC"
-              value={filters.signed}
-              onChange={(value) => handleFilterChange("signed", value)}
-              options={SIGNED_OPTIONS}
+              value={filters.dnssec_enabled}
+              onChange={(value) => handleFilterChange("dnssec_enabled", value)}
+              options={DNSSEC_OPTIONS}
             />
             <FilterField
-              id="filter_zone_created_after"
-              label="Created From"
+              id="filter_zone_since"
+              label="Created from (UTC)"
               type="date"
-              value={filters.created_after}
-              onChange={(value) => handleFilterChange("created_after", value)}
+              value={filters.since}
+              onChange={(value) => handleFilterChange("since", value)}
             />
             <FilterField
-              id="filter_zone_created_before"
-              label="Created To"
+              id="filter_zone_until"
+              label="Created to (UTC)"
               type="date"
-              value={filters.created_before}
-              onChange={(value) => handleFilterChange("created_before", value)}
+              value={filters.until}
+              onChange={(value) => handleFilterChange("until", value)}
             />
           </>
         }
@@ -554,7 +557,7 @@ export default function ZoneList({
                   {!zone.enabled && (
                     <span
                       className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-                      title="The secondaries have dropped this zone. Its records stay here, editable."
+                      title="Bindizr removes this zone from its catalog. Its records stay editable."
                     >
                       Disabled
                     </span>
@@ -572,7 +575,7 @@ export default function ZoneList({
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(
-                          `/records?zoneName=${encodeURIComponent(zone.name)}`,
+                          `/records?zone_name=${encodeURIComponent(zone.name)}`,
                         );
                       }}
                       className="font-medium text-green-600 hover:underline"

@@ -19,10 +19,11 @@ import SecondariesPage from "@/pages/SecondariesPage";
 import DnssecPoliciesPage from "@/pages/DnssecPoliciesPage";
 import DnssecZonesPage from "@/pages/DnssecZonesPage";
 import AccessLogPage from "@/pages/AccessLogPage";
-import AuditLogPage from "@/pages/AuditLogPage";
+import ActivityLogPage from "@/pages/ActivityLogPage";
 import TransferLogPage from "@/pages/TransferLogPage";
 import SetupPage from "@/pages/SetupPage";
 import SettingsPage from "@/pages/SettingsPage";
+import WebhooksPage from "@/pages/WebhooksPage";
 import { Action } from "@/lib/types";
 
 /** A page the token's role must permit `action` in all zones to open. */
@@ -112,13 +113,26 @@ function App() {
                   />
                   <Route
                     path="/logs"
-                    element={<Navigate to="/logs/audit" replace />}
+                    element={<Navigate to="/logs/activity" replace />}
                   />
                   <Route
-                    path="/logs/audit"
+                    path="/log/activity"
+                    element={
+                      <Navigate
+                        to={{
+                          pathname: "/logs/activity",
+                          search: location.search,
+                          hash: location.hash,
+                        }}
+                        replace
+                      />
+                    }
+                  />
+                  <Route
+                    path="/logs/activity"
                     element={
                       <RequireAction action="log:read">
-                        <AuditLogPage />
+                        <ActivityLogPage />
                       </RequireAction>
                     }
                   />
@@ -182,11 +196,12 @@ function App() {
                       </RequireAction>
                     }
                   />
-                  <Route path="/settings" element={<SettingsPage />} />
                   <Route
-                    path="/settings/general"
-                    element={<Navigate to="/settings" replace />}
+                    path="/settings"
+                    element={<Navigate to="/settings/general" replace />}
                   />
+                  <Route path="/settings/general" element={<SettingsPage />} />
+                  <Route path="/settings/webhooks" element={<WebhooksPage />} />
                   <Route
                     path="/settings/dns"
                     element={<Navigate to="/zones" replace />}

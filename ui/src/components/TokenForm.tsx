@@ -2,12 +2,12 @@ import { useState } from "react";
 import { createToken } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
-import { CreatedToken } from "@/lib/types";
+import { CreateApiTokenResponse } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
 import RoleSelect from "./RoleSelect";
 
 interface TokenFormProps {
-  onSuccess: (created: CreatedToken) => void;
+  onSuccess: (created: CreateApiTokenResponse) => void;
   onCancel: () => void;
   /** Creates in this role, leaving the role picker fixed. */
   roleName?: string;

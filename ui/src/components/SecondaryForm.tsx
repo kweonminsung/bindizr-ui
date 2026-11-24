@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createSecondary } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { useToast } from "@/contexts/ToastContext";
-import NotifyKeySelect from "./NotifyKeySelect";
+import NotifyTsigKeySelect from "./NotifyTsigKeySelect";
 
 interface SecondaryFormProps {
   onSuccess: () => void;
@@ -16,7 +16,7 @@ export default function SecondaryForm({
   const toast = useToast();
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [notifyKey, setNotifyKey] = useState("");
+  const [notifyTsigKey, setNotifyTsigKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +27,7 @@ export default function SecondaryForm({
       await createSecondary({
         name: name.trim(),
         address: address.trim(),
-        notify_key_name: notifyKey || null,
+        notify_tsig_key_name: notifyTsigKey || null,
       });
       toast.success(`Registered "${name.trim()}".`);
       onSuccess();
@@ -90,15 +90,15 @@ export default function SecondaryForm({
         </div>
         <div>
           <label
-            htmlFor="notify_key"
+            htmlFor="notify_tsig_key"
             className="block text-sm font-medium text-gray-600 mb-1"
           >
-            NOTIFY Key (optional)
+            NOTIFY TSIG key (optional)
           </label>
-          <NotifyKeySelect
-            id="notify_key"
-            value={notifyKey}
-            onChange={setNotifyKey}
+          <NotifyTsigKeySelect
+            id="notify_tsig_key"
+            value={notifyTsigKey}
+            onChange={setNotifyTsigKey}
           />
           <p className="text-sm text-gray-500 mt-1">
             Signs every NOTIFY to this server with the key.

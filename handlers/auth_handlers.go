@@ -67,7 +67,7 @@ func authenticate(r *http.Request) (jwt.MapClaims, *authError) {
 		return nil, &authError{http.StatusUnauthorized, "Authorization header required"}
 	}
 
-	secret, err := db.GetNextAuthSecret()
+	signingKey, err := db.GetSessionSigningKey()
 	if err != nil {
 		return nil, &authError{http.StatusInternalServerError, err.Error()}
 	}
@@ -76,7 +76,7 @@ func authenticate(r *http.Request) (jwt.MapClaims, *authError) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(secret), nil
+		return []byte(signingKey), nil
 	})
 	if err != nil || !token.Valid {
 		return nil, &authError{http.StatusUnauthorized, "Invalid token"}
@@ -152,7 +152,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secret, err := db.GetNextAuthSecret()
+	signingKey, err := db.GetSessionSigningKey()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -163,7 +163,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		"exp":  time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString([]byte(secret))
+	tokenString, err := token.SignedString([]byte(signingKey))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
