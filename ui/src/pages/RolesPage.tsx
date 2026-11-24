@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Modal from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
 import RoleDetails from "@/components/RoleDetails";
 import RoleForm from "@/components/RoleForm";
 import RoleList from "@/components/RoleList";
@@ -19,11 +20,20 @@ export default function RolesPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        Roles hold the grants API tokens and TSIG keys act under. Open a role to
-        manage its grants.
-      </p>
-      <RoleList key={refreshKey} onCreateRole={() => setIsFormOpen(true)} />
+      <PageHeader
+        title="Roles"
+        description="Open a role to manage the grants its API tokens and TSIG keys act under."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsFormOpen(true)}
+            className="btn-primary"
+          >
+            Create Role
+          </button>
+        }
+      />
+      <RoleList key={refreshKey} />
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)}>
         <RoleForm
           onSuccess={handleCreated}
@@ -34,6 +44,7 @@ export default function RolesPage() {
         <Modal
           isOpen
           wide
+          structured
           onClose={() => {
             setCreatedRole(null);
             setRefreshKey((prev) => prev + 1);

@@ -7,7 +7,7 @@ import {
   RoleResponse,
   TsigKeyWithSecret,
 } from "@/lib/types";
-import Modal from "./Modal";
+import Modal, { ModalContent } from "./Modal";
 import BuiltinBadge from "./BuiltinBadge";
 import RoleGrantsPanel, { RoleGrantsView } from "./RoleGrantsPanel";
 import TabBar from "./TabBar";
@@ -57,40 +57,48 @@ export default function RoleDetails({
     { id: "grants" as const, label: `Grants (${role.grant_count})` },
     { id: "tokens" as const, label: `API Tokens (${role.token_count})` },
     { id: "keys" as const, label: `TSIG Keys (${role.tsig_key_count})` },
-    ...(role.builtin ? [] : [{ id: "grant" as const, label: "Add Grant" }]),
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-2xl font-bold text-gray-800 break-all">
-            {role.name}
-          </h2>
-          {role.builtin && (
-            <BuiltinBadge title="The built-in role cannot be changed or deleted" />
-          )}
-        </div>
-        <div className="space-y-2">
-          {role.description && (
-            <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm text-gray-500">Description</p>
-              <p className="text-base text-gray-900 break-words">
-                {role.description}
-              </p>
-            </div>
-          )}
-          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
-            <p className="text-sm text-gray-500">Created</p>
-            <p className="text-base text-gray-900">
-              {formatDateTime(role.created_at)}
-            </p>
+    <ModalContent
+      scrollKey={tab}
+      header={
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-bold text-gray-800 wrap-anywhere">
+              {role.name}
+            </h2>
+            {role.builtin && (
+              <BuiltinBadge title="The built-in role cannot be changed or deleted" />
+            )}
           </div>
+          <TabBar
+            tabs={tabs}
+            active={tab === "grant" ? "grants" : tab}
+            onChange={setTab}
+          />
         </div>
-      </div>
-
+      }
+    >
       <div className="space-y-4">
-        <TabBar tabs={tabs} active={tab} onChange={setTab} />
+        {tab === "grants" && (
+          <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+            <div className="min-w-0">
+              <dt className="text-gray-500">Created</dt>
+              <dd className="text-gray-900">
+                {formatDateTime(role.created_at)}
+              </dd>
+            </div>
+            {role.description && (
+              <div className="min-w-0">
+                <dt className="text-gray-500">Description</dt>
+                <dd className="text-gray-900 wrap-anywhere">
+                  {role.description}
+                </dd>
+              </div>
+            )}
+          </dl>
+        )}
 
         {/* Mounted throughout, so a half-filled grant survives a tab switch. */}
         <RoleGrantsPanel
@@ -157,6 +165,6 @@ export default function RoleDetails({
           <TsigKeyDetails tsigKey={createdKey} isNew />
         </Modal>
       )}
-    </div>
+    </ModalContent>
   );
 }

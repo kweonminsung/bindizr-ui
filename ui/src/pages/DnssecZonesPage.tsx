@@ -1,12 +1,13 @@
 import DnssecOverview from "@/components/DnssecOverview";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function DnssecZonesPage() {
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        Every signed zone and its signing state. Enable, roll and withdraw from
-        a zone&apos;s DNSSEC tab.
-      </p>
+      <PageHeader
+        title="Signed Zones"
+        description="View signing status and open a zone to manage its keys."
+      />
       <DnssecOverview />
     </div>
   );

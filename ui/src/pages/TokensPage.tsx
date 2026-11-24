@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Modal from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
 import TokenDetails from "@/components/TokenDetails";
 import TokenForm from "@/components/TokenForm";
 import TokenList from "@/components/TokenList";
@@ -28,13 +29,21 @@ export default function TokensPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        API tokens authenticate HTTP API clients. Each token acts under its
-        role&apos;s grants.
-      </p>
+      <PageHeader
+        title="API Tokens"
+        description="API tokens authenticate HTTP API clients. Each token acts under its role's grants."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsFormOpen(true)}
+            className="btn-primary"
+          >
+            Create API Token
+          </button>
+        }
+      />
       <TokenList
         key={refreshKey}
-        onCreateToken={() => setIsFormOpen(true)}
         roleName={roleName || undefined}
         onRoleNameChange={handleRoleNameChange}
       />

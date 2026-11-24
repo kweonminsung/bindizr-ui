@@ -7,20 +7,22 @@ import DnssecPolicyDetails from "./DnssecPolicyDetails";
 import BuiltinBadge from "./BuiltinBadge";
 import Modal from "./Modal";
 import Notice from "./Notice";
-import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 import { SortValue } from "@/lib/sort";
 import { useRowSort } from "@/lib/useRowSort";
 import {
   describeCount,
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 import SortControl from "./SortControl";
 
 interface DnssecPolicyListProps {
-  onCreatePolicy: () => void;
+  canManage: boolean;
 }
 
 const SORT_OPTIONS = [
@@ -42,12 +44,8 @@ const SORT_VALUES: Record<
   created_at: (policy) => policy.created_at,
 };
 
-export default function DnssecPolicyList({
-  onCreatePolicy,
-}: DnssecPolicyListProps) {
-  const { allows } = useBindizrToken();
+export default function DnssecPolicyList({ canManage }: DnssecPolicyListProps) {
   // `dnssec:read` opens the page; policies change only with an all-zones manage.
-  const canManage = allows("dnssec:manage");
   const toast = useToast();
   const [policies, setPolicies] = useState<DnssecPolicyResponse[]>([]);
   const [selectedPolicy, setSelectedPolicy] =
@@ -117,45 +115,30 @@ export default function DnssecPolicyList({
     );
   };
 
-  if (loading && policies.length === 0 && !error) {
-    return (
-      <p className="text-center text-gray-500">Loading DNSSEC policies...</p>
-    );
-  }
-
   const query = searchQuery.trim().toLowerCase();
   const visiblePolicies = rowSort.sorted(
     policies.filter((policy) => policy.name.toLowerCase().includes(query)),
   );
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
-        actions={
-          <>
-            <SortControl
-              options={SORT_OPTIONS}
-              sort={rowSort.sort}
-              order={rowSort.order}
-              onChange={rowSort.onChange}
-            />
-            {canManage && (
-              <button
-                onClick={onCreatePolicy}
-                className="btn-primary w-full sm:w-auto"
-              >
-                Create Policy
-              </button>
-            )}
-          </>
+        sort={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={rowSort.sort}
+            order={rowSort.order}
+            onChange={rowSort.onChange}
+          />
         }
       >
         <input
           type="text"
+          aria-label="Search DNSSEC policies"
           placeholder="Search DNSSEC policies..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto"
+          className={LIST_FIELD_CLASS}
         />
       </ListToolbar>
       {error && (
@@ -173,73 +156,92 @@ export default function DnssecPolicyList({
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Algorithm
               </th>
-              <th scope="col" className={`w-24 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`w-20 @min-[50rem]/list:w-24 ${TABLE_HEADER_CLASS}`}
+              >
                 Denial
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell w-32 ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell w-32 ${TABLE_HEADER_CLASS}`}
               >
                 Key layout
               </th>
               <th
                 scope="col"
-                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[60rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Signatures
               </th>
-              <th
-                scope="col"
-                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
-              >
-                Actions
-              </th>
+              {canManage && (
+                <th
+                  scope="col"
+                  className={`w-20 @min-[50rem]/list:w-24 text-right ${TABLE_HEADER_CLASS}`}
+                >
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {visiblePolicies.map((policy) => (
+            {(!loading ? visiblePolicies : []).map((policy) => (
               <tr
                 key={policy.id}
                 {...clickableRowProps(() => setSelectedPolicy(policy))}
               >
-                <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  <span className="inline-flex items-center gap-2">
-                    {policy.name}
+                <td className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="min-w-0 truncate" title={policy.name}>
+                      {policy.name}
+                    </span>
                     {policy.builtin && (
                       <BuiltinBadge title="The default policy cannot be deleted" />
                     )}
-                  </span>
+                  </div>
                 </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {policy.algorithm}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-gray-500 uppercase">
+                <td
+                  className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-gray-500 uppercase`}
+                >
                   {policy.denial}
                 </td>
-                <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[46rem]/list:table-cell whitespace-nowrap ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {policy.key_layout === "split" ? "KSK/ZSK" : "CSK"}
                 </td>
-                <td className="hidden lg:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[60rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {policy.signature_validity_days}d valid, renew{" "}
                   {policy.signature_refresh_days}d before expiry
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {canManage && !policy.builtin && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(policy);
-                      }}
-                      className="font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </td>
+                {canManage && (
+                  <td
+                    className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
+                  >
+                    {!policy.builtin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(policy);
+                        }}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -254,12 +256,18 @@ export default function DnssecPolicyList({
         </Modal>
       )}
       <ListFooter
-        summary={describeCount(
-          visiblePolicies.length,
-          "DNSSEC policy",
-          "DNSSEC policies",
-        )}
+        summary={
+          error
+            ? null
+            : loading
+              ? "Loading DNSSEC policies..."
+              : describeCount(
+                  visiblePolicies.length,
+                  "DNSSEC policy",
+                  "DNSSEC policies",
+                )
+        }
       />
-    </div>
+    </ListCard>
   );
 }

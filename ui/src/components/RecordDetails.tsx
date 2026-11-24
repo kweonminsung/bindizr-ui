@@ -35,17 +35,24 @@ export default function RecordDetails({
 
   return (
     <div className="space-y-4">
-      <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-800 mb-4">
-        <span className="break-all">{record.name}</span>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-          {record.type}
-        </span>
-        {isDerived && (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-            Derived
+      <div className="space-y-1">
+        <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
+          Record details
+        </h2>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 text-sm font-medium text-gray-700 wrap-anywhere">
+            {record.name}
+          </p>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+            {record.type}
           </span>
-        )}
-      </h2>
+          {isDerived && (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+              Derived
+            </span>
+          )}
+        </div>
+      </div>
 
       {isDerived && (
         <p className="text-sm text-gray-500">
@@ -57,7 +64,7 @@ export default function RecordDetails({
         <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Value</p>
           <p
-            className={`text-gray-900 break-all whitespace-pre-wrap ${
+            className={`text-gray-900 whitespace-pre-wrap wrap-anywhere ${
               isDerived ? "font-mono text-sm" : "text-base"
             }`}
           >
@@ -79,9 +86,11 @@ export default function RecordDetails({
               <p className="text-base text-gray-900">{record.priority}</p>
             </div>
           )}
-          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+          <div className="col-span-2 rounded-md border border-gray-200 bg-gray-50 p-2.5">
             <p className="text-sm text-gray-500">Zone</p>
-            <p className="text-base text-gray-900">{record.zone_name}</p>
+            <p className="text-base text-gray-900 wrap-anywhere">
+              {record.zone_name}
+            </p>
           </div>
         </div>
       </div>

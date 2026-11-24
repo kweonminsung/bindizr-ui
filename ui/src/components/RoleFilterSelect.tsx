@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getRoles } from "@/lib/api";
 import { RoleResponse } from "@/lib/types";
+import { LIST_FIELD_CLASS } from "./ListLayout";
 
 interface RoleFilterSelectProps {
   /** The selected role's name; empty for every role. */
@@ -34,7 +35,7 @@ export default function RoleFilterSelect({
       aria-label="Filter by role"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full sm:w-auto"
+      className={LIST_FIELD_CLASS}
     >
       <option value="">All roles</option>
       {/* The selected role stays listed before the roles have loaded. */}

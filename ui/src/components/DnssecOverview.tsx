@@ -11,8 +11,11 @@ import Notice from "./Notice";
 import { KEY_STATE_STYLES } from "./ZoneDnssecTab";
 import {
   describeCount,
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 import SortControl from "./SortControl";
@@ -113,23 +116,15 @@ export default function DnssecOverview() {
     };
   }, []);
 
-  if (zones === null && !error) {
-    return (
-      <p className="text-center text-gray-500">
-        Loading zones with DNSSEC enabled...
-      </p>
-    );
-  }
-
   const query = searchQuery.trim().toLowerCase();
   const visibleZones = rowSort.sorted(
     (zones ?? []).filter((zone) => zone.name.toLowerCase().includes(query)),
   );
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
-        actions={
+        sort={
           <SortControl
             options={SORT_OPTIONS}
             sort={rowSort.sort}
@@ -140,10 +135,11 @@ export default function DnssecOverview() {
       >
         <input
           type="text"
+          aria-label="Search zones"
           placeholder="Search zones..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto"
+          className={LIST_FIELD_CLASS}
         />
       </ListToolbar>
       {error && (
@@ -159,27 +155,33 @@ export default function DnssecOverview() {
               <th scope="col" className={TABLE_HEADER_CLASS}>
                 Zone
               </th>
-              <th scope="col" className={`w-40 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`hidden w-36 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 Policy
               </th>
-              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`hidden w-44 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 Keys
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell w-40 ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell w-40 ${TABLE_HEADER_CLASS}`}
               >
                 Signatures
               </th>
               <th
                 scope="col"
-                className={`hidden lg:table-cell w-48 ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[60rem]/list:table-cell w-48 ${TABLE_HEADER_CLASS}`}
               >
                 Next Re-sign
               </th>
               <th
                 scope="col"
-                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
+                className={`w-20 @min-[50rem]/list:w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -189,48 +191,69 @@ export default function DnssecOverview() {
             {visibleZones.map((zone) => {
               const probe = probes.get(zone.name);
               const status = statusOf(zone);
+              const policy = status?.policy?.name ?? (probe ? "—" : "…");
+              const keys =
+                probe && "error" in probe ? (
+                  <span className="text-red-600" title={probe.error}>
+                    Keys unavailable
+                  </span>
+                ) : status ? (
+                  status.keys.map((key) => (
+                    <span
+                      key={key.id}
+                      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium uppercase ${KEY_STATE_STYLES[key.state]}`}
+                      title={`${key.state}, key tag ${key.key_tag}`}
+                    >
+                      {key.role}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-400">…</span>
+                );
               return (
                 <tr key={zone.id}>
                   <td
-                    className="truncate px-6 py-4 font-medium text-gray-900"
-                    title={zone.name}
+                    className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}
                   >
-                    {zone.name}
-                    {status?.withdrawing && (
-                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                        Withdrawing
-                      </span>
-                    )}
-                    {status?.keys.some((key) => key.state === "published") && (
-                      <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                        Rolling
-                      </span>
-                    )}
-                  </td>
-                  <td className="truncate px-6 py-4 text-gray-500">
-                    {status?.policy?.name ?? (probe ? "-" : "…")}
-                  </td>
-                  <td className="truncate px-6 py-4">
-                    {probe && "error" in probe ? (
-                      <span className="text-red-600" title={probe.error}>
-                        unavailable
-                      </span>
-                    ) : status ? (
-                      status.keys.map((key) => (
-                        <span
-                          key={key.id}
-                          className={`mr-1 rounded-full px-2 py-0.5 text-xs font-medium uppercase ${KEY_STATE_STYLES[key.state]}`}
-                          title={`${key.state}, key tag ${key.key_tag}`}
-                        >
-                          {key.role}
+                    <div className="truncate" title={zone.name}>
+                      {zone.name}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1 empty:hidden">
+                      {status?.withdrawing && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                          Withdrawing
                         </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-400">…</span>
-                    )}
+                      )}
+                      {status?.keys.some(
+                        (key) => key.state === "published",
+                      ) && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                          Rolling
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 space-y-1 text-xs font-normal text-gray-600 @min-[37rem]/list:hidden">
+                      <p className="truncate" title={policy}>
+                        Policy: {policy}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {keys}
+                      </div>
+                    </div>
                   </td>
                   <td
-                    className={`hidden md:table-cell whitespace-nowrap px-6 py-4 ${
+                    className={`hidden @min-[37rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                    title={policy}
+                  >
+                    {policy}
+                  </td>
+                  <td
+                    className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS}`}
+                  >
+                    <div className="flex flex-wrap gap-1">{keys}</div>
+                  </td>
+                  <td
+                    className={`hidden @min-[46rem]/list:table-cell ${TABLE_CELL_CLASS} ${
                       status && status.expired_signatures > 0
                         ? "text-red-600"
                         : "text-gray-500"
@@ -242,14 +265,18 @@ export default function DnssecOverview() {
                         : status.signatures
                       : "…"}
                   </td>
-                  <td className="hidden lg:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
+                  <td
+                    className={`hidden @min-[60rem]/list:table-cell ${TABLE_CELL_CLASS} text-gray-500`}
+                  >
                     {status?.next_resign_at
                       ? formatDateTime(status.next_resign_at)
                       : status
                         ? "-"
                         : "…"}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
+                  <td
+                    className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
+                  >
                     <Link
                       to={focusLink("/zones", zone.name, "dnssec")}
                       className="font-medium text-green-600 hover:underline"
@@ -274,6 +301,6 @@ export default function DnssecOverview() {
               )
         }
       />
-    </div>
+    </ListCard>
   );
 }

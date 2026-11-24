@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import RecordList from "@/components/RecordList";
 import RecordForm from "@/components/RecordForm";
 import Modal from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ZoneResponse } from "@/lib/types";
 import { getZones } from "@/lib/api";
@@ -10,6 +12,7 @@ import { getErrorMessage } from "@/lib/errors";
 
 export default function RecordsPage() {
   const toast = useToast();
+  const { canCreateRecords } = useBindizrToken();
   const [searchParams] = useSearchParams();
   const zoneName =
     (searchParams.get("zone_name") ?? searchParams.get("zoneName"))?.trim() ||
@@ -50,16 +53,22 @@ export default function RecordsPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        The records of every zone, or of the one chosen. Records sharing a name
-        and type share one TTL.
-      </p>
-      <RecordList
-        key={refreshKey}
-        onCreateRecord={() => setIsModalOpen(true)}
-        zoneName={zoneName}
-        zones={zones}
+      <PageHeader
+        title="Records"
+        description="Records with the same name and type in a zone share a TTL."
+        actions={
+          canCreateRecords(zoneName) && (
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="btn-primary"
+            >
+              Create Record
+            </button>
+          )
+        }
       />
+      <RecordList key={refreshKey} zoneName={zoneName} zones={zones} />
       <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
         <RecordForm
           record={null}

@@ -77,12 +77,18 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-2xl font-bold text-gray-800 break-all">
-          Export {zone.name}
+      <div className="space-y-1">
+        <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
+          Export zone
         </h2>
+        <p className="text-sm text-gray-500 wrap-anywhere">{zone.name}</p>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="text-sm text-gray-500">
+          The zone rendered as BIND zone file text.
+        </p>
         {!loading && !error && (
-          <div className="shrink-0 space-x-3 text-sm">
+          <div className="ml-auto flex flex-wrap gap-x-3 gap-y-1 text-sm">
             <button
               type="button"
               onClick={handleCopy}
@@ -100,10 +106,6 @@ export default function ZoneExport({ zone }: ZoneExportProps) {
           </div>
         )}
       </div>
-
-      <p className="text-sm text-gray-500">
-        The zone rendered as BIND zone file text.
-      </p>
 
       <label
         title="Append the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY); an inspection artifact, not an import input"

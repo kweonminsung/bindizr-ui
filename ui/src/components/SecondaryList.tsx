@@ -10,15 +10,18 @@ import { useRowSort } from "@/lib/useRowSort";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import SecondaryDetails from "./SecondaryDetails";
-import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 import {
   describeCount,
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 import SortControl from "./SortControl";
+import Badge from "./Badge";
 
 const SORT_OPTIONS = [
   { value: "name", label: "Name" },
@@ -40,15 +43,11 @@ const SORT_VALUES: Record<
 };
 
 interface SecondaryListProps {
-  onCreateSecondary: () => void;
+  canManage: boolean;
 }
 
-export default function SecondaryList({
-  onCreateSecondary,
-}: SecondaryListProps) {
-  const { allows } = useBindizrToken();
+export default function SecondaryList({ canManage }: SecondaryListProps) {
   // `secondary:read` opens the page; changing a secondary needs manage.
-  const canManage = allows("secondary:manage");
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
   const [secondaries, setSecondaries] = useState<SecondaryResponse[]>([]);
@@ -129,10 +128,6 @@ export default function SecondaryList({
     }
   };
 
-  if (loading && secondaries.length === 0 && !error) {
-    return <p className="text-center text-gray-500">Loading secondaries...</p>;
-  }
-
   const query = searchQuery.trim().toLowerCase();
   const visible = rowSort.sorted(
     secondaries.filter(
@@ -143,33 +138,24 @@ export default function SecondaryList({
   );
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
-        actions={
-          <>
-            <SortControl
-              options={SORT_OPTIONS}
-              sort={rowSort.sort}
-              order={rowSort.order}
-              onChange={rowSort.onChange}
-            />
-            {canManage && (
-              <button
-                onClick={onCreateSecondary}
-                className="btn-primary w-full sm:w-auto"
-              >
-                Register Secondary
-              </button>
-            )}
-          </>
+        sort={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={rowSort.sort}
+            order={rowSort.order}
+            onChange={rowSort.onChange}
+          />
         }
       >
         <input
           type="text"
+          aria-label="Search secondaries"
           placeholder="Search secondaries..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto"
+          className={LIST_FIELD_CLASS}
         />
       </ListToolbar>
       {error && (
@@ -185,87 +171,130 @@ export default function SecondaryList({
               <th scope="col" className={TABLE_HEADER_CLASS}>
                 Name
               </th>
-              <th scope="col" className={TABLE_HEADER_CLASS}>
+              <th
+                scope="col"
+                className={`hidden @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 Address
               </th>
-              <th scope="col" className={`w-32 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`hidden w-28 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 State
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 NOTIFY TSIG key
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Created
               </th>
-              <th
-                scope="col"
-                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
-              >
-                Actions
-              </th>
+              {canManage && (
+                <th
+                  scope="col"
+                  className={`w-20 @min-[50rem]/list:w-24 text-right ${TABLE_HEADER_CLASS}`}
+                >
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {visible.map((secondary) => (
-              <tr
-                key={secondary.id}
-                {...clickableRowProps(() => setSelected(secondary))}
-              >
-                <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {secondary.name}
-                </td>
-                <td className="truncate px-6 py-4 font-mono text-gray-700">
-                  {secondary.address}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4">
-                  {secondary.enabled ? (
-                    <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                      Enabled
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                      Disabled
-                    </span>
-                  )}
-                </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {secondary.notify_tsig_key_name ?? "-"}
-                </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {formatDateTime(secondary.created_at)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right">
+            {(!loading ? visible : []).map((secondary) => {
+              const state = (
+                <Badge tone={secondary.enabled ? "success" : "neutral"}>
+                  {secondary.enabled ? "Enabled" : "Disabled"}
+                </Badge>
+              );
+              return (
+                <tr
+                  key={secondary.id}
+                  {...clickableRowProps(() => setSelected(secondary))}
+                >
+                  <td
+                    className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}
+                  >
+                    <p className="truncate" title={secondary.name}>
+                      {secondary.name}
+                    </p>
+                    <div className="mt-1 space-y-1 @min-[37rem]/list:hidden">
+                      <p
+                        className="truncate font-mono text-xs font-normal text-gray-600"
+                        title={secondary.address}
+                      >
+                        {secondary.address}
+                      </p>
+                      {state}
+                    </div>
+                  </td>
+                  <td
+                    className={`hidden @min-[37rem]/list:table-cell truncate ${TABLE_CELL_CLASS} font-mono text-gray-700`}
+                    title={secondary.address}
+                  >
+                    {secondary.address}
+                  </td>
+                  <td
+                    className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS}`}
+                  >
+                    {state}
+                  </td>
+                  <td
+                    className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                  >
+                    {secondary.notify_tsig_key_name ?? "-"}
+                  </td>
+                  <td
+                    className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                  >
+                    {formatDateTime(secondary.created_at)}
+                  </td>
                   {canManage && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(secondary);
-                      }}
-                      className="font-medium text-red-600 hover:underline"
+                    <td
+                      className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
                     >
-                      Delete
-                    </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(secondary);
+                        }}
+                        className="font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   )}
-                </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
       {selected && (
-        <Modal isOpen wide onClose={handleCloseDetails}>
+        <Modal
+          isOpen
+          wide
+          structured
+          onClose={handleCloseDetails}
+          label="Secondary details"
+        >
           <SecondaryDetails secondary={selected} onUpdated={handleUpdated} />
         </Modal>
       )}
       <ListFooter
-        summary={describeCount(visible.length, "secondary", "secondaries")}
+        summary={
+          error
+            ? null
+            : loading
+              ? "Loading secondaries..."
+              : describeCount(visible.length, "secondary", "secondaries")
+        }
       />
-    </div>
+    </ListCard>
   );
 }

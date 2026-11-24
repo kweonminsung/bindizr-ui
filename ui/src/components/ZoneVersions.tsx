@@ -16,7 +16,12 @@ import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import ZoneVersionDiff from "./ZoneVersionDiff";
 import { useToast } from "@/contexts/ToastContext";
-import { TABLE_HEADER_CLASS } from "./ListLayout";
+import {
+  ListFooter,
+  PageSummary,
+  TABLE_CELL_CLASS,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
 
 interface ZoneVersionsProps {
   zone: ZoneResponse;
@@ -219,23 +224,32 @@ export default function ZoneVersions({
           <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
             Records at this serial ({records.length})
           </h3>
-          <div className="overflow-x-auto rounded-md border border-gray-200">
-            <table className="w-full text-left text-sm">
+          <div className="@container/list overflow-x-auto rounded-md border border-gray-200">
+            <table className="w-full table-fixed text-left text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   <th scope="col" className={TABLE_HEADER_CLASS}>
                     Name
                   </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
+                  <th
+                    scope="col"
+                    className={`hidden w-20 @min-[34rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                  >
                     Type
                   </th>
                   <th scope="col" className={TABLE_HEADER_CLASS}>
                     Value
                   </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
+                  <th
+                    scope="col"
+                    className={`hidden w-20 @min-[34rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                  >
                     TTL
                   </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
+                  <th
+                    scope="col"
+                    className={`hidden w-24 @min-[34rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                  >
                     Priority
                   </th>
                 </tr>
@@ -243,19 +257,36 @@ export default function ZoneVersions({
               <tbody className="divide-y divide-gray-200">
                 {records.map((record, index) => (
                   <tr key={`${record.name}-${record.type}-${index}`}>
-                    <td className="px-6 py-4 text-gray-900 break-all">
-                      {record.name}
+                    <td
+                      className={`${TABLE_CELL_CLASS} align-top text-gray-900 wrap-anywhere`}
+                    >
+                      <p>{record.name}</p>
+                      <div className="mt-1 space-y-1 text-xs text-gray-500 @min-[34rem]/list:hidden">
+                        <p>{record.type}</p>
+                        <p>TTL {record.ttl}</p>
+                        {record.priority != null && (
+                          <p>Priority {record.priority}</p>
+                        )}
+                      </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    <td
+                      className={`hidden @min-[34rem]/list:table-cell ${TABLE_CELL_CLASS} align-top text-gray-500`}
+                    >
                       {record.type}
                     </td>
-                    <td className="px-6 py-4 text-gray-500 break-all whitespace-pre-wrap">
+                    <td
+                      className={`${TABLE_CELL_CLASS} align-top whitespace-pre-wrap text-gray-500 wrap-anywhere`}
+                    >
                       {formatRecordValue(record.value, record.type)}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    <td
+                      className={`hidden @min-[34rem]/list:table-cell ${TABLE_CELL_CLASS} align-top text-gray-500`}
+                    >
                       {record.ttl}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+                    <td
+                      className={`hidden @min-[34rem]/list:table-cell ${TABLE_CELL_CLASS} align-top text-gray-500`}
+                    >
                       {record.priority ?? "-"}
                     </td>
                   </tr>
@@ -348,112 +379,157 @@ export default function ZoneVersions({
         </label>
       </div>
 
-      {error ? (
-        <Notice tone="error">{error}</Notice>
-      ) : versions === null ? (
-        <p className="text-gray-500">Loading versions...</p>
-      ) : versions.length === 0 ? (
-        <p className="text-gray-500">No versions for this zone yet.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-md border border-gray-200">
-          <table className="w-full text-left text-sm">
+      {error && <Notice tone="error">{error}</Notice>}
+      <div className="@container/list rounded-md border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed text-left text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
                 <th scope="col" className={TABLE_HEADER_CLASS}>
                   Serial
                 </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
+                <th
+                  scope="col"
+                  className={`hidden w-40 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                >
                   Created
                 </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
+                <th
+                  scope="col"
+                  className={`hidden @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                >
                   Changed By
                 </th>
                 <th
                   scope="col"
-                  className={`hidden sm:table-cell ${TABLE_HEADER_CLASS}`}
+                  className={`hidden @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
                 >
                   Primary NS
                 </th>
-                <th scope="col" className={`text-right ${TABLE_HEADER_CLASS}`}>
-                  Actions
-                </th>
+                {canReadVersions && (
+                  <th
+                    scope="col"
+                    className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
+                  >
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {versions.map((version) => (
-                <tr
-                  key={version.serial}
-                  className="transition-colors hover:bg-gray-50"
-                >
-                  <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
-                    {version.serial}
-                    {version.serial === zone.serial && (
-                      <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        Current
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-gray-500">
+              {(error ? [] : (versions ?? [])).map((version) => {
+                const timestamp = (
+                  <time dateTime={version.created_at}>
                     {formatDateTime(version.created_at)}
-                  </td>
-                  <td className="px-6 py-4 text-gray-500">
-                    <span className="break-all">
-                      {version.actor ? describeActor(version.actor) : "—"}
-                    </span>
+                  </time>
+                );
+                const actor = (
+                  <span className="wrap-anywhere">
+                    {version.actor ? describeActor(version.actor) : "—"}
                     <ChangeSourceBadge
                       source={version.source}
-                      className="ml-2"
+                      className="ml-1"
                     />
-                  </td>
-                  <td className="hidden sm:table-cell px-6 py-4 text-gray-500 break-all">
-                    {version.mname}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right">
-                    {canReadVersions && (
-                      <div className="flex justify-end items-center space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => setDiffFrom(version.serial)}
-                          disabled={version.serial === zone.serial}
-                          title={
-                            version.serial === zone.serial
-                              ? "This is the current serial"
-                              : "Diff against the current serial"
-                          }
-                          className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                        >
-                          Diff
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSelect(version.serial)}
-                          disabled={detailLoading}
-                          className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
-                        >
-                          {detailLoading ? "Loading..." : "Inspect"}
-                        </button>
+                  </span>
+                );
+                return (
+                  <tr
+                    key={version.serial}
+                    className="transition-colors hover:bg-gray-50"
+                  >
+                    <td
+                      className={`${TABLE_CELL_CLASS} align-top font-medium text-gray-900`}
+                    >
+                      <span>{version.serial}</span>
+                      {version.serial === zone.serial && (
+                        <span className="ml-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          Current
+                        </span>
+                      )}
+                      <div className="mt-1 space-y-1 text-xs font-normal text-gray-500 @min-[37rem]/list:hidden">
+                        {timestamp}
+                        <p>{actor}</p>
+                        <p className="wrap-anywhere">{version.mname}</p>
                       </div>
+                    </td>
+                    <td
+                      className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS} align-top text-gray-500`}
+                    >
+                      {timestamp}
+                    </td>
+                    <td
+                      className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS} align-top text-gray-500`}
+                    >
+                      {actor}
+                    </td>
+                    <td
+                      className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS} align-top text-gray-500 wrap-anywhere`}
+                    >
+                      {version.mname}
+                    </td>
+                    {canReadVersions && (
+                      <td
+                        className={`${TABLE_CELL_CLASS} whitespace-nowrap text-right`}
+                      >
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setDiffFrom(version.serial)}
+                            disabled={version.serial === zone.serial}
+                            title={
+                              version.serial === zone.serial
+                                ? "This is the current serial"
+                                : "Diff against the current serial"
+                            }
+                            className="font-medium text-indigo-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                          >
+                            Diff
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelect(version.serial)}
+                            disabled={detailLoading}
+                            className="font-medium text-green-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+                          >
+                            {detailLoading ? "Loading..." : "Inspect"}
+                          </button>
+                        </div>
+                      </td>
                     )}
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      )}
-
-      {total > 0 && (
-        <PaginationControls
-          currentPage={page}
-          pageSize={pageSize}
-          totalItems={total}
-          onPageChange={setPage}
-          onPageSizeChange={(nextPageSize) => {
-            setPageSize(nextPageSize);
-            setPage(1);
-          }}
-        />
-      )}
+        <ListFooter
+          summary={
+            error ? null : versions === null ? (
+              "Loading versions..."
+            ) : versions.length > 0 ? (
+              <PageSummary
+                offset={(page - 1) * pageSize}
+                count={versions.length}
+                total={total}
+              />
+            ) : (
+              "No versions for this zone yet."
+            )
+          }
+        >
+          <PaginationControls
+            currentPage={page}
+            pageSize={pageSize}
+            totalItems={total}
+            disabled={versions === null || error !== null}
+            onPageChange={setPage}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }}
+          />
+        </ListFooter>
+      </div>
     </div>
   );
 }

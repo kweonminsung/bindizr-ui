@@ -111,22 +111,35 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden ${
+        aria-hidden="true"
+        className={`fixed inset-0 z-30 bg-black/50 md:hidden ${
           isOpen ? "block" : "hidden"
         }`}
         onClick={onClose}
       ></div>
       <aside
-        className={`fixed top-0 left-0 w-56 bg-(--primary) h-full z-40 transform ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-44 md:h-screen flex flex-col text-white shadow-lg`}
+        id="app-sidebar"
+        className={`fixed top-0 left-0 z-40 flex h-dvh w-56 shrink-0 flex-col bg-(--primary) text-white shadow-lg ${
+          isOpen ? "visible translate-x-0" : "invisible -translate-x-full"
+        } transition-transform duration-300 ease-in-out md:visible md:relative md:w-44 md:translate-x-0`}
+        onKeyDown={(event) => {
+          if (isOpen && event.key === "Escape") onClose();
+        }}
       >
-        <header className="py-4 mb-8">
+        <header className="relative mb-3 shrink-0 py-4 md:mb-8">
           <Link to="/zones" onClick={onClose} className="flex justify-center">
             <img src={logo} alt="Bindizr" className="h-10 w-10" />
           </Link>
+          <button
+            type="button"
+            className="absolute top-4 right-4 grid size-10 place-items-center rounded-md text-2xl hover:bg-white/10 md:hidden"
+            aria-label="Close menu"
+            onClick={onClose}
+          >
+            &times;
+          </button>
         </header>
-        <nav className="flex-grow">
+        <nav className="scrollbar-visible min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <ul>
             <li>
               <Link
@@ -189,7 +202,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             />
           </ul>
         </nav>
-        <footer className="text-center text-xs text-gray-200 py-4">
+        <footer className="shrink-0 py-4 text-center text-xs text-gray-200">
           <p>v{__APP_VERSION__}</p>
           <p>Powered by Bindizr</p>
           <p className="mt-1 space-x-2">

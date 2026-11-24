@@ -36,6 +36,12 @@ button {
   cursor: pointer;
 }
 
+.btn-primary,
+.btn-danger,
+.btn-secondary {
+  min-height: 2.125rem;
+}
+
 .btn-primary {
   background-color: white;
   border: 2px solid var(--primary);

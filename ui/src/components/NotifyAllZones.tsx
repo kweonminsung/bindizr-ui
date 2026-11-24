@@ -47,7 +47,7 @@ export default function NotifyAllZones({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="btn-primary w-full sm:w-auto"
+        className="btn-secondary"
       >
         Notify All
       </button>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getDnssecStatus } from "@/lib/api";
 import { Action, ZoneResponse } from "@/lib/types";
+import { ModalContent } from "./Modal";
 import TabBar from "./TabBar";
 import ZoneDnssecTab from "./ZoneDnssecTab";
 import ZoneForm from "./ZoneForm";
@@ -89,21 +90,28 @@ export default function ZoneDetails({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-2xl font-bold text-gray-800 break-all">
+    <ModalContent
+      scrollKey={activeTab}
+      header={
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
+              Zone details
+            </h2>
+            {dnssecEnabled && (
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                DNSSEC
+              </span>
+            )}
+          </div>
+          <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
+        </div>
+      }
+    >
+      <div className="min-w-0 space-y-4">
+        <p className="text-sm font-medium text-gray-700 wrap-anywhere">
           {zone.name}
-        </h2>
-        {dnssecEnabled && (
-          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-            DNSSEC
-          </span>
-        )}
-      </div>
-
-      <TabBar tabs={tabs} active={activeTab} onChange={handleTabChange} />
-
-      <div className="max-h-[65vh] overflow-y-auto scrollbar-visible">
+        </p>
         {activeTab === "zone" && isEditing && (
           <ZoneForm
             zone={zone}
@@ -130,20 +138,20 @@ export default function ZoneDetails({
               {zone.description && (
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Description</p>
-                  <p className="text-base text-gray-900 break-all">
+                  <p className="text-base text-gray-900 wrap-anywhere">
                     {zone.description}
                   </p>
                 </div>
               )}
               <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Admin Email</p>
-                <p className="text-base text-gray-900 break-all">
+                <p className="text-base text-gray-900 wrap-anywhere">
                   {zone.rname}
                 </p>
               </div>
               <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                 <p className="text-sm text-gray-500">Primary NS</p>
-                <p className="text-base text-gray-900 break-all">
+                <p className="text-base text-gray-900 wrap-anywhere">
                   {zone.mname}
                 </p>
               </div>
@@ -208,6 +216,6 @@ export default function ZoneDetails({
           <ZoneSyncTab zone={zone} onSerialChanged={onSerialChanged} />
         )}
       </div>
-    </div>
+    </ModalContent>
   );
 }

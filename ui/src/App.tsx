@@ -1,4 +1,4 @@
-import { ReactElement, useState } from "react";
+import { ReactElement, useEffect, useRef, useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -41,6 +41,8 @@ function RequireAction({
 function App() {
   const location = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const showSidebar = [
     "/records",
     "/zones",
@@ -51,162 +53,200 @@ function App() {
     "/settings",
   ].some((path) => location.pathname.startsWith(path));
 
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+    if (isSidebarOpen) menuButtonRef.current?.focus();
+  };
+
   return (
     <ToastProvider>
       <AuthProvider>
         <Middleware>
           <BindizrTokenProvider>
-            <div className="relative h-screen md:flex">
+            <div className="flex h-dvh flex-col md:flex-row">
               {showSidebar && (
-                <button
-                  onClick={() => setSidebarOpen(!isSidebarOpen)}
-                  className="md:hidden absolute top-4 right-4 z-20 p-2 text-gray-500 bg-white rounded-md shadow-lg"
-                  aria-label="Toggle menu"
+                <header className="flex shrink-0 justify-end px-4 pt-3 sm:px-8 md:hidden">
+                  <button
+                    ref={menuButtonRef}
+                    type="button"
+                    onClick={() => setSidebarOpen((open) => !open)}
+                    onKeyDown={(event) => {
+                      if (isSidebarOpen && event.key === "Escape")
+                        closeSidebar();
+                    }}
+                    className="rounded-md border border-gray-200 bg-white p-2 text-gray-600"
+                    aria-label="Toggle menu"
+                    aria-expanded={isSidebarOpen}
+                    aria-controls="app-sidebar"
+                  >
+                    <MenuIcon className="size-6" />
+                  </button>
+                </header>
+              )}
+              {showSidebar && (
+                <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+              )}
+              <main
+                ref={mainRef}
+                className={`min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-8 ${
+                  showSidebar
+                    ? "bg-gray-50/70 pt-3 sm:pt-4 md:pt-8"
+                    : "flex flex-col"
+                }`}
+              >
+                <div
+                  className={
+                    showSidebar ? "mx-auto w-full max-w-[90rem]" : "contents"
+                  }
                 >
-                  <MenuIcon className="w-6 h-6" />
-                </button>
-              )}
-              {showSidebar && (
-                <Sidebar
-                  isOpen={isSidebarOpen}
-                  onClose={() => setSidebarOpen(false)}
-                />
-              )}
-              <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
-                <Routes>
-                  <Route path="/setup" element={<SetupPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/" element={<Navigate to="/zones" replace />} />
-                  <Route path="/zones" element={<ZonesPage />} />
-                  <Route path="/records" element={<RecordsPage />} />
-                  <Route
-                    path="/dnssec"
-                    element={<Navigate to="/dnssec/zones" replace />}
-                  />
-                  <Route
-                    path="/dnssec/zones"
-                    element={
-                      <RequireAction action="dnssec:read">
-                        <DnssecZonesPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/dnssec/policies"
-                    element={
-                      <RequireAction action="dnssec:read">
-                        <DnssecPoliciesPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/dnssec-policies"
-                    element={<Navigate to="/dnssec/policies" replace />}
-                  />
-                  <Route
-                    path="/secondaries"
-                    element={
-                      <RequireAction action="secondary:read">
-                        <SecondariesPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/logs"
-                    element={<Navigate to="/logs/activity" replace />}
-                  />
-                  <Route
-                    path="/log/activity"
-                    element={
-                      <Navigate
-                        to={{
-                          pathname: "/logs/activity",
-                          search: location.search,
-                          hash: location.hash,
-                        }}
-                        replace
-                      />
-                    }
-                  />
-                  <Route
-                    path="/logs/activity"
-                    element={
-                      <RequireAction action="log:read">
-                        <ActivityLogPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/logs/access"
-                    element={
-                      <RequireAction action="log:read">
-                        <AccessLogPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/logs/transfer"
-                    element={
-                      <RequireAction action="log:read">
-                        <TransferLogPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/dns"
-                    element={<Navigate to="/dnssec/policies" replace />}
-                  />
-                  <Route
-                    path="/dns/dnssec-policies"
-                    element={<Navigate to="/dnssec/policies" replace />}
-                  />
-                  <Route
-                    path="/dns/notify"
-                    element={<Navigate to="/zones" replace />}
-                  />
-                  <Route
-                    path="/dns/tsig-keys"
-                    element={<Navigate to="/access/tsig-keys" replace />}
-                  />
-                  <Route
-                    path="/access"
-                    element={<Navigate to="/access/tokens" replace />}
-                  />
-                  <Route
-                    path="/access/tokens"
-                    element={
-                      <RequireAction action="access:manage">
-                        <TokensPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/access/tsig-keys"
-                    element={
-                      <RequireAction action="access:manage">
-                        <TsigKeysPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/access/roles"
-                    element={
-                      <RequireAction action="access:manage">
-                        <RolesPage />
-                      </RequireAction>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={<Navigate to="/settings/general" replace />}
-                  />
-                  <Route path="/settings/general" element={<SettingsPage />} />
-                  <Route path="/settings/webhooks" element={<WebhooksPage />} />
-                  <Route
-                    path="/settings/dns"
-                    element={<Navigate to="/zones" replace />}
-                  />
-                </Routes>
+                  <Routes>
+                    <Route path="/setup" element={<SetupPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route
+                      path="/"
+                      element={<Navigate to="/zones" replace />}
+                    />
+                    <Route path="/zones" element={<ZonesPage />} />
+                    <Route path="/records" element={<RecordsPage />} />
+                    <Route
+                      path="/dnssec"
+                      element={<Navigate to="/dnssec/zones" replace />}
+                    />
+                    <Route
+                      path="/dnssec/zones"
+                      element={
+                        <RequireAction action="dnssec:read">
+                          <DnssecZonesPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/dnssec/policies"
+                      element={
+                        <RequireAction action="dnssec:read">
+                          <DnssecPoliciesPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/dnssec-policies"
+                      element={<Navigate to="/dnssec/policies" replace />}
+                    />
+                    <Route
+                      path="/secondaries"
+                      element={
+                        <RequireAction action="secondary:read">
+                          <SecondariesPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/logs"
+                      element={<Navigate to="/logs/activity" replace />}
+                    />
+                    <Route
+                      path="/log/activity"
+                      element={
+                        <Navigate
+                          to={{
+                            pathname: "/logs/activity",
+                            search: location.search,
+                            hash: location.hash,
+                          }}
+                          replace
+                        />
+                      }
+                    />
+                    <Route
+                      path="/logs/activity"
+                      element={
+                        <RequireAction action="log:read">
+                          <ActivityLogPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/logs/access"
+                      element={
+                        <RequireAction action="log:read">
+                          <AccessLogPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/logs/transfer"
+                      element={
+                        <RequireAction action="log:read">
+                          <TransferLogPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/dns"
+                      element={<Navigate to="/dnssec/policies" replace />}
+                    />
+                    <Route
+                      path="/dns/dnssec-policies"
+                      element={<Navigate to="/dnssec/policies" replace />}
+                    />
+                    <Route
+                      path="/dns/notify"
+                      element={<Navigate to="/zones" replace />}
+                    />
+                    <Route
+                      path="/dns/tsig-keys"
+                      element={<Navigate to="/access/tsig-keys" replace />}
+                    />
+                    <Route
+                      path="/access"
+                      element={<Navigate to="/access/tokens" replace />}
+                    />
+                    <Route
+                      path="/access/tokens"
+                      element={
+                        <RequireAction action="access:manage">
+                          <TokensPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/access/tsig-keys"
+                      element={
+                        <RequireAction action="access:manage">
+                          <TsigKeysPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/access/roles"
+                      element={
+                        <RequireAction action="access:manage">
+                          <RolesPage />
+                        </RequireAction>
+                      }
+                    />
+                    <Route
+                      path="/settings"
+                      element={<Navigate to="/settings/general" replace />}
+                    />
+                    <Route
+                      path="/settings/general"
+                      element={<SettingsPage />}
+                    />
+                    <Route
+                      path="/settings/webhooks"
+                      element={<WebhooksPage />}
+                    />
+                    <Route
+                      path="/settings/dns"
+                      element={<Navigate to="/zones" replace />}
+                    />
+                  </Routes>
+                </div>
               </main>
             </div>
           </BindizrTokenProvider>

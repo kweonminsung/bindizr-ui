@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createRoleGrant,
   deleteRoleGrant,
@@ -80,6 +80,18 @@ export default function RoleGrantsPanel({
   const [pattern, setPattern] = useState(DEFAULT_PATTERN);
   const [recordTypes, setRecordTypes] = useState(DEFAULT_TYPES);
   const [submitting, setSubmitting] = useState(false);
+  const grantHeading = useRef<HTMLHeadingElement>(null);
+  const addGrantButton = useRef<HTMLButtonElement>(null);
+  const previousView = useRef(view);
+
+  useEffect(() => {
+    if (view === "grant") {
+      grantHeading.current?.focus({ preventScroll: true });
+    } else if (view === "grants" && previousView.current === "grant") {
+      addGrantButton.current?.focus({ preventScroll: true });
+    }
+    previousView.current = view;
+  }, [view]);
 
   useEffect(() => {
     let active = true;
@@ -242,11 +254,23 @@ export default function RoleGrantsPanel({
     <div className="space-y-4">
       {view === "grants" && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">
-            {role.builtin
-              ? "The built-in role permits every action in all zones and cannot be changed."
-              : "Tokens and keys in this role may do what any one grant permits. The pattern and types narrow the record actions only."}
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="min-w-0 grow basis-64 text-sm text-gray-500">
+              {role.builtin
+                ? "The built-in role permits every action in all zones and cannot be changed."
+                : "Tokens and keys in this role may do what any one grant permits. The pattern and types narrow the record actions only."}
+            </p>
+            {!role.builtin && (
+              <button
+                ref={addGrantButton}
+                type="button"
+                className="btn-primary whitespace-nowrap"
+                onClick={() => onViewChange("grant")}
+              >
+                Add Grant
+              </button>
+            )}
+          </div>
 
           {loading ? (
             <p className="text-gray-500">Loading grants...</p>
@@ -265,6 +289,13 @@ export default function RoleGrantsPanel({
 
       {view === "grant" && (
         <form onSubmit={handleGrant} className="space-y-6">
+          <h3
+            ref={grantHeading}
+            tabIndex={-1}
+            className="text-lg font-semibold text-gray-800"
+          >
+            Add Grant
+          </h3>
           <fieldset className="space-y-2">
             <legend className="block text-sm font-medium text-gray-600 mb-1">
               Server-wide
@@ -293,7 +324,7 @@ export default function RoleGrantsPanel({
             ))}
           </fieldset>
 
-          <fieldset className="space-y-3 border-t border-gray-200 pt-4">
+          <fieldset className="min-w-0 space-y-3 border-t border-gray-200 pt-4">
             <legend className="sr-only">Zone</legend>
             <div>
               <label
@@ -327,7 +358,7 @@ export default function RoleGrantsPanel({
                 </select>
               )}
             </div>
-            <div className="max-h-80 overflow-y-auto scrollbar-visible space-y-3 pr-1">
+            <div className="grid gap-4 @xl:grid-cols-2">
               {ZONE_ACTION_GROUPS.map((group) => (
                 <div key={group.resource} className="space-y-2">
                   {group.actions.map((action) => (
@@ -355,7 +386,7 @@ export default function RoleGrantsPanel({
           </fieldset>
 
           {hasRecordAction && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 @lg:grid-cols-2">
               <div>
                 <label
                   htmlFor="grant_record_name_pattern"
@@ -409,25 +440,34 @@ export default function RoleGrantsPanel({
             </Notice>
           )}
 
-          <div className="flex items-center justify-end gap-3">
+          <div className="space-y-3 border-t border-gray-200 pt-4">
             {splitsInTwo && (
-              <p className="text-xs text-gray-500">
+              <p className="text-sm text-gray-600 wrap-anywhere">
                 Adds two grants: the server-wide actions in all zones, the rest
                 in {zoneName}.
               </p>
             )}
-            <button
-              type="submit"
-              disabled={
-                submitting ||
-                loading ||
-                actions.length === 0 ||
-                zoneScopeUnknown
-              }
-              className="btn-primary"
-            >
-              {submitting ? "Granting..." : "Add Grant"}
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => onViewChange("grants")}
+              >
+                Back to Grants
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  submitting ||
+                  loading ||
+                  actions.length === 0 ||
+                  zoneScopeUnknown
+                }
+                className="btn-primary whitespace-nowrap"
+              >
+                {submitting ? "Granting..." : "Add Grant"}
+              </button>
+            </div>
           </div>
         </form>
       )}

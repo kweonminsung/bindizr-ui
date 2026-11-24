@@ -26,6 +26,7 @@ import { countActiveFilters, toFilterNumber } from "@/lib/form";
 import { FilterField, FilterSelect } from "./FilterFields";
 import SortControl from "./SortControl";
 import Modal from "./Modal";
+import { PageHeader } from "./PageHeader";
 import NotifyAllZones from "./NotifyAllZones";
 import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
@@ -34,9 +35,12 @@ import ZoneExport from "./ZoneExport";
 import ZoneImportForm from "./ZoneImportForm";
 import { useToast } from "@/contexts/ToastContext";
 import {
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
   PageSummary,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 
@@ -363,112 +367,15 @@ export default function ZoneList({
     setImportingZone(null);
   };
 
-  if (
-    listing === null &&
-    !error &&
-    searchQuery === "" &&
-    activeFilterCount === 0 &&
-    currentPage === 1
-  ) {
-    return <p className="text-center text-gray-500">Loading zones...</p>;
-  }
-
   const indexOfFirstZone = (currentPage - 1) * zonesPerPage;
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <ListToolbar
-        filters={
-          <>
-            <FilterField
-              id="filter_zone_name"
-              label="Name"
-              value={filters.name}
-              onChange={(value) => handleFilterChange("name", value)}
-            />
-            <FilterField
-              id="filter_zone_mname"
-              label="Primary NS"
-              value={filters.mname}
-              onChange={(value) => handleFilterChange("mname", value)}
-            />
-            <FilterField
-              id="filter_zone_rname"
-              label="Admin Email"
-              value={filters.rname}
-              onChange={(value) => handleFilterChange("rname", value)}
-            />
-            <FilterField
-              id="filter_zone_min_default_ttl"
-              label="Min Default TTL"
-              type="number"
-              value={filters.min_default_ttl}
-              onChange={(value) => handleFilterChange("min_default_ttl", value)}
-            />
-            <FilterField
-              id="filter_zone_max_default_ttl"
-              label="Max Default TTL"
-              type="number"
-              value={filters.max_default_ttl}
-              onChange={(value) => handleFilterChange("max_default_ttl", value)}
-            />
-            <FilterField
-              id="filter_zone_serial"
-              label="Serial"
-              type="number"
-              value={filters.serial}
-              onChange={(value) => handleFilterChange("serial", value)}
-            />
-            <FilterField
-              id="filter_zone_min_serial"
-              label="Min Serial"
-              type="number"
-              value={filters.min_serial}
-              onChange={(value) => handleFilterChange("min_serial", value)}
-            />
-            <FilterField
-              id="filter_zone_max_serial"
-              label="Max Serial"
-              type="number"
-              value={filters.max_serial}
-              onChange={(value) => handleFilterChange("max_serial", value)}
-            />
-            <FilterSelect
-              id="filter_zone_dnssec_enabled"
-              label="DNSSEC"
-              value={filters.dnssec_enabled}
-              onChange={(value) => handleFilterChange("dnssec_enabled", value)}
-              options={DNSSEC_OPTIONS}
-            />
-            <FilterField
-              id="filter_zone_since"
-              label="Created from (UTC)"
-              type="date"
-              value={filters.since}
-              onChange={(value) => handleFilterChange("since", value)}
-            />
-            <FilterField
-              id="filter_zone_until"
-              label="Created to (UTC)"
-              type="date"
-              value={filters.until}
-              onChange={(value) => handleFilterChange("until", value)}
-            />
-          </>
-        }
-        activeFilterCount={activeFilterCount}
-        onResetFilters={() => {
-          setFilters(defaultFilters);
-          handlePageChange(1);
-        }}
+    <>
+      <PageHeader
+        title="Zones"
+        description="Open a zone to manage its records, settings, versions and DNSSEC."
         actions={
           <>
-            <SortControl
-              options={ZONE_SORT_OPTIONS}
-              sort={sort}
-              order={order}
-              onChange={handleSortChange}
-            />
             {allows("zone:update") && (
               <NotifyAllZones
                 onSerialBumpFinished={() => setRefreshKey((key) => key + 1)}
@@ -476,214 +383,337 @@ export default function ZoneList({
             )}
             {allowsWholeZoneAnywhere("record:create") && (
               <button
+                type="button"
                 onClick={onImportZones}
-                className="btn-primary w-full sm:w-auto"
+                className="btn-secondary"
               >
                 Import Zones
               </button>
             )}
             {allows("zone:create") && (
               <button
+                type="button"
                 onClick={onCreateZone}
-                className="btn-primary w-full sm:w-auto"
+                className="btn-primary"
               >
                 Create Zone
               </button>
             )}
           </>
         }
-      >
-        <input
-          type="text"
-          placeholder="Search zones..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
+      />
+      <ListCard>
+        <ListToolbar
+          filters={
+            <>
+              <FilterField
+                id="filter_zone_name"
+                label="Name"
+                value={filters.name}
+                onChange={(value) => handleFilterChange("name", value)}
+              />
+              <FilterField
+                id="filter_zone_mname"
+                label="Primary NS"
+                value={filters.mname}
+                onChange={(value) => handleFilterChange("mname", value)}
+              />
+              <FilterField
+                id="filter_zone_rname"
+                label="Admin Email"
+                value={filters.rname}
+                onChange={(value) => handleFilterChange("rname", value)}
+              />
+              <FilterField
+                id="filter_zone_min_default_ttl"
+                label="Min Default TTL"
+                type="number"
+                value={filters.min_default_ttl}
+                onChange={(value) =>
+                  handleFilterChange("min_default_ttl", value)
+                }
+              />
+              <FilterField
+                id="filter_zone_max_default_ttl"
+                label="Max Default TTL"
+                type="number"
+                value={filters.max_default_ttl}
+                onChange={(value) =>
+                  handleFilterChange("max_default_ttl", value)
+                }
+              />
+              <FilterField
+                id="filter_zone_serial"
+                label="Serial"
+                type="number"
+                value={filters.serial}
+                onChange={(value) => handleFilterChange("serial", value)}
+              />
+              <FilterField
+                id="filter_zone_min_serial"
+                label="Min Serial"
+                type="number"
+                value={filters.min_serial}
+                onChange={(value) => handleFilterChange("min_serial", value)}
+              />
+              <FilterField
+                id="filter_zone_max_serial"
+                label="Max Serial"
+                type="number"
+                value={filters.max_serial}
+                onChange={(value) => handleFilterChange("max_serial", value)}
+              />
+              <FilterSelect
+                id="filter_zone_dnssec_enabled"
+                label="DNSSEC"
+                value={filters.dnssec_enabled}
+                onChange={(value) =>
+                  handleFilterChange("dnssec_enabled", value)
+                }
+                options={DNSSEC_OPTIONS}
+              />
+              <FilterField
+                id="filter_zone_since"
+                label="Created from (UTC)"
+                type="date"
+                value={filters.since}
+                onChange={(value) => handleFilterChange("since", value)}
+              />
+              <FilterField
+                id="filter_zone_until"
+                label="Created to (UTC)"
+                type="date"
+                value={filters.until}
+                onChange={(value) => handleFilterChange("until", value)}
+              />
+            </>
+          }
+          activeFilterCount={activeFilterCount}
+          onResetFilters={() => {
+            setFilters(defaultFilters);
             handlePageChange(1);
           }}
-          className="w-full sm:w-auto"
-        />
-      </ListToolbar>
-      {/* Not an early return: a rejected filter must stay correctable. */}
-      {error && (
-        <Notice tone="error" className="mx-4 mb-4">
-          {error}
-          {zones &&
-            zones.length > 0 &&
-            " — showing the last results that loaded."}
-        </Notice>
-      )}
-      <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
-        {/* Fixed layout: column widths must not follow the page content. */}
-        <table className="w-full table-fixed text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50">
-            <tr>
-              <th scope="col" className={TABLE_HEADER_CLASS}>
-                Zone Name
-              </th>
-              <th
-                scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
-              >
-                Primary NS
-              </th>
-              <th
-                scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
-              >
-                Admin Email
-              </th>
-              <th
-                scope="col"
-                className={`sm:w-72 text-right ${TABLE_HEADER_CLASS}`}
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {(zones ?? []).map((zone) => (
-              <tr
-                key={zone.id}
-                {...clickableRowProps(() => handleShowDetails(zone))}
-              >
-                <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {zone.name}
-                  {dnssecZones.has(zone.name) && (
-                    <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                      DNSSEC
-                    </span>
-                  )}
-                  {!zone.enabled && (
-                    <span
-                      className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-                      title="Bindizr removes this zone from its catalog. Its records stay editable."
-                    >
-                      Disabled
-                    </span>
-                  )}
-                </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {zone.mname}
-                </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {zone.rname}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right">
-                  <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(
-                          `/records?zone_name=${encodeURIComponent(zone.name)}`,
-                        );
-                      }}
-                      className="font-medium text-green-600 hover:underline"
-                    >
-                      Records
-                    </button>
-                    {/* Import applies a whole zone file, so its grant must be unrestricted. */}
-                    {allowsWholeZone("record:create", zone.name) && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setImportingZone(zone);
-                        }}
-                        className="font-medium text-purple-600 hover:underline"
-                      >
-                        Import
-                      </button>
-                    )}
-                    {allowsWholeZone("record:read", zone.name) && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setExportingZone(zone);
-                        }}
-                        className="font-medium text-teal-600 hover:underline"
-                      >
-                        Export
-                      </button>
-                    )}
-                    {allows("zone:delete", zone.name) && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(zone);
-                        }}
-                        className="font-medium text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {selectedZone && (
-        <Modal isOpen={isDetailModalOpen} wide onClose={handleCloseDetails}>
-          <ZoneDetails
-            zone={selectedZone}
-            initialTab={focusTab}
-            onZoneChanged={(updatedZone) => {
-              setSelectedZone((current) =>
-                current?.id === updatedZone.id ? updatedZone : current,
-              );
-              setRefreshKey((prev) => prev + 1);
-            }}
-            onSerialChanged={(serial) => {
-              // A late response can arrive after another zone edit advances the serial.
-              setSelectedZone((current) =>
-                current?.id === selectedZone.id &&
-                current.serial === selectedZone.serial
-                  ? { ...current, serial }
-                  : current,
-              );
-              setRefreshKey((prev) => prev + 1);
-            }}
-            onDnssecChanged={handleDnssecChanged}
-          />
-        </Modal>
-      )}
-      {importingZone && (
-        <Modal isOpen onClose={handleCloseImport}>
-          <ZoneImportForm
-            zone={importingZone}
-            onApplied={() => setRefreshKey((prev) => prev + 1)}
-          />
-        </Modal>
-      )}
-      {exportingZone && (
-        <Modal isOpen wide onClose={() => setExportingZone(null)}>
-          <ZoneExport zone={exportingZone} />
-        </Modal>
-      )}
-      <ListFooter
-        summary={
-          zones === null ? (
-            !error && "Loading zones..."
-          ) : zones.length > 0 ? (
-            <PageSummary
-              offset={indexOfFirstZone}
-              count={zones.length}
-              total={totalZones}
+          sort={
+            <SortControl
+              options={ZONE_SORT_OPTIONS}
+              sort={sort}
+              order={order}
+              onChange={handleSortChange}
             />
-          ) : (
-            "No zones found"
-          )
-        }
-      >
-        <PaginationControls
-          currentPage={currentPage}
-          pageSize={zonesPerPage}
-          totalItems={totalZones}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
-      </ListFooter>
-    </div>
+          }
+        >
+          <input
+            type="text"
+            aria-label="Search zones"
+            placeholder="Search zones..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              handlePageChange(1);
+            }}
+            className={LIST_FIELD_CLASS}
+          />
+        </ListToolbar>
+        {/* Not an early return: a rejected filter must stay correctable. */}
+        {error && (
+          <Notice tone="error" className="mx-4 mb-4">
+            {error}
+            {zones &&
+              zones.length > 0 &&
+              " — showing the last results that loaded."}
+          </Notice>
+        )}
+        <div className={`overflow-x-auto ${error ? "opacity-60" : ""}`}>
+          {/* Fixed layout: column widths must not follow the page content. */}
+          <table className="w-full table-fixed text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50">
+              <tr>
+                <th scope="col" className={TABLE_HEADER_CLASS}>
+                  Zone Name
+                </th>
+                <th
+                  scope="col"
+                  className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                >
+                  Primary NS
+                </th>
+                <th
+                  scope="col"
+                  className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                >
+                  Admin Email
+                </th>
+                <th
+                  scope="col"
+                  className={`w-24 text-right @min-[37rem]/list:w-64 ${TABLE_HEADER_CLASS}`}
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {(zones ?? []).map((zone) => (
+                <tr
+                  key={zone.id}
+                  {...clickableRowProps(() => handleShowDetails(zone))}
+                >
+                  <td
+                    className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}
+                  >
+                    <div className="truncate" title={zone.name}>
+                      {zone.name}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1 empty:hidden">
+                      {dnssecZones.has(zone.name) && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                          DNSSEC
+                        </span>
+                      )}
+                      {!zone.enabled && (
+                        <span
+                          className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                          title="Bindizr removes this zone from its catalog. Its records stay editable."
+                        >
+                          Disabled
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td
+                    className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                  >
+                    {zone.mname}
+                  </td>
+                  <td
+                    className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                  >
+                    {zone.rname}
+                  </td>
+                  <td
+                    className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
+                  >
+                    <div className="flex flex-col items-end justify-end gap-1 @min-[37rem]/list:flex-row @min-[37rem]/list:gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(
+                            `/records?zone_name=${encodeURIComponent(zone.name)}`,
+                          );
+                        }}
+                        className="font-medium text-green-600 hover:underline"
+                      >
+                        Records
+                      </button>
+                      {/* Import applies a whole zone file, so its grant must be unrestricted. */}
+                      {allowsWholeZone("record:create", zone.name) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImportingZone(zone);
+                          }}
+                          className="font-medium text-purple-600 hover:underline"
+                        >
+                          Import
+                        </button>
+                      )}
+                      {allowsWholeZone("record:read", zone.name) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExportingZone(zone);
+                          }}
+                          className="font-medium text-teal-600 hover:underline"
+                        >
+                          Export
+                        </button>
+                      )}
+                      {allows("zone:delete", zone.name) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(zone);
+                          }}
+                          className="font-medium text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {selectedZone && (
+          <Modal
+            isOpen={isDetailModalOpen}
+            wide
+            structured
+            onClose={handleCloseDetails}
+            label="Zone details"
+          >
+            <ZoneDetails
+              zone={selectedZone}
+              initialTab={focusTab}
+              onZoneChanged={(updatedZone) => {
+                setSelectedZone((current) =>
+                  current?.id === updatedZone.id ? updatedZone : current,
+                );
+                setRefreshKey((prev) => prev + 1);
+              }}
+              onSerialChanged={(serial) => {
+                // A late response can arrive after another zone edit advances the serial.
+                setSelectedZone((current) =>
+                  current?.id === selectedZone.id &&
+                  current.serial === selectedZone.serial
+                    ? { ...current, serial }
+                    : current,
+                );
+                setRefreshKey((prev) => prev + 1);
+              }}
+              onDnssecChanged={handleDnssecChanged}
+            />
+          </Modal>
+        )}
+        {importingZone && (
+          <Modal isOpen onClose={handleCloseImport}>
+            <ZoneImportForm
+              zone={importingZone}
+              onApplied={() => setRefreshKey((prev) => prev + 1)}
+            />
+          </Modal>
+        )}
+        {exportingZone && (
+          <Modal isOpen wide onClose={() => setExportingZone(null)}>
+            <ZoneExport zone={exportingZone} />
+          </Modal>
+        )}
+        <ListFooter
+          summary={
+            zones === null ? (
+              !error && "Loading zones..."
+            ) : zones.length > 0 ? (
+              <PageSummary
+                offset={indexOfFirstZone}
+                count={zones.length}
+                total={totalZones}
+              />
+            ) : (
+              "No zones found"
+            )
+          }
+        >
+          <PaginationControls
+            currentPage={currentPage}
+            pageSize={zonesPerPage}
+            totalItems={totalZones}
+            disabled={zones === null}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </ListFooter>
+      </ListCard>
+    </>
   );
 }

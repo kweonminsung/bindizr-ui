@@ -20,10 +20,6 @@ export default function ZonesPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        The zones Bindizr serves and sends to its secondaries. Open a zone for
-        its records, settings, versions and DNSSEC.
-      </p>
       <ZoneList
         key={refreshKey}
         onCreateZone={() => setIsModalOpen(true)}

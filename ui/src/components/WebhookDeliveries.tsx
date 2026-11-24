@@ -14,8 +14,10 @@ import {
   describeCount,
   ListFooter,
   ListToolbar,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
+import { ModalContent } from "./Modal";
 import Notice from "./Notice";
 import Badge from "./Badge";
 
@@ -87,12 +89,15 @@ export default function WebhookDeliveries({ webhook }: WebhookDeliveriesProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="pr-4">
-        <h2 className="text-2xl font-bold text-gray-800">Delivery History</h2>
-        <p className="text-sm text-gray-500 wrap-anywhere">{webhook.name}</p>
-      </div>
-      <div className="overflow-hidden rounded-md border border-gray-200">
+    <ModalContent
+      header={
+        <>
+          <h2 className="text-2xl font-bold text-gray-800">Delivery History</h2>
+          <p className="text-sm text-gray-500 wrap-anywhere">{webhook.name}</p>
+        </>
+      }
+    >
+      <div className="@container/list rounded-md border border-gray-200">
         <ListToolbar
           actions={
             <>
@@ -126,7 +131,7 @@ export default function WebhookDeliveries({ webhook }: WebhookDeliveriesProps) {
               <tr>
                 <th
                   scope="col"
-                  className={`hidden w-44 sm:table-cell ${TABLE_HEADER_CLASS}`}
+                  className={`hidden w-40 @min-[40rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
                   title="When the delivery was queued"
                 >
                   When
@@ -151,11 +156,13 @@ export default function WebhookDeliveries({ webhook }: WebhookDeliveriesProps) {
                   : "";
                 return (
                   <tr key={delivery.id}>
-                    <td className="hidden px-6 py-4 text-gray-500 align-top sm:table-cell">
+                    <td
+                      className={`hidden align-top text-gray-500 @min-[40rem]/list:table-cell ${TABLE_CELL_CLASS}`}
+                    >
                       {queuedAt}
                     </td>
-                    <td className="px-6 py-4 align-top">
-                      <p className="mb-1 text-xs text-gray-500 sm:hidden">
+                    <td className={`align-top ${TABLE_CELL_CLASS}`}>
+                      <p className="mb-1 text-xs text-gray-500 @min-[40rem]/list:hidden">
                         Queued {queuedAt}
                       </p>
                       <p className="font-medium text-gray-900 wrap-anywhere">
@@ -173,7 +180,7 @@ export default function WebhookDeliveries({ webhook }: WebhookDeliveriesProps) {
                         {delivery.event_id}
                       </code>
                     </td>
-                    <td className="px-6 py-4 align-top">
+                    <td className={`align-top ${TABLE_CELL_CLASS}`}>
                       <Badge tone={STATUS_TONES[delivery.status]}>
                         {STATUS_LABELS[delivery.status]}
                       </Badge>
@@ -185,9 +192,14 @@ export default function WebhookDeliveries({ webhook }: WebhookDeliveriesProps) {
                           : ""}
                       </p>
                       {delivery.error_message && (
-                        <p className="mt-1 text-xs text-gray-600 wrap-anywhere">
-                          {delivery.error_message}
-                        </p>
+                        <details className="mt-1 text-xs text-gray-600">
+                          <summary className="cursor-pointer font-medium text-gray-700 hover:underline">
+                            View error
+                          </summary>
+                          <p className="mt-1 whitespace-pre-wrap wrap-anywhere">
+                            {delivery.error_message}
+                          </p>
+                        </details>
                       )}
                       {delivery.updated_at !== delivery.created_at && (
                         <p className="mt-1 text-xs text-gray-500">
@@ -214,6 +226,6 @@ export default function WebhookDeliveries({ webhook }: WebhookDeliveriesProps) {
           />
         )}
       </div>
-    </div>
+    </ModalContent>
   );
 }

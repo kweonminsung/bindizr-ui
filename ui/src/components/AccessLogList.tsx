@@ -34,9 +34,11 @@ import Badge from "./Badge";
 import PaginationControls from "./PaginationControls";
 import SortControl from "./SortControl";
 import {
+  ListCard,
   ListFooter,
   ListToolbar,
   PageSummary,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 
@@ -139,7 +141,7 @@ export default function AccessLogList() {
   } satisfies AccessLogListQuery);
   const current = listing?.request === request ? listing : null;
   const rows = current?.rows ?? null;
-  const total = current?.total ?? 0;
+  const total = listing?.total ?? 0;
 
   const handlePageChange = (page: number) => {
     setSearchParams(updatePageSearchParam(searchParams, page));
@@ -198,21 +200,10 @@ export default function AccessLogList() {
     };
   }, [request]);
 
-  if (
-    listing === null &&
-    !error &&
-    activeFilterCount === 0 &&
-    currentPage === 1
-  ) {
-    return (
-      <p className="text-center text-gray-500">Loading the access log...</p>
-    );
-  }
-
   const indexOfFirstRow = (currentPage - 1) * rowsPerPage;
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
         filters={
           <>
@@ -265,7 +256,7 @@ export default function AccessLogList() {
           setFilters(defaultFilters);
           handlePageChange(1);
         }}
-        actions={
+        sort={
           <SortControl
             options={SORT_OPTIONS}
             sort={sort}
@@ -288,36 +279,42 @@ export default function AccessLogList() {
         <table className="w-full table-fixed text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th scope="col" className={`w-44 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`hidden w-40 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 When
               </th>
               <th scope="col" className={TABLE_HEADER_CLASS}>
                 Request
               </th>
-              <th scope="col" className={`w-36 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`w-28 @min-[37rem]/list:w-32 ${TABLE_HEADER_CLASS}`}
+              >
                 Result
               </th>
               <th
                 scope="col"
-                className={`hidden sm:table-cell w-32 ${TABLE_HEADER_CLASS}`}
+                className={`hidden w-28 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Response code
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[49rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Actor
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell w-40 ${TABLE_HEADER_CLASS}`}
+                className={`hidden w-40 @min-[49rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Client IP
               </th>
               <th
                 scope="col"
-                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[60rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Error code
               </th>
@@ -327,38 +324,73 @@ export default function AccessLogList() {
             {(rows ?? []).map((row, index) => (
               // A log row has no id; the page is replaced whole on every
               // fetch, so its position is stable.
-              <tr key={index}>
-                <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                  {formatDateTime(row.requested_at)}
-                </td>
+              <tr key={index} className="align-top">
                 <td
-                  className="truncate px-6 py-4 font-medium text-gray-900"
-                  title={`${row.method} ${row.target}`}
+                  className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS} text-gray-500`}
                 >
-                  {row.method} {row.target}
+                  <time dateTime={row.requested_at}>
+                    {formatDateTime(row.requested_at)}
+                  </time>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4">
+                <td className={TABLE_CELL_CLASS}>
+                  <p
+                    className="line-clamp-2 font-medium text-gray-900 wrap-anywhere @min-[60rem]/list:line-clamp-none"
+                    title={`${row.method} ${row.target}`}
+                  >
+                    {row.method} {row.target}
+                  </p>
+                  <time
+                    className="mt-1 block text-xs text-gray-500 @min-[37rem]/list:hidden"
+                    dateTime={row.requested_at}
+                  >
+                    {formatDateTime(row.requested_at)}
+                  </time>
+                  <details className="mt-1 text-xs text-gray-600 @min-[60rem]/list:hidden">
+                    <summary className="cursor-pointer">Details</summary>
+                    <div className="mt-1 space-y-1 wrap-anywhere">
+                      <p>
+                        {row.method} {row.target}
+                      </p>
+                      <p className="@min-[49rem]/list:hidden">
+                        Actor: {row.actor ? describeActor(row.actor) : "—"}
+                        <ChangeSourceBadge
+                          source={row.source}
+                          className="ml-1"
+                        />
+                      </p>
+                      <p className="@min-[49rem]/list:hidden">
+                        Client IP: {row.client_ip}
+                      </p>
+                      {row.error_code && <p>Error: {row.error_code}</p>}
+                    </div>
+                  </details>
+                </td>
+                <td className={TABLE_CELL_CLASS}>
                   <Badge tone={RESULT_TONES[row.result]}>
                     {RESULT_LABELS[row.result] ?? row.result}
                   </Badge>
-                  <span className="ml-2 text-gray-500 sm:hidden">
+                  <span className="mt-1 block text-xs text-gray-500 @min-[37rem]/list:hidden">
                     {row.response_code}
                   </span>
                 </td>
-                <td className="hidden sm:table-cell px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[37rem]/list:table-cell ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {row.response_code}
                 </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  <span className="break-all">
-                    {row.actor ? describeActor(row.actor) : "—"}
-                  </span>
+                <td
+                  className={`hidden @min-[49rem]/list:table-cell ${TABLE_CELL_CLASS} text-gray-500 wrap-anywhere`}
+                >
+                  <span>{row.actor ? describeActor(row.actor) : "—"}</span>
                   <ChangeSourceBadge source={row.source} className="ml-2" />
                 </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[49rem]/list:table-cell ${TABLE_CELL_CLASS} text-gray-500 wrap-anywhere`}
+                >
                   {row.client_ip}
                 </td>
                 <td
-                  className="hidden lg:table-cell truncate px-6 py-4 text-gray-500"
+                  className={`hidden @min-[60rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
                   title={row.error_code ?? undefined}
                 >
                   {row.error_code ?? "—"}
@@ -387,10 +419,11 @@ export default function AccessLogList() {
           currentPage={currentPage}
           pageSize={rowsPerPage}
           totalItems={total}
+          disabled={rows === null}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
       </ListFooter>
-    </div>
+    </ListCard>
   );
 }

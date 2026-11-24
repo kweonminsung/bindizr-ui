@@ -32,9 +32,11 @@ import {
 import ChangeSourceBadge, { describeActor } from "./ChangeSourceBadge";
 import { FilterField, FilterSelect } from "./FilterFields";
 import {
+  ListCard,
   ListFooter,
   ListToolbar,
   PageSummary,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 import Notice from "./Notice";
@@ -118,7 +120,7 @@ export default function ActivityLogList() {
   } satisfies ActivityLogListQuery);
   const current = listing?.request === request ? listing : undefined;
   const rows = current && "rows" in current ? current.rows : null;
-  const total = current && "total" in current ? current.total : 0;
+  const total = listing && "total" in listing ? listing.total : 0;
   const error = current && "error" in current ? current.error : null;
 
   const handlePageChange = (page: number) => {
@@ -201,7 +203,7 @@ export default function ActivityLogList() {
   ];
 
   return (
-    <div className="rounded-lg bg-white shadow">
+    <ListCard>
       <ListToolbar
         filters={
           <>
@@ -264,7 +266,7 @@ export default function ActivityLogList() {
           setFilters(DEFAULT_FILTERS);
           handlePageChange(1);
         }}
-        actions={
+        sort={
           <SortControl
             options={SORT_OPTIONS}
             sort={sort}
@@ -284,7 +286,7 @@ export default function ActivityLogList() {
             <tr>
               <th
                 scope="col"
-                className={`hidden w-44 sm:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden w-44 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 When
               </th>
@@ -296,7 +298,7 @@ export default function ActivityLogList() {
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Actor
               </th>
@@ -317,32 +319,36 @@ export default function ActivityLogList() {
               );
               return (
                 <tr key={row.id}>
-                  <td className="hidden px-6 py-4 align-top text-gray-500 sm:table-cell">
+                  <td
+                    className={`hidden ${TABLE_CELL_CLASS} align-top text-gray-500 @min-[37rem]/list:table-cell`}
+                  >
                     {timestamp}
                   </td>
-                  <td className="px-6 py-4 align-top">
+                  <td className={`${TABLE_CELL_CLASS} align-top`}>
                     <p className="font-medium text-gray-900 wrap-anywhere">
                       {activityOperationLabel(row.operation)}
                     </p>
-                    <p className="my-1 text-xs text-gray-500 sm:hidden">
+                    <p className="my-1 text-xs text-gray-500 @min-[37rem]/list:hidden">
                       {timestamp}
                     </p>
                     <Badge tone={RESULT_TONES[row.result]}>
                       {ACTIVITY_RESULT_LABELS[row.result] ?? row.result}
                     </Badge>
                   </td>
-                  <td className="px-6 py-4 align-top wrap-anywhere">
+                  <td className={`${TABLE_CELL_CLASS} align-top wrap-anywhere`}>
                     <p className="font-medium text-gray-900">
                       {activityTargetLabel(row.target) || "—"}
                     </p>
                     {row.detail && (
                       <p className="mt-1 text-gray-600">{row.detail}</p>
                     )}
-                    <p className="mt-1 text-xs text-gray-500 md:hidden">
+                    <p className="mt-1 text-xs text-gray-500 @min-[46rem]/list:hidden">
                       {actor}
                     </p>
                   </td>
-                  <td className="hidden px-6 py-4 align-top text-gray-500 wrap-anywhere md:table-cell">
+                  <td
+                    className={`hidden ${TABLE_CELL_CLASS} align-top text-gray-500 wrap-anywhere @min-[46rem]/list:table-cell`}
+                  >
                     {actor}
                   </td>
                 </tr>
@@ -366,10 +372,11 @@ export default function ActivityLogList() {
           currentPage={currentPage}
           pageSize={rowsPerPage}
           totalItems={total}
+          disabled={rows === null}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
       </ListFooter>
-    </div>
+    </ListCard>
   );
 }

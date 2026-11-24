@@ -1,4 +1,10 @@
-import { describeCount, ListFooter, TABLE_HEADER_CLASS } from "./ListLayout";
+import {
+  describeCount,
+  ListFooter,
+  TABLE_CELL_CLASS,
+  TABLE_HEADER_CLASS,
+} from "./ListLayout";
+import Badge from "./Badge";
 import Notice from "./Notice";
 import { Webhook } from "@/lib/webhooks";
 import { activityOperationLabel } from "@/lib/activity";
@@ -23,7 +29,7 @@ export default function WebhookList({
   return (
     <>
       {error && (
-        <Notice tone="error" className="mx-4 mb-4">
+        <Notice tone="error" className="m-4">
           {error}
         </Notice>
       )}
@@ -36,19 +42,7 @@ export default function WebhookList({
               </th>
               <th
                 scope="col"
-                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
-              >
-                Operations
-              </th>
-              <th
-                scope="col"
-                className={`w-28 hidden md:table-cell ${TABLE_HEADER_CLASS}`}
-              >
-                Status
-              </th>
-              <th
-                scope="col"
-                className={`w-30 md:w-52 text-right ${TABLE_HEADER_CLASS}`}
+                className={`w-24 text-right @min-[38rem]/list:w-52 ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -57,26 +51,37 @@ export default function WebhookList({
           <tbody className="divide-y divide-gray-200">
             {webhooks?.map((webhook) => (
               <tr key={webhook.id}>
-                <td className="px-6 py-4">
-                  <p className="font-medium text-gray-900 wrap-anywhere">
-                    {webhook.name}
+                <td className={`${TABLE_CELL_CLASS} align-top`}>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="min-w-0 font-medium text-gray-900 wrap-anywhere">
+                      {webhook.name}
+                    </span>
+                    <Badge tone={webhook.enabled ? "success" : "neutral"}>
+                      {webhook.enabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </div>
+                  <p className="truncate text-gray-500" title={webhook.url}>
+                    {webhook.url}
                   </p>
-                  <p className="break-all text-gray-500">{webhook.url}</p>
-                  <p className="mt-1 text-gray-600 md:hidden">
-                    {webhook.enabled ? "Enabled" : "Disabled"}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-600 wrap-anywhere lg:hidden">
-                    {webhook.operations.map(activityOperationLabel).join(", ")}
-                  </p>
+                  <details className="mt-1 text-xs text-gray-600">
+                    <summary className="cursor-pointer font-medium text-gray-700 hover:underline">
+                      {webhook.operations.length}{" "}
+                      {webhook.operations.length === 1
+                        ? "operation"
+                        : "operations"}
+                    </summary>
+                    <p className="mt-2 wrap-anywhere">{webhook.url}</p>
+                    <ul className="mt-1 space-y-1">
+                      {webhook.operations.map((operation) => (
+                        <li key={operation} className="wrap-anywhere">
+                          {activityOperationLabel(operation)}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 </td>
-                <td className="hidden px-6 py-4 text-gray-600 wrap-anywhere lg:table-cell">
-                  {webhook.operations.map(activityOperationLabel).join(", ")}
-                </td>
-                <td className="hidden px-6 py-4 text-gray-600 md:table-cell">
-                  {webhook.enabled ? "Enabled" : "Disabled"}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-wrap justify-end gap-x-3 gap-y-2">
+                <td className={`${TABLE_CELL_CLASS} align-top`}>
+                  <div className="flex flex-col items-end gap-x-3 gap-y-2 @min-[38rem]/list:flex-row @min-[38rem]/list:justify-end">
                     <button
                       type="button"
                       aria-label={`Deliveries for ${webhook.name}`}

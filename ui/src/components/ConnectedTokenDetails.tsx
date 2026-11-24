@@ -54,7 +54,7 @@ export default function ConnectedTokenDetails({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-2xl font-bold text-gray-800 break-all">
+          <h2 className="text-2xl font-bold text-gray-800 wrap-anywhere">
             {token.name}
           </h2>
           <ExpiredTokenBadge token={token} />
@@ -67,7 +67,7 @@ export default function ConnectedTokenDetails({
           <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
             Role Grants
           </h3>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="mt-2 text-sm text-gray-500 wrap-anywhere">
             What role {token.role_name} permits this token. The pattern and
             types narrow its record actions, for reads as much as writes.
           </p>
