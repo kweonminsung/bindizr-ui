@@ -25,9 +25,10 @@ export default function BindizrSettings() {
         const data = await res.json();
         setBindizrUrl(data.bindizrUrl || "");
         setSecretKey(data.secretKey || "");
+      } else {
+        toast.error("Failed to load settings.");
       }
-    } catch (error) {
-      console.error("Failed to fetch settings:", error);
+    } catch {
       toast.error("Failed to load settings.");
     }
   };
@@ -66,7 +67,6 @@ export default function BindizrSettings() {
         body: JSON.stringify({ bindizrUrl, secretKey }),
       });
 
-      const data = await res.json();
       if (res.ok) {
         toast.success("Settings updated successfully.");
         // The new secret may have another scope.
@@ -75,10 +75,10 @@ export default function BindizrSettings() {
           setIsModalOpen(false);
         }, 1000);
       } else {
-        toast.error(data.message || "Failed to update settings.");
+        const data = await res.json().catch(() => null);
+        toast.error(data?.message || "Failed to update settings.");
       }
-    } catch (error) {
-      console.error("Failed to update settings:", error);
+    } catch {
       toast.error("An error occurred while updating settings.");
     } finally {
       setIsLoading(false);

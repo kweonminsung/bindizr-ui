@@ -466,10 +466,12 @@ export default function ZoneList({
               order={order}
               onChange={handleSortChange}
             />
-            {allows("zone:update") && <NotifyAllZones />}
-            {/* An import rewrites zones whole: an unnarrowed record:create somewhere, or zone:create. */}
-            {(allows("zone:create") ||
-              allowsWholeZoneAnywhere("record:create")) && (
+            {allows("zone:update") && (
+              <NotifyAllZones
+                onSerialBumpFinished={() => setRefreshKey((key) => key + 1)}
+              />
+            )}
+            {allowsWholeZoneAnywhere("record:create") && (
               <button
                 onClick={onImportZones}
                 className="btn-primary w-full sm:w-auto"

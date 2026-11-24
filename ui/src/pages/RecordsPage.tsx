@@ -3,11 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import RecordList from "@/components/RecordList";
 import RecordForm from "@/components/RecordForm";
 import Modal from "@/components/Modal";
+import { useToast } from "@/contexts/ToastContext";
 import { Zone } from "@/lib/types";
 import { getZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 
 export default function RecordsPage() {
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const zoneName = searchParams.get("zoneName")?.trim() || undefined;
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,19 +17,25 @@ export default function RecordsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
+
     const fetchZones = async () => {
       try {
         const fetchedZones = await getZones();
-        setZones(fetchedZones);
+        if (active) {
+          setZones(fetchedZones);
+        }
       } catch (error) {
-        console.error(
-          "Failed to fetch zones:",
-          getErrorMessage(error, "Failed to fetch zones"),
-        );
+        if (active) {
+          toast.error(getErrorMessage(error, "Failed to fetch zones"));
+        }
       }
     };
     fetchZones();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [toast]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);

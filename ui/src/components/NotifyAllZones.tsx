@@ -4,8 +4,14 @@ import { getErrorMessage } from "@/lib/errors";
 import { useToast } from "@/contexts/ToastContext";
 import Modal from "./Modal";
 
+interface NotifyAllZonesProps {
+  onSerialBumpFinished: () => void;
+}
+
 /** All zones at once; a single zone is notified from its Sync tab. */
-export default function NotifyAllZones() {
+export default function NotifyAllZones({
+  onSerialBumpFinished,
+}: NotifyAllZonesProps) {
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [bumpSerial, setBumpSerial] = useState(false);
@@ -22,8 +28,16 @@ export default function NotifyAllZones() {
       toast.success(await notifyZones(null, bumpSerial));
       close();
     } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to send DNS NOTIFY"));
+      const message = getErrorMessage(error, "Failed to send DNS NOTIFY");
+      toast.error(
+        bumpSerial
+          ? `${message} (some serials may already have advanced)`
+          : message,
+      );
     } finally {
+      if (bumpSerial) {
+        onSerialBumpFinished();
+      }
       setSending(false);
     }
   };
@@ -52,6 +66,7 @@ export default function NotifyAllZones() {
             <input
               type="checkbox"
               checked={bumpSerial}
+              disabled={sending}
               onChange={(e) => setBumpSerial(e.target.checked)}
               className="mt-1"
             />

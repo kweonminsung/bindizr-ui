@@ -180,10 +180,13 @@ export default function ZoneImportForm({
                 : "Dry run result (no changes applied)"}
           </p>
           <p>
-            Parsed {result.summary.parsed}, added {result.summary.added},
-            updated {result.summary.updated}, deleted {result.summary.deleted},
-            unchanged {result.summary.unchanged}, skipped{" "}
-            {result.summary.skipped}
+            Parsed {result.summary.parsed},{" "}
+            {result.applied ? "added" : "would add"} {result.summary.added},{" "}
+            {result.applied ? "updated" : "would update"}{" "}
+            {result.summary.updated},{" "}
+            {result.applied ? "deleted" : "would delete"}{" "}
+            {result.summary.deleted}, unchanged {result.summary.unchanged},
+            skipped {result.summary.skipped}
           </p>
           {result.errors.length > 0 && (
             <ul className="list-disc list-inside mt-2 space-y-1">

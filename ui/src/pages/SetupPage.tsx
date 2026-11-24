@@ -21,30 +21,26 @@ export default function SetupPage() {
       return;
     }
 
-    if (
-      !bindizrUrl.startsWith("http://") &&
-      !bindizrUrl.startsWith("https://")
-    ) {
-      toast.error("Please enter a valid URL starting with http:// or https://");
-      return;
-    }
+    try {
+      const res = await fetch("/api/public/settings", {
+        method: "POST",
+        headers: getLocalApiHeaders({ auth: false }),
+        body: JSON.stringify({
+          bindizrUrl,
+          secretKey,
+          username: createAccount ? username : undefined,
+          password: createAccount ? password : undefined,
+        }),
+      });
 
-    const res = await fetch("/api/public/settings", {
-      method: "POST",
-      headers: getLocalApiHeaders({ auth: false }),
-      body: JSON.stringify({
-        bindizrUrl,
-        secretKey,
-        username: createAccount ? username : undefined,
-        password: createAccount ? password : undefined,
-      }),
-    });
-
-    if (res.ok) {
-      window.location.replace("/");
-    } else {
-      const data = await res.json();
-      toast.error(data.message || data.error || "Setup failed.");
+      if (res.ok) {
+        window.location.replace("/");
+      } else {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.message || "Setup failed.");
+      }
+    } catch {
+      toast.error("Failed to connect to the UI server.");
     }
   };
 
@@ -81,6 +77,9 @@ export default function SetupPage() {
               required
               className="w-full mt-1"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Enter the server’s HTTP or HTTPS base URL. Enter the token below.
+            </p>
           </div>
           <div>
             <label

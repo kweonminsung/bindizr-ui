@@ -20,9 +20,9 @@ interface BindizrTokenContextType {
   /** Whether `record:create` reaches part of a zone, or of any zone when none
    * is named. */
   canCreateRecords: (zoneName?: string) => boolean;
-  /** Whether the caller may do `action` in the zone with no name or type
-   * limit. */
-  allowsWholeZone: (action: Action, zoneName: string) => boolean;
+  /** Whether the caller may do `action` with no name or type limit in the
+   * named zone, or in all zones when none is named. */
+  allowsWholeZone: (action: Action, zoneName?: string) => boolean;
   /** Whether every one of `actions` reaches one same zone, or all zones,
    * with no name or type limit. */
   allowsWholeZoneAnywhere: (...actions: Action[]) => boolean;
@@ -75,24 +75,22 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
     }
   }, []);
 
-  /** A zone's permissions: its own entry, or the all-zones ones. */
+  /** A named zone's permissions, falling back to the all-zones scope. */
   const zonePermissions = useMemo(() => {
     const byZone = new Map(
       (permissions?.zones ?? []).map((zone) => [zoneKey(zone.zone_name), zone]),
     );
-    return (zoneName: string): PermittedActions | undefined =>
-      byZone.get(zoneKey(zoneName)) ?? permissions?.all_zones;
+    return (zoneName?: string): PermittedActions | undefined =>
+      (zoneName === undefined ? undefined : byZone.get(zoneKey(zoneName))) ??
+      permissions?.all_zones;
   }, [permissions]);
 
   const allows = useCallback(
     (action: Action, zoneName?: string) => {
-      const permitted =
-        zoneName === undefined
-          ? permissions?.all_zones
-          : zonePermissions(zoneName);
+      const permitted = zonePermissions(zoneName);
       return !permitted || permitted.actions.includes(action);
     },
-    [permissions, zonePermissions],
+    [zonePermissions],
   );
 
   const canCreateRecords = useCallback(
@@ -107,7 +105,7 @@ export const BindizrTokenProvider: React.FC<BindizrTokenProviderProps> = ({
   );
 
   const allowsWholeZone = useCallback(
-    (action: Action, zoneName: string) => {
+    (action: Action, zoneName?: string) => {
       const permitted = zonePermissions(zoneName);
       return !permitted || permitted.whole_zone.includes(action);
     },
