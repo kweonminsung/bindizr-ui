@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 	"strings"
 
 	"bindizr-ui/db"
-	"bindizr-ui/webhooks"
 )
 
 const bindizrProxyPrefix = "/api/bindizr/proxy"
@@ -74,17 +72,7 @@ func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func BindizrProxyHandler(enqueue func(context.Context, ...webhooks.Event) error) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		proxyBindizrRequest(w, r, enqueue)
-	}
-}
-
-func proxyBindizrRequest(
-	w http.ResponseWriter,
-	r *http.Request,
-	enqueue func(context.Context, ...webhooks.Event) error,
-) {
+func BindizrProxyHandler(w http.ResponseWriter, r *http.Request) {
 	connection, err := db.LoadBindizrConnection(r.Context())
 	if err != nil {
 		http.Error(w, "Failed to load Bindizr settings", http.StatusInternalServerError)
@@ -131,18 +119,6 @@ func proxyBindizrRequest(
 
 	copyProxyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	if enqueue != nil {
-		if mutation, matched := webhookMutation(r.Method, suffix); matched && resp.StatusCode == mutation.rule.status {
-			query := r.URL.Query()
-			if query.Get("dry_run") != "true" {
-				if mutation.rule.resultKind == appliedRecordDelete && mutation.target.RecordID == 0 {
-					mutation.target = recordDeleteTarget(query)
-				}
-				forwardBindizrMutation(w, resp, r.Context(), mutation, enqueue)
-				return
-			}
-		}
-	}
 	_, _ = io.Copy(w, resp.Body)
 }
 

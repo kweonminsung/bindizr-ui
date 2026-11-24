@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"database/sql"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -176,7 +179,7 @@ func TestBindizrProxyRejectsUpstreamRedirects(t *testing.T) {
 	}
 	request := httptest.NewRequest(http.MethodGet, "/api/bindizr/proxy/zones", nil)
 	recorder := httptest.NewRecorder()
-	BindizrProxyHandler(nil)(recorder, request)
+	BindizrProxyHandler(recorder, request)
 
 	if recorder.Code != http.StatusBadGateway || recorder.Header().Get("Location") != "" || followed.Load() {
 		t.Fatalf("upstream redirect was not rejected: %d %s", recorder.Code, recorder.Body.String())
@@ -207,10 +210,49 @@ func TestBindizrProxyWithholdsCookiesAndPreservesAPIResponse(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer browser-fixture")
 	request.Header.Set("Cookie", "session=browser-fixture")
 	recorder := httptest.NewRecorder()
-	BindizrProxyHandler(nil)(recorder, request)
+	BindizrProxyHandler(recorder, request)
 
 	if recorder.Code != http.StatusForbidden || recorder.Header().Get("Content-Type") != "application/json" ||
 		recorder.Header().Get("Set-Cookie") != "" || recorder.Body.String() != `{"code":"FORBIDDEN","error":"record update not permitted"}` {
 		t.Fatalf("unexpected API response: %d %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestBindizrProxyPreservesCompressedWriteResponse(t *testing.T) {
+	useSettingsDatabase(t)
+	const body = `{"applied":true,"dry_run":false,"record":{"id":27,"zone_name":"example.test","name":"www.example.test.","type":"A","value":"192.0.2.1"}}`
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	if _, err := io.WriteString(writer, body); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/records" {
+			t.Errorf("upstream request = %s %s, want POST /records", r.Method, r.URL.Path)
+		}
+		if encoding := r.Header.Get("Accept-Encoding"); encoding != "gzip, br" {
+			t.Errorf("upstream Accept-Encoding = %q, want gzip, br", encoding)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(compressed.Bytes())
+	}))
+	defer upstream.Close()
+	if err := db.SaveBindizrConnection(t.Context(), db.BindizrConnection{URL: upstream.URL}); err != nil {
+		t.Fatal(err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, bindizrProxyPrefix+"/records", nil)
+	request.Header.Set("Accept-Encoding", "gzip, br")
+	response := httptest.NewRecorder()
+	BindizrProxyHandler(response, request)
+	if response.Code != http.StatusCreated || response.Header().Get("Content-Encoding") != "gzip" ||
+		!bytes.Equal(response.Body.Bytes(), compressed.Bytes()) {
+		t.Fatalf("proxy did not preserve the encoded response: %d %+v", response.Code, response.Header())
 	}
 }
