@@ -4,7 +4,7 @@ import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
-import { ApiToken } from "@/lib/types";
+import { ApiTokenResponse } from "@/lib/types";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import TokenDetails, { isTokenExpired } from "./TokenDetails";
@@ -40,7 +40,10 @@ const SORT_OPTIONS = [
 
 type TokenSortField = (typeof SORT_OPTIONS)[number]["value"];
 
-const SORT_VALUES: Record<TokenSortField, (token: ApiToken) => SortValue> = {
+const SORT_VALUES: Record<
+  TokenSortField,
+  (token: ApiTokenResponse) => SortValue
+> = {
   created_at: (token) => token.created_at,
   name: (token) => token.name,
   role_name: (token) => token.role_name,
@@ -58,9 +61,11 @@ export default function TokenList({
   const { focusName, clearFocusName } = useFocusName();
   const [listing, setListing] = useState<{
     roleFilter: string;
-    tokens: ApiToken[];
+    tokens: ApiTokenResponse[];
   } | null>(null);
-  const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
+  const [selectedToken, setSelectedToken] = useState<ApiTokenResponse | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   // Newest first, as the server lists them.
@@ -109,7 +114,7 @@ export default function TokenList({
     clearFocusName();
   };
 
-  const handleDelete = async (token: ApiToken) => {
+  const handleDelete = async (token: ApiTokenResponse) => {
     if (
       !window.confirm(
         `Delete "${token.name}"? Clients using it stop working; its role stays.`,

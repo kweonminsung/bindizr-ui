@@ -5,7 +5,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { focusLink } from "@/lib/focusName";
 import { SortValue } from "@/lib/sort";
-import { DnssecStatus, Zone } from "@/lib/types";
+import { DnssecStatusResponse, StoredZoneResponse } from "@/lib/types";
 import { useRowSort } from "@/lib/useRowSort";
 import Notice from "./Notice";
 import { KEY_STATE_STYLES } from "./ZoneDnssecTab";
@@ -21,7 +21,7 @@ import SortControl from "./SortControl";
 const PROBE_BATCH = 6;
 
 /** A probe's outcome: the status, or why it could not be read. */
-type Probe = { status: DnssecStatus } | { error: string };
+type Probe = { status: DnssecStatusResponse } | { error: string };
 
 const SORT_OPTIONS = [
   { value: "name", label: "Zone" },
@@ -29,21 +29,24 @@ const SORT_OPTIONS = [
   { value: "next_resign_at", label: "Next re-sign" },
 ] as const;
 
-type SignedZoneSortField = (typeof SORT_OPTIONS)[number]["value"];
+type DnssecZoneSortField = (typeof SORT_OPTIONS)[number]["value"];
 
-/** Every signed zone with its signing state, read zone by zone. */
+/** Each zone with DNSSEC enabled with its signing state, read zone by zone. */
 export default function DnssecOverview() {
-  const [zones, setZones] = useState<Zone[] | null>(null);
+  const [zones, setZones] = useState<StoredZoneResponse[] | null>(null);
   const [probes, setProbes] = useState<Map<string, Probe>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   // The policy and re-sign time arrive with each zone's probe; until then the
   // zone sorts last, as any absent value does.
-  const statusOf = (zone: Zone) => {
+  const statusOf = (zone: StoredZoneResponse) => {
     const probe = probes.get(zone.name);
     return probe && "status" in probe ? probe.status : null;
   };
-  const sortValues: Record<SignedZoneSortField, (zone: Zone) => SortValue> = {
+  const sortValues: Record<
+    DnssecZoneSortField,
+    (zone: StoredZoneResponse) => SortValue
+  > = {
     name: (zone) => zone.name,
     policy: (zone) => statusOf(zone)?.policy?.name,
     next_resign_at: (zone) => statusOf(zone)?.next_resign_at,
@@ -55,25 +58,30 @@ export default function DnssecOverview() {
 
     (async () => {
       setError(null);
-      let signed: Zone[];
+      let dnssecZones: StoredZoneResponse[];
       try {
-        signed = await getZones({ signed: true });
+        dnssecZones = await getZones({ dnssec_enabled: true });
       } catch (fetchError) {
         if (active) {
-          setError(getErrorMessage(fetchError, "Failed to fetch signed zones"));
+          setError(
+            getErrorMessage(
+              fetchError,
+              "Failed to fetch zones with DNSSEC enabled",
+            ),
+          );
         }
         return;
       }
       if (!active) {
         return;
       }
-      setZones(signed);
+      setZones(dnssecZones);
 
-      for (let i = 0; i < signed.length; i += PROBE_BATCH) {
+      for (let i = 0; i < dnssecZones.length; i += PROBE_BATCH) {
         if (!active) {
           return;
         }
-        const batch = signed.slice(i, i + PROBE_BATCH);
+        const batch = dnssecZones.slice(i, i + PROBE_BATCH);
         const results = await Promise.allSettled(
           batch.map((zone) => getDnssecStatus(zone.name)),
         );
@@ -106,7 +114,11 @@ export default function DnssecOverview() {
   }, []);
 
   if (zones === null && !error) {
-    return <p className="text-center text-gray-500">Loading signed zones...</p>;
+    return (
+      <p className="text-center text-gray-500">
+        Loading zones with DNSSEC enabled...
+      </p>
+    );
   }
 
   const query = searchQuery.trim().toLowerCase();
@@ -128,7 +140,7 @@ export default function DnssecOverview() {
       >
         <input
           type="text"
-          placeholder="Search signed zones..."
+          placeholder="Search zones..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-auto"
@@ -254,8 +266,12 @@ export default function DnssecOverview() {
       <ListFooter
         summary={
           zones === null
-            ? !error && "Loading signed zones..."
-            : describeCount(visibleZones.length, "signed zone", "signed zones")
+            ? !error && "Loading zones with DNSSEC enabled..."
+            : describeCount(
+                visibleZones.length,
+                "zone with DNSSEC enabled",
+                "zones with DNSSEC enabled",
+              )
         }
       />
     </div>

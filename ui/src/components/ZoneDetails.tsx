@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getDnssecStatus } from "@/lib/api";
-import { Action, Zone } from "@/lib/types";
+import { Action, ZoneResponse } from "@/lib/types";
 import TabBar from "./TabBar";
 import ZoneDnssecTab from "./ZoneDnssecTab";
 import ZoneForm from "./ZoneForm";
@@ -9,10 +9,10 @@ import ZoneSyncTab from "./ZoneSyncTab";
 import ZoneVersions from "./ZoneVersions";
 
 interface ZoneDetailsProps {
-  zone: Zone;
+  zone: ZoneResponse;
   /** The tab a link opens on; the zone's own unless it names a visible one. */
   initialTab?: string | null;
-  onZoneChanged: (zone: Zone) => void;
+  onZoneChanged: (zone: ZoneResponse) => void;
   onSerialChanged: (serial: number) => void;
   onDnssecChanged?: (zoneName: string, enabled: boolean) => void;
 }
@@ -122,7 +122,7 @@ export default function ZoneDetails({
                 <div className="p-2.5 bg-amber-50 rounded-md border border-amber-200">
                   <p className="text-sm font-medium text-amber-800">Disabled</p>
                   <p className="text-sm text-amber-700">
-                    The secondaries have dropped this zone. Its records stay
+                    Bindizr removes this zone from its catalog. Its records stay
                     here, editable.
                   </p>
                 </div>

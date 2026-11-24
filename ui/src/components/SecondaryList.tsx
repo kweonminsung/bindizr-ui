@@ -5,7 +5,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
 import { SortValue } from "@/lib/sort";
-import { Secondary } from "@/lib/types";
+import { SecondaryResponse } from "@/lib/types";
 import { useRowSort } from "@/lib/useRowSort";
 import Modal from "./Modal";
 import Notice from "./Notice";
@@ -31,7 +31,7 @@ type SecondarySortField = (typeof SORT_OPTIONS)[number]["value"];
 
 const SORT_VALUES: Record<
   SecondarySortField,
-  (secondary: Secondary) => SortValue
+  (secondary: SecondaryResponse) => SortValue
 > = {
   name: (secondary) => secondary.name,
   address: (secondary) => secondary.address,
@@ -51,8 +51,8 @@ export default function SecondaryList({
   const canManage = allows("secondary:manage");
   const toast = useToast();
   const { focusName, clearFocusName } = useFocusName();
-  const [secondaries, setSecondaries] = useState<Secondary[]>([]);
-  const [selected, setSelected] = useState<Secondary | null>(null);
+  const [secondaries, setSecondaries] = useState<SecondaryResponse[]>([]);
+  const [selected, setSelected] = useState<SecondaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,7 +103,7 @@ export default function SecondaryList({
     clearFocusName();
   };
 
-  const handleUpdated = (updated: Secondary) => {
+  const handleUpdated = (updated: SecondaryResponse) => {
     setSecondaries((prev) =>
       prev.map((secondary) =>
         secondary.id === updated.id ? updated : secondary,
@@ -112,7 +112,7 @@ export default function SecondaryList({
     setSelected(updated);
   };
 
-  const handleDelete = async (secondary: Secondary) => {
+  const handleDelete = async (secondary: SecondaryResponse) => {
     if (
       !window.confirm(
         `Delete "${secondary.name}"? It stops receiving NOTIFY and its transfers are refused.`,
@@ -195,7 +195,7 @@ export default function SecondaryList({
                 scope="col"
                 className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
               >
-                NOTIFY Key
+                NOTIFY TSIG key
               </th>
               <th
                 scope="col"
@@ -235,7 +235,7 @@ export default function SecondaryList({
                   )}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
-                  {secondary.notify_key_name ?? "-"}
+                  {secondary.notify_tsig_key_name ?? "-"}
                 </td>
                 <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
                   {formatDateTime(secondary.created_at)}

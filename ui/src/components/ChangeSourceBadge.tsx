@@ -1,5 +1,12 @@
 import { ChangeActor, ChangeSource } from "@/lib/types";
 
+export const CHANGE_SOURCE_LABELS: Record<ChangeSource, string> = {
+  api: "HTTP API",
+  socket: "CLI",
+  nsupdate: "nsupdate",
+  system: "System",
+};
+
 const CHANGE_SOURCE_STYLES: Record<ChangeSource, string> = {
   api: "bg-blue-100 text-blue-700",
   socket: "bg-amber-100 text-amber-700",
@@ -8,15 +15,15 @@ const CHANGE_SOURCE_STYLES: Record<ChangeSource, string> = {
 };
 
 const CHANGE_SOURCE_HINTS: Record<ChangeSource, string> = {
-  api: "Written over the HTTP API.",
-  socket: "Written over the daemon socket (the CLI).",
-  nsupdate: "Written by an RFC 2136 dynamic update.",
+  api: "Through the HTTP API.",
+  socket: "Through the daemon socket (CLI).",
+  nsupdate: "Through an RFC 2136 dynamic update.",
   system: "Written by bindizr itself — the DNSSEC signer or its scheduler.",
 };
 
 /** The credential behind a change, by kind and name. */
 export function describeActor(actor: ChangeActor): string {
-  return `${actor.kind === "token" ? "token" : "TSIG key"} ${actor.name}`;
+  return `${actor.kind === "token" ? "API token" : "TSIG key"} ${actor.name}`;
 }
 
 interface ChangeSourceBadgeProps {
@@ -36,7 +43,7 @@ export default function ChangeSourceBadge({
       }${className ? ` ${className}` : ""}`}
       title={CHANGE_SOURCE_HINTS[source] ?? "An unrecognised change source."}
     >
-      {source}
+      {CHANGE_SOURCE_LABELS[source] ?? source}
     </span>
   );
 }

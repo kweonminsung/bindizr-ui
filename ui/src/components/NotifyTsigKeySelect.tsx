@@ -3,9 +3,9 @@ import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 import { getTsigKeys } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { TsigKey } from "@/lib/types";
+import { TsigKeyResponse } from "@/lib/types";
 
-interface NotifyKeySelectProps {
+interface NotifyTsigKeySelectProps {
   id: string;
   /** The key's name; empty sends NOTIFY unsigned. */
   value: string;
@@ -13,16 +13,16 @@ interface NotifyKeySelectProps {
 }
 
 /** Picks the TSIG key a secondary's NOTIFY is signed with. */
-export default function NotifyKeySelect({
+export default function NotifyTsigKeySelect({
   id,
   value,
   onChange,
-}: NotifyKeySelectProps) {
+}: NotifyTsigKeySelectProps) {
   const toast = useToast();
   const { allows } = useBindizrToken();
   // Listing keys needs access:manage; without it the name is typed.
   const canListKeys = allows("access:manage");
-  const [tsigKeys, setTsigKeys] = useState<TsigKey[]>([]);
+  const [tsigKeys, setTsigKeys] = useState<TsigKeyResponse[]>([]);
 
   useEffect(() => {
     if (!canListKeys) {

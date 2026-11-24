@@ -3,8 +3,8 @@ package db
 import "context"
 
 type BindizrConnection struct {
-	URL   string
-	Token string
+	URL      string
+	APIToken string
 }
 
 // LoadBindizrConnection reads the upstream URL and token in one snapshot.
@@ -13,8 +13,8 @@ func LoadBindizrConnection(ctx context.Context) (BindizrConnection, error) {
 	err := DB.QueryRowContext(ctx, `
 		SELECT
 			COALESCE((SELECT value FROM settings WHERE key = 'bindizr_url'), ''),
-			COALESCE((SELECT value FROM settings WHERE key = 'secret_key'), '')
-	`).Scan(&connection.URL, &connection.Token)
+			COALESCE((SELECT value FROM settings WHERE key = 'api_token'), '')
+	`).Scan(&connection.URL, &connection.APIToken)
 	return connection, err
 }
 
@@ -22,8 +22,8 @@ func LoadBindizrConnection(ctx context.Context) (BindizrConnection, error) {
 func SaveBindizrConnection(ctx context.Context, connection BindizrConnection) error {
 	_, err := DB.ExecContext(ctx, `
 		INSERT OR REPLACE INTO settings (key, value)
-		VALUES ('bindizr_url', ?), ('secret_key', ?)
-	`, connection.URL, connection.Token)
+		VALUES ('bindizr_url', ?), ('api_token', ?)
+	`, connection.URL, connection.APIToken)
 	return err
 }
 
@@ -34,7 +34,7 @@ func CompleteSetup(ctx context.Context, connection BindizrConnection, username, 
 		WITH new_settings(key, value) AS (
 			VALUES
 				('bindizr_url', ?),
-				('secret_key', NULLIF(?, '')),
+				('api_token', NULLIF(?, '')),
 				('username', NULLIF(?, '')),
 				('password', NULLIF(?, '')),
 				('setup_complete', 'true')
@@ -44,7 +44,7 @@ func CompleteSetup(ctx context.Context, connection BindizrConnection, username, 
 		WHERE value IS NOT NULL AND NOT EXISTS (
 			SELECT 1 FROM settings WHERE key = 'setup_complete' AND value = 'true'
 		)
-	`, connection.URL, connection.Token, username, passwordHash)
+	`, connection.URL, connection.APIToken, username, passwordHash)
 	if err != nil {
 		return false, err
 	}

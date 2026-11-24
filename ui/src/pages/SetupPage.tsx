@@ -1,3 +1,4 @@
+import { readResponseError } from "@/lib/errors";
 import { useState } from "react";
 import { testBindizrConnection } from "@/lib/bindizrTest";
 import { getLocalApiHeaders } from "@/lib/localApi";
@@ -6,7 +7,7 @@ import { useToast } from "@/contexts/ToastContext";
 export default function SetupPage() {
   const toast = useToast();
   const [bindizrUrl, setBindizrUrl] = useState("");
-  const [secretKey, setSecretKey] = useState("");
+  const [apiToken, setApiToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -27,7 +28,7 @@ export default function SetupPage() {
         headers: getLocalApiHeaders({ auth: false }),
         body: JSON.stringify({
           bindizrUrl,
-          secretKey,
+          apiToken,
           username: createAccount ? username : undefined,
           password: createAccount ? password : undefined,
         }),
@@ -36,8 +37,8 @@ export default function SetupPage() {
       if (res.ok) {
         window.location.replace("/");
       } else {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.message || "Setup failed.");
+        const { message } = await readResponseError(res, "Setup failed.");
+        toast.error(message);
       }
     } catch {
       toast.error("Failed to connect to the UI server.");
@@ -45,7 +46,7 @@ export default function SetupPage() {
   };
 
   const testConnection = async () => {
-    const result = await testBindizrConnection(bindizrUrl, secretKey);
+    const result = await testBindizrConnection(bindizrUrl, apiToken);
     if (result.ok) {
       toast.success(result.message);
       setIsConnectionTested(true);
@@ -83,17 +84,17 @@ export default function SetupPage() {
           </div>
           <div>
             <label
-              htmlFor="secretKey"
+              htmlFor="apiToken"
               className="block text-sm font-medium text-gray-700"
             >
-              API Token (optional)
+              API token (optional)
             </label>
             <input
-              id="secretKey"
+              id="apiToken"
               type="password"
-              value={secretKey}
+              value={apiToken}
               onChange={(e) => {
-                setSecretKey(e.target.value);
+                setApiToken(e.target.value);
                 setIsConnectionTested(false);
               }}
               className="w-full mt-1"
@@ -121,7 +122,7 @@ export default function SetupPage() {
               htmlFor="createAccount"
               className="block ml-2 text-sm text-gray-900"
             >
-              Create Admin Account
+              Create UI Admin Account
             </label>
           </div>
           {createAccount && (

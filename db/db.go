@@ -18,16 +18,34 @@ func InitDB() {
 		log.Fatal(err)
 	}
 
-	createTables := `
+	if err := initializeSettings(DB); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// initializeSettings preserves configured credentials across key renames.
+func initializeSettings(database *sql.DB) error {
+	tx, err := database.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	_, err = tx.Exec(`
 	CREATE TABLE IF NOT EXISTS settings (
 		key TEXT PRIMARY KEY,
 		value TEXT
 	);
-	`
-	_, err = DB.Exec(createTables)
+
+	INSERT OR IGNORE INTO settings (key, value)
+	SELECT 'api_token', value FROM settings WHERE key = 'secret_key'
+	UNION ALL
+	SELECT 'session_signing_key', value FROM settings WHERE key = 'nextauth_secret';
+	DELETE FROM settings WHERE key IN ('secret_key', 'nextauth_secret');
+	`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return tx.Commit()
 }
 
 func GetSetting(key string) (string, error) {
@@ -52,26 +70,24 @@ func DeleteSetting(key string) error {
 	return err
 }
 
-func GetNextAuthSecret() (string, error) {
-	secret, err := GetSetting("nextauth_secret")
-	if err != nil {
-		return "", err
-	}
-	if secret != "" {
-		return secret, nil
+// GetSessionSigningKey returns the key used to sign and verify UI sessions.
+func GetSessionSigningKey() (string, error) {
+	signingKey, err := GetSetting("session_signing_key")
+	if err != nil || signingKey != "" {
+		return signingKey, err
 	}
 
-	key := make([]byte, 32)
-	_, err = rand.Read(key)
-	if err != nil {
+	keyBytes := make([]byte, 32)
+	if _, err := rand.Read(keyBytes); err != nil {
 		return "", err
 	}
-	newSecret := hex.EncodeToString(key)
-	err = SetSetting("nextauth_secret", newSecret)
-	if err != nil {
-		return "", err
-	}
-	return newSecret, nil
+	// Concurrent first-use requests must all sign with the stored key.
+	err = DB.QueryRow(`
+		INSERT INTO settings (key, value) VALUES ('session_signing_key', ?)
+		ON CONFLICT (key) DO UPDATE SET value = COALESCE(NULLIF(settings.value, ''), excluded.value)
+		RETURNING value
+	`, hex.EncodeToString(keyBytes)).Scan(&signingKey)
+	return signingKey, err
 }
 
 func IsSetupComplete() (bool, error) {

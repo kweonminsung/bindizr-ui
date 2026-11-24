@@ -1,23 +1,23 @@
-import type { DnssecKey, DnssecPolicy } from "./types.ts";
+import type { DnssecKeyResponse, DnssecPolicyResponse } from "./types.ts";
 
 /** Key layout stays fixed while signed; denial and algorithm may change. */
 export function policyMoveCandidates(
-  current: DnssecPolicy | null | undefined,
-  policies: DnssecPolicy[],
-): DnssecPolicy[] {
+  current: DnssecPolicyResponse | null | undefined,
+  policies: DnssecPolicyResponse[],
+): DnssecPolicyResponse[] {
   return current
     ? policies.filter(
         (policy) =>
           policy.name !== current.name &&
-          policy.split_keys === current.split_keys,
+          policy.key_layout === current.key_layout,
       )
     : [];
 }
 
 /** Starting another algorithm rollover waits until every key is active. */
 export function policyMoveBlocked(
-  target: DnssecPolicy | undefined,
-  keys: Pick<DnssecKey, "algorithm" | "state">[],
+  target: DnssecPolicyResponse | undefined,
+  keys: Pick<DnssecKeyResponse, "algorithm" | "state">[],
 ): boolean {
   return (
     target !== undefined &&

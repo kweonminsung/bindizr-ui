@@ -3,14 +3,14 @@ import Modal from "@/components/Modal";
 import RoleDetails from "@/components/RoleDetails";
 import RoleForm from "@/components/RoleForm";
 import RoleList from "@/components/RoleList";
-import { Role } from "@/lib/types";
+import { RoleResponse } from "@/lib/types";
 
 export default function RolesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [createdRole, setCreatedRole] = useState<Role | null>(null);
+  const [createdRole, setCreatedRole] = useState<RoleResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleCreated = (role: Role) => {
+  const handleCreated = (role: RoleResponse) => {
     setIsFormOpen(false);
     setRefreshKey((prev) => prev + 1);
     // Straight to its grants: a role without any lets nothing through.

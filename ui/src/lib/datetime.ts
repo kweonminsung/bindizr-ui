@@ -7,7 +7,13 @@ export function formatDateTime(value: string) {
 export const toDayStart = (date: string) =>
   date.trim() === "" ? undefined : `${date}T00:00:00Z`;
 
-/** The last instant of that UTC day, so "created before" takes the whole day;
- * timestamps carry sub-second precision, so the bound does too. */
-export const toDayEnd = (date: string) =>
-  date.trim() === "" ? undefined : `${date}T23:59:59.999999999Z`;
+/** The exclusive upper bound for a date range that includes this UTC day. */
+export function toNextDayStart(date: string): string | undefined {
+  const start = toDayStart(date);
+  if (!start) return undefined;
+
+  const nextDay = new Date(start);
+  if (Number.isNaN(nextDay.getTime())) return undefined;
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  return nextDay.toISOString();
+}

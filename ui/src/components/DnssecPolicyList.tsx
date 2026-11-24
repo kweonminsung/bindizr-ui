@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { deleteDnssecPolicy, getDnssecPolicies } from "@/lib/api";
 import { clickableRowProps } from "@/lib/clickableRow";
 import { getErrorMessage, getErrorStatus } from "@/lib/errors";
-import { DnssecPolicy } from "@/lib/types";
+import { DnssecPolicyResponse } from "@/lib/types";
 import DnssecPolicyDetails from "./DnssecPolicyDetails";
 import BuiltinBadge from "./BuiltinBadge";
 import Modal from "./Modal";
@@ -34,7 +34,7 @@ type DnssecPolicySortField = (typeof SORT_OPTIONS)[number]["value"];
 
 const SORT_VALUES: Record<
   DnssecPolicySortField,
-  (policy: DnssecPolicy) => SortValue
+  (policy: DnssecPolicyResponse) => SortValue
 > = {
   name: (policy) => policy.name,
   algorithm: (policy) => policy.algorithm,
@@ -49,10 +49,9 @@ export default function DnssecPolicyList({
   // `dnssec:read` opens the page; policies change only with an all-zones manage.
   const canManage = allows("dnssec:manage");
   const toast = useToast();
-  const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
-  const [selectedPolicy, setSelectedPolicy] = useState<DnssecPolicy | null>(
-    null,
-  );
+  const [policies, setPolicies] = useState<DnssecPolicyResponse[]>([]);
+  const [selectedPolicy, setSelectedPolicy] =
+    useState<DnssecPolicyResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,7 +89,7 @@ export default function DnssecPolicyList({
     };
   }, [refreshKey]);
 
-  const handleDelete = async (policy: DnssecPolicy) => {
+  const handleDelete = async (policy: DnssecPolicyResponse) => {
     if (!window.confirm(`Delete "${policy.name}"?`)) {
       return;
     }
@@ -111,7 +110,7 @@ export default function DnssecPolicyList({
     }
   };
 
-  const handleUpdated = (updated: DnssecPolicy) => {
+  const handleUpdated = (updated: DnssecPolicyResponse) => {
     setSelectedPolicy(updated);
     setPolicies((prev) =>
       prev.map((policy) => (policy.id === updated.id ? updated : policy)),
@@ -185,7 +184,7 @@ export default function DnssecPolicyList({
                 scope="col"
                 className={`hidden md:table-cell w-32 ${TABLE_HEADER_CLASS}`}
               >
-                Keys
+                Key layout
               </th>
               <th
                 scope="col"
@@ -222,11 +221,11 @@ export default function DnssecPolicyList({
                   {policy.denial}
                 </td>
                 <td className="hidden md:table-cell whitespace-nowrap px-6 py-4 text-gray-500">
-                  {policy.split_keys ? "KSK/ZSK" : "CSK"}
+                  {policy.key_layout === "split" ? "KSK/ZSK" : "CSK"}
                 </td>
                 <td className="hidden lg:table-cell truncate px-6 py-4 text-gray-500">
-                  {policy.signature_validity_days}d valid, renewed at{" "}
-                  {policy.signature_refresh_days}d
+                  {policy.signature_validity_days}d valid, renew{" "}
+                  {policy.signature_refresh_days}d before expiry
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   {canManage && !policy.builtin && (

@@ -4,21 +4,22 @@ import Modal from "@/components/Modal";
 import TsigKeyDetails from "@/components/TsigKeyDetails";
 import TsigKeyForm from "@/components/TsigKeyForm";
 import TsigKeyList from "@/components/TsigKeyList";
-import { TsigKey } from "@/lib/types";
+import { TsigKeyWithSecret } from "@/lib/types";
 
 export default function TsigKeysPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [createdKey, setCreatedKey] = useState<TsigKey | null>(null);
+  const [createdKey, setCreatedKey] = useState<TsigKeyWithSecret | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   // The role filter lives in the URL, so a filtered listing can be linked.
   const [searchParams, setSearchParams] = useSearchParams();
-  const roleName = searchParams.get("role") ?? "";
+  const roleName =
+    searchParams.get("role_name") ?? searchParams.get("role") ?? "";
 
   const handleRoleNameChange = (name: string) => {
-    setSearchParams(name ? { role: name } : {}, { replace: true });
+    setSearchParams(name ? { role_name: name } : {}, { replace: true });
   };
 
-  const handleCreated = (tsigKey: TsigKey) => {
+  const handleCreated = (tsigKey: TsigKeyWithSecret) => {
     setIsFormOpen(false);
     setRefreshKey((prev) => prev + 1);
     setCreatedKey(tsigKey);

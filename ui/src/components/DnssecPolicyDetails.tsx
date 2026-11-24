@@ -3,14 +3,14 @@ import { updateDnssecPolicy } from "@/lib/api";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toOptionalNumber } from "@/lib/form";
-import { DnssecPolicy } from "@/lib/types";
+import { DnssecPolicyResponse } from "@/lib/types";
 import { useToast } from "@/contexts/ToastContext";
 import BuiltinBadge from "./BuiltinBadge";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 
 interface DnssecPolicyDetailsProps {
-  policy: DnssecPolicy;
-  onUpdated: (policy: DnssecPolicy) => void;
+  policy: DnssecPolicyResponse;
+  onUpdated: (policy: DnssecPolicyResponse) => void;
 }
 
 const TIMING_FIELDS = [
@@ -33,7 +33,7 @@ const TIMING_FIELDS = [
 
 type TimingKey = (typeof TIMING_FIELDS)[number]["key"];
 
-const toFormState = (policy: DnssecPolicy): Record<TimingKey, string> =>
+const toFormState = (policy: DnssecPolicyResponse): Record<TimingKey, string> =>
   Object.fromEntries(
     TIMING_FIELDS.map((field) => [field.key, String(policy[field.key])]),
   ) as Record<TimingKey, string>;
@@ -108,7 +108,7 @@ export default function DnssecPolicyDetails({
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
             <p className="text-sm text-gray-500">Key Layout</p>
             <p className="text-base text-gray-900">
-              {policy.split_keys ? "KSK/ZSK" : "CSK"}
+              {policy.key_layout === "split" ? "KSK/ZSK" : "CSK"}
             </p>
           </div>
           <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">

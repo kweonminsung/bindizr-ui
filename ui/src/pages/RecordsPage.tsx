@@ -4,16 +4,18 @@ import RecordList from "@/components/RecordList";
 import RecordForm from "@/components/RecordForm";
 import Modal from "@/components/Modal";
 import { useToast } from "@/contexts/ToastContext";
-import { Zone } from "@/lib/types";
+import { ZoneResponse } from "@/lib/types";
 import { getZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 
 export default function RecordsPage() {
   const toast = useToast();
   const [searchParams] = useSearchParams();
-  const zoneName = searchParams.get("zoneName")?.trim() || undefined;
+  const zoneName =
+    (searchParams.get("zone_name") ?? searchParams.get("zoneName"))?.trim() ||
+    undefined;
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [zones, setZones] = useState<Zone[]>([]);
+  const [zones, setZones] = useState<ZoneResponse[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {

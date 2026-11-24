@@ -4,7 +4,7 @@ import { clickableRowProps } from "@/lib/clickableRow";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage, getErrorStatus } from "@/lib/errors";
 import { useFocusName } from "@/lib/focusName";
-import { TsigKey } from "@/lib/types";
+import { TsigKeyResponse } from "@/lib/types";
 import Modal from "./Modal";
 import Notice from "./Notice";
 import TsigKeyDetails from "./TsigKeyDetails";
@@ -39,7 +39,10 @@ const SORT_OPTIONS = [
 
 type TsigKeySortField = (typeof SORT_OPTIONS)[number]["value"];
 
-const SORT_VALUES: Record<TsigKeySortField, (tsigKey: TsigKey) => SortValue> = {
+const SORT_VALUES: Record<
+  TsigKeySortField,
+  (tsigKey: TsigKeyResponse) => SortValue
+> = {
   name: (tsigKey) => tsigKey.name,
   algorithm: (tsigKey) => tsigKey.algorithm,
   role_name: (tsigKey) => tsigKey.role_name,
@@ -56,9 +59,9 @@ export default function TsigKeyList({
   const { focusName, clearFocusName } = useFocusName();
   const [listing, setListing] = useState<{
     roleFilter: string;
-    tsigKeys: TsigKey[];
+    tsigKeys: TsigKeyResponse[];
   } | null>(null);
-  const [selectedKey, setSelectedKey] = useState<TsigKey | null>(null);
+  const [selectedKey, setSelectedKey] = useState<TsigKeyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const rowSort = useRowSort(SORT_VALUES, "name");
@@ -106,7 +109,7 @@ export default function TsigKeyList({
     clearFocusName();
   };
 
-  const handleDelete = async (tsigKey: TsigKey) => {
+  const handleDelete = async (tsigKey: TsigKeyResponse) => {
     if (
       !window.confirm(
         `Delete "${tsigKey.name}"? nsupdate clients using it stop working.`,

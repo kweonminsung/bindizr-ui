@@ -14,14 +14,14 @@ import (
 
 type SetupPayload struct {
 	BindizrUrl string `json:"bindizrUrl"`
-	SecretKey  string `json:"secretKey"`
+	APIToken   string `json:"apiToken"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
 }
 
 type BindizrTestPayload struct {
 	BindizrUrl string `json:"bindizrUrl"`
-	SecretKey  string `json:"secretKey"`
+	APIToken   string `json:"apiToken"`
 }
 
 func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +58,8 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if payload.SecretKey != "" {
-		req.Header.Set("Authorization", "Bearer "+payload.SecretKey)
+	if payload.APIToken != "" {
+		req.Header.Set("Authorization", "Bearer "+payload.APIToken)
 	}
 
 	client := &http.Client{
@@ -89,7 +89,7 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 func writeJSONError(w http.ResponseWriter, message string, status int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"message": message})
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		username, passwordHash = payload.Username, string(hashedPassword)
 	}
 
-	connection := db.BindizrConnection{URL: baseURL.String(), Token: payload.SecretKey}
+	connection := db.BindizrConnection{URL: baseURL.String(), APIToken: payload.APIToken}
 	completed, err := db.CompleteSetup(r.Context(), connection, username, passwordHash)
 	if err != nil {
 		http.Error(w, "Failed to save initial settings", http.StatusInternalServerError)

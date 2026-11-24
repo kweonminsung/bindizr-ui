@@ -1,3 +1,4 @@
+import { readResponseError } from "@/lib/errors";
 import { useState, useEffect } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { testBindizrConnection } from "@/lib/bindizrTest";
@@ -12,7 +13,7 @@ export default function BindizrSettings() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTokenOpen, setIsTokenOpen] = useState(false);
   const [bindizrUrl, setBindizrUrl] = useState("");
-  const [secretKey, setSecretKey] = useState("");
+  const [apiToken, setApiToken] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConnectionTested, setIsConnectionTested] = useState(false);
 
@@ -24,7 +25,7 @@ export default function BindizrSettings() {
       if (res.ok) {
         const data = await res.json();
         setBindizrUrl(data.bindizrUrl || "");
-        setSecretKey(data.secretKey || "");
+        setApiToken(data.apiToken || "");
       } else {
         toast.error("Failed to load settings.");
       }
@@ -45,7 +46,7 @@ export default function BindizrSettings() {
   };
 
   const testConnection = async () => {
-    const testResult = await testBindizrConnection(bindizrUrl, secretKey);
+    const testResult = await testBindizrConnection(bindizrUrl, apiToken);
     toast.show(testResult.ok ? "success" : "error", testResult.message);
     if (testResult.ok) {
       setIsConnectionTested(true);
@@ -64,19 +65,22 @@ export default function BindizrSettings() {
       const res = await fetch("/api/bindizr/settings", {
         method: "POST",
         headers: getLocalApiHeaders(),
-        body: JSON.stringify({ bindizrUrl, secretKey }),
+        body: JSON.stringify({ bindizrUrl, apiToken }),
       });
 
       if (res.ok) {
         toast.success("Settings updated successfully.");
-        // The new secret may have another scope.
+        // The API token may grant access to different resources.
         await refreshToken();
         setTimeout(() => {
           setIsModalOpen(false);
         }, 1000);
       } else {
-        const data = await res.json().catch(() => null);
-        toast.error(data?.message || "Failed to update settings.");
+        const { message } = await readResponseError(
+          res,
+          "Failed to update settings.",
+        );
+        toast.error(message);
       }
     } catch {
       toast.error("An error occurred while updating settings.");
@@ -151,17 +155,17 @@ export default function BindizrSettings() {
           </div>
           <div>
             <label
-              htmlFor="secretKey"
+              htmlFor="apiToken"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              API Token (optional)
+              API token (optional)
             </label>
             <input
               type="password"
-              id="secretKey"
-              value={secretKey}
+              id="apiToken"
+              value={apiToken}
               onChange={(e) => {
-                setSecretKey(e.target.value);
+                setApiToken(e.target.value);
                 setIsConnectionTested(false);
               }}
               className="w-full"

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   cancelDnssecWithdrawal,
   checkDnssecDs,
-  confirmDnssecDsSeen,
+  advanceDnssecRollover,
   disableDnssec,
   enableDnssec,
   getDnssecPolicies,
@@ -18,13 +18,13 @@ import { policyMoveBlocked, policyMoveCandidates } from "@/lib/dnssecPolicy";
 import { getErrorCode, getErrorMessage } from "@/lib/errors";
 import {
   DEFAULT_DNSSEC_POLICY_NAME,
-  DnssecDelegationInfo,
-  DnssecKey,
+  DnssecDelegationResponse,
+  DnssecKeyResponse,
   DnssecKeyState,
-  DnssecPolicy,
+  DnssecPolicyResponse,
   DnssecRolloverRole,
-  DnssecStatus,
-  Zone,
+  DnssecStatusResponse,
+  ZoneResponse,
 } from "@/lib/types";
 import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
@@ -44,7 +44,7 @@ function splitParentNsAddrs(text: string): string[] {
 }
 
 interface ZoneDnssecTabProps {
-  zone: Zone;
+  zone: ZoneResponse;
   /** Keeps the badge next to the zone name in sync. */
   onEnabledChanged?: (enabled: boolean) => void;
   /** Without `dnssec:manage`, only status, DS and parent checks show. */
@@ -57,7 +57,7 @@ type PendingAction =
   | "refresh"
   | "policy"
   | "rollover"
-  | "ds-seen"
+  | "advance-rollover"
   | "withdraw"
   | "cancel-withdrawal"
   | "check-ds"
@@ -81,9 +81,9 @@ const DS_CHECK_HINTS: Record<string, string> = {
     "Set the parent nameservers below, or skip the check to proceed on your own word.",
 };
 
-const describePolicy = (policy: DnssecPolicy) =>
+const describePolicy = (policy: DnssecPolicyResponse) =>
   `${policy.algorithm}, ${policy.denial.toUpperCase()}, ${
-    policy.split_keys ? "a KSK/ZSK pair" : "a single CSK"
+    policy.key_layout === "split" ? "a KSK/ZSK pair" : "a single CSK"
   }`;
 
 /** The detail beside the state pill. */
@@ -92,7 +92,7 @@ const describeDelegation = ({
   ds_state,
   ds_key_tags,
   ds_ttl,
-}: DnssecDelegationInfo) => {
+}: DnssecDelegationResponse) => {
   const servers = parent_ns_addrs.join(", ");
   if (ds_state !== "published") {
     return `nothing served by ${servers}`;
@@ -107,8 +107,8 @@ export default function ZoneDnssecTab({
   canManage,
 }: ZoneDnssecTabProps) {
   const toast = useToast();
-  const [status, setStatus] = useState<DnssecStatus | null>(null);
-  const [policies, setPolicies] = useState<DnssecPolicy[]>([]);
+  const [status, setStatus] = useState<DnssecStatusResponse | null>(null);
+  const [policies, setPolicies] = useState<DnssecPolicyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -118,11 +118,11 @@ export default function ZoneDnssecTab({
   const [targetPolicy, setTargetPolicy] = useState("");
   const [rolloverRole, setRolloverRole] = useState<DnssecRolloverRole>("zsk");
   const [skipDsCheckOnDisable, setSkipDsCheckOnDisable] = useState(false);
-  const [skipDsCheckOnDsSeen, setSkipDsCheckOnDsSeen] = useState(false);
+  const [skipDsCheckOnAdvance, setSkipDsCheckOnAdvance] = useState(false);
   const [skipHolddown, setSkipHolddown] = useState(false);
   const [parentNsAddrs, setParentNsAddrs] = useState("");
   // Separate from status so a refresh keeps the last check.
-  const [delegation, setDelegation] = useState<DnssecDelegationInfo | null>(
+  const [delegation, setDelegation] = useState<DnssecDelegationResponse | null>(
     null,
   );
   const [copiedDs, setCopiedDs] = useState<number | null>(null);
@@ -137,7 +137,7 @@ export default function ZoneDnssecTab({
         const [data, policyList] = await Promise.all([
           getDnssecStatus(zone.name),
           // Signing still works off the built-in policy if this listing fails.
-          getDnssecPolicies().catch(() => [] as DnssecPolicy[]),
+          getDnssecPolicies().catch(() => [] as DnssecPolicyResponse[]),
         ]);
         if (active) {
           setStatus(data);
@@ -243,20 +243,20 @@ export default function ZoneDnssecTab({
       "Failed to start key rollover",
     );
 
-  const handleDsSeen = () =>
+  const handleAdvanceRollover = () =>
     runAction(
-      "ds-seen",
+      "advance-rollover",
       async () => {
-        const data = await confirmDnssecDsSeen(zone.name, {
-          skipDsCheck: skipDsCheckOnDsSeen,
+        const data = await advanceDnssecRollover(zone.name, {
+          skipDsCheck: skipDsCheckOnAdvance,
           skipHolddown,
         });
-        setSkipDsCheckOnDsSeen(false);
+        setSkipDsCheckOnAdvance(false);
         setSkipHolddown(false);
         setStatus(data);
         toast.success("New key promoted.");
       },
-      "Failed to confirm DS seen",
+      "Failed to advance DNSSEC rollover",
     );
 
   const handleWithdraw = () =>
@@ -266,7 +266,7 @@ export default function ZoneDnssecTab({
         const data = await withdrawDnssec(zone.name);
         setStatus(data);
         toast.success(
-          "Withdrawal published; the parent drops the DS on its next CDS poll.",
+          "DS withdrawal published. A parent that processes CDS withdrawals can remove the DS.",
         );
       },
       "Failed to publish the DS withdrawal",
@@ -507,13 +507,16 @@ export default function ZoneDnssecTab({
 
   const publishedKeys = status.keys.filter((key) => key.state === "published");
   const rolloverInProgress = publishedKeys.length > 0;
-  // ZSK-only rollovers promote on a hold-down, not on ds-seen.
-  const awaitingDsSeen = publishedKeys.some((key) => key.role !== "zsk");
+  // ZSK-only rollovers advance automatically after the hold-down.
+  const awaitingRolloverAdvance = publishedKeys.some(
+    (key) => key.role !== "zsk",
+  );
   // The server refuses a new rollover until every key is active again.
   const retiringKeys = status.keys.some((key) => key.state === "retired");
   const currentPolicy = status.policy;
-  const splitKeyZone =
-    currentPolicy?.split_keys ?? status.keys.some((key) => key.role !== "csk");
+  const splitKeyZone = currentPolicy
+    ? currentPolicy.key_layout === "split"
+    : status.keys.some((key) => key.role !== "csk");
   const compatiblePolicies = policyMoveCandidates(currentPolicy, policies);
   const selectedPolicy = compatiblePolicies.find(
     (policy) => policy.name === targetPolicy,
@@ -522,7 +525,9 @@ export default function ZoneDnssecTab({
 
   /** How the parent answered for one key: served, absent, or undecided.
    * ZSKs carry no DS, so only the rest are checked. */
-  const atParent = (key: DnssecKey): { label: string; hint?: string } => {
+  const atParent = (
+    key: DnssecKeyResponse,
+  ): { label: string; hint?: string } => {
     if (!delegation || key.role === "zsk") {
       return { label: "-" };
     }
@@ -893,12 +898,12 @@ export default function ZoneDnssecTab({
           Key Rollover
         </h3>
         {rolloverInProgress ? (
-          awaitingDsSeen ? (
+          awaitingRolloverAdvance ? (
             <Notice tone="info" className="space-y-3">
               <p>
-                Register the new DS at the parent, wait out its TTL, then
-                confirm to promote the key. The parent&apos;s nameservers are
-                asked for the new DS first.
+                Register the new DS at the parent and wait out its TTL. By
+                default, <strong>Advance rollover</strong> checks the parent
+                nameservers for the new DS before promoting the key.
               </p>
               {canManage && (
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -906,9 +911,9 @@ export default function ZoneDnssecTab({
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={skipDsCheckOnDsSeen}
+                        checked={skipDsCheckOnAdvance}
                         onChange={(e) =>
-                          setSkipDsCheckOnDsSeen(e.target.checked)
+                          setSkipDsCheckOnAdvance(e.target.checked)
                         }
                       />
                       <span>
@@ -930,13 +935,13 @@ export default function ZoneDnssecTab({
                   </div>
                   <button
                     type="button"
-                    onClick={handleDsSeen}
+                    onClick={handleAdvanceRollover}
                     disabled={busy}
                     className="btn-primary whitespace-nowrap"
                   >
-                    {pending === "ds-seen"
-                      ? "Confirming..."
-                      : "Confirm DS Seen"}
+                    {pending === "advance-rollover"
+                      ? "Advancing..."
+                      : "Advance rollover"}
                   </button>
                 </div>
               )}

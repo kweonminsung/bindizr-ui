@@ -3,10 +3,11 @@ import { importZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import {
   IMPORT_MODES,
+  IMPORT_MODE_DESCRIPTIONS,
   ImportMode,
   ImportResult,
-  ImportZonesItem,
-  ImportZonesResult,
+  ImportZonesItemResponse,
+  ImportZonesResponse,
 } from "@/lib/types";
 import Notice from "./Notice";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
@@ -16,12 +17,6 @@ import { TABLE_HEADER_CLASS } from "./ListLayout";
 interface ImportZonesFormProps {
   onApplied: () => void;
 }
-
-const MODE_DESCRIPTIONS: Record<ImportMode, string> = {
-  append: "Only add records that do not exist yet.",
-  upsert: "Add new records and update TTLs of existing ones.",
-  replace: "Make each zone match the source exactly, deleting extra records.",
-};
 
 const RESULT_STYLES: Record<ImportResult, string> = {
   ok: "bg-green-100 text-green-700",
@@ -38,7 +33,7 @@ const parseZoneNames = (list: string) =>
 
 /** What a zone's row says went wrong: the error of one that never ran, or
  * the first validation error of a rejected one. */
-function describeFailure(item: ImportZonesItem): string {
+function describeFailure(item: ImportZonesItemResponse): string {
   if (item.error) {
     return item.error.error;
   }
@@ -63,7 +58,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
   const [dryRun, setDryRun] = useState(false);
   const [create, setCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<ImportZonesResult | null>(null);
+  const [result, setResult] = useState<ImportZonesResponse | null>(null);
 
   const canImportAllZones =
     allowsWholeZone("record:create") &&
@@ -227,7 +222,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
             ))}
           </select>
           <p className="text-sm text-gray-500 mt-1">
-            {MODE_DESCRIPTIONS[mode]}
+            {IMPORT_MODE_DESCRIPTIONS[mode]}
           </p>
         </div>
         <label className="flex items-center space-x-2 text-sm text-gray-600">
@@ -341,7 +336,13 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
 
       <div className="flex justify-end pt-4">
         <button type="submit" disabled={submitting} className="btn-primary">
-          {submitting ? "Importing..." : dryRun ? "Validate" : "Import"}
+          {submitting
+            ? dryRun
+              ? "Preparing preview…"
+              : "Importing…"
+            : dryRun
+              ? "Preview import"
+              : "Import"}
         </button>
       </div>
     </form>

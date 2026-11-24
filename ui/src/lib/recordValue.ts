@@ -1,4 +1,4 @@
-import type { RecordDiffValue, RecordValue } from "./types.ts";
+import type { RecordDiffValueResponse, RecordValue } from "./types.ts";
 
 export function formatRecordValue(value: RecordValue, recordType?: string) {
   if (recordType === "TXT") return toTxtPresentation(value);
@@ -11,7 +11,7 @@ export function formatRecordValue(value: RecordValue, recordType?: string) {
 
 /** Keep TXT boundaries and escapes visible in zone-version diffs. */
 export function formatRecordRdata(
-  { value, priority }: RecordDiffValue,
+  { value, priority }: RecordDiffValueResponse,
   recordType: string,
 ) {
   const formatted = formatRecordValue(value, recordType);

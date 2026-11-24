@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"bindizr-ui/db"
+	"bindizr-ui/webhooks"
 )
 
 const bindizrProxyPrefix = "/api/bindizr/proxy"
@@ -31,7 +33,7 @@ var bindizrProxyClient = &http.Client{CheckRedirect: stopBindizrRedirect}
 
 type BindizrSettings struct {
 	BindizrUrl string `json:"bindizrUrl"`
-	SecretKey  string `json:"secretKey"`
+	APIToken   string `json:"apiToken"`
 }
 
 func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +46,7 @@ func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		settings := BindizrSettings{
 			BindizrUrl: connection.URL,
-			SecretKey:  connection.Token,
+			APIToken:   connection.APIToken,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(settings)
@@ -59,7 +61,7 @@ func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		connection := db.BindizrConnection{URL: baseURL.String(), Token: settings.SecretKey}
+		connection := db.BindizrConnection{URL: baseURL.String(), APIToken: settings.APIToken}
 		if err := db.SaveBindizrConnection(r.Context(), connection); err != nil {
 			http.Error(w, "Failed to save Bindizr settings", http.StatusInternalServerError)
 			return
@@ -72,7 +74,17 @@ func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func BindizrProxyHandler(w http.ResponseWriter, r *http.Request) {
+func BindizrProxyHandler(enqueue func(context.Context, ...webhooks.Event) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		proxyBindizrRequest(w, r, enqueue)
+	}
+}
+
+func proxyBindizrRequest(
+	w http.ResponseWriter,
+	r *http.Request,
+	enqueue func(context.Context, ...webhooks.Event) error,
+) {
 	connection, err := db.LoadBindizrConnection(r.Context())
 	if err != nil {
 		http.Error(w, "Failed to load Bindizr settings", http.StatusInternalServerError)
@@ -83,7 +95,12 @@ func BindizrProxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetURL, err := buildBindizrProxyURL(connection.URL, r)
+	suffix, err := bindizrProxySuffix(r.URL.EscapedPath())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	targetURL, err := buildBindizrProxyURL(connection.URL, suffix, r.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -96,8 +113,8 @@ func BindizrProxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	copyProxyHeaders(req.Header, r.Header)
 
-	if connection.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+connection.Token)
+	if connection.APIToken != "" {
+		req.Header.Set("Authorization", "Bearer "+connection.APIToken)
 	}
 
 	resp, err := bindizrProxyClient.Do(req)
@@ -114,6 +131,18 @@ func BindizrProxyHandler(w http.ResponseWriter, r *http.Request) {
 
 	copyProxyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
+	if enqueue != nil {
+		if mutation, matched := webhookMutation(r.Method, suffix); matched && resp.StatusCode == mutation.rule.status {
+			query := r.URL.Query()
+			if query.Get("dry_run") != "true" {
+				if mutation.rule.resultKind == appliedRecordDelete && mutation.target.RecordID == 0 {
+					mutation.target = recordDeleteTarget(query)
+				}
+				forwardBindizrMutation(w, resp, r.Context(), mutation, enqueue)
+				return
+			}
+		}
+	}
 	_, _ = io.Copy(w, resp.Body)
 }
 
@@ -133,12 +162,7 @@ func parseBindizrURL(rawURL string) (*url.URL, error) {
 	return baseURL, nil
 }
 
-func buildBindizrProxyURL(rawBaseURL string, r *http.Request) (string, error) {
-	baseURL, err := parseBindizrURL(rawBaseURL)
-	if err != nil {
-		return "", err
-	}
-	suffix := r.URL.EscapedPath()
+func bindizrProxySuffix(suffix string) (string, error) {
 	for _, segment := range strings.Split(strings.TrimPrefix(bindizrProxyPrefix, "/"), "/") {
 		if !strings.HasPrefix(suffix, "/") {
 			return "", errBindizrProxyPath
@@ -153,6 +177,14 @@ func buildBindizrProxyURL(rawBaseURL string, r *http.Request) (string, error) {
 	if suffix == "" {
 		suffix = "/"
 	}
+	return suffix, nil
+}
+
+func buildBindizrProxyURL(rawBaseURL, suffix string, requestURL *url.URL) (string, error) {
+	baseURL, err := parseBindizrURL(rawBaseURL)
+	if err != nil {
+		return "", err
+	}
 	// A slash inside a DNS label stays a single path segment.
 	escapedPath := baseURL.EscapedPath() + suffix
 	path, err := url.PathUnescape(escapedPath)
@@ -161,8 +193,8 @@ func buildBindizrProxyURL(rawBaseURL string, r *http.Request) (string, error) {
 	}
 	baseURL.Path = path
 	baseURL.RawPath = escapedPath
-	baseURL.RawQuery = r.URL.RawQuery
-	baseURL.ForceQuery = r.URL.ForceQuery
+	baseURL.RawQuery = requestURL.RawQuery
+	baseURL.ForceQuery = requestURL.ForceQuery
 	return baseURL.String(), nil
 }
 

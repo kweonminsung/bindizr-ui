@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -13,6 +14,7 @@ import (
 	"bindizr-ui/db"
 	"bindizr-ui/handlers"
 	"bindizr-ui/middleware"
+	"bindizr-ui/webhooks"
 )
 
 //go:embed ui/dist
@@ -37,6 +39,11 @@ func isDevelopment() bool {
 
 func main() {
 	db.InitDB()
+	webhookService, err := webhooks.New(db.DB, handlers.BindizrWebhookOperations())
+	if err != nil {
+		log.Fatal("Failed to initialize webhooks: ", err)
+	}
+	go webhookService.Run(context.Background())
 
 	mux := http.NewServeMux()
 
@@ -44,7 +51,10 @@ func main() {
 	mux.HandleFunc("/api/public/settings", handlers.PublicSettingsHandler)
 	mux.HandleFunc("/api/account", handlers.AuthMiddleware(handlers.AccountHandler))
 	mux.HandleFunc("/api/bindizr/settings", handlers.AuthMiddleware(handlers.BindizrSettingsHandler))
-	mux.HandleFunc("/api/bindizr/proxy/", handlers.AuthMiddleware(handlers.BindizrProxyHandler))
+	mux.HandleFunc("/api/bindizr/proxy/", handlers.AuthMiddleware(handlers.BindizrProxyHandler(webhookService.Enqueue)))
+	webhookHandler := http.NewCrossOriginProtection().Handler(handlers.AuthMiddleware(webhookService.ServeHTTP))
+	mux.Handle("/api/webhooks", webhookHandler)
+	mux.Handle("/api/webhooks/", webhookHandler)
 	mux.HandleFunc("/api/auth/login", handlers.LoginHandler)
 	mux.HandleFunc("/api/auth/status", handlers.AuthStatusHandler)
 	mux.HandleFunc("/api/auth/me", handlers.AuthMeHandler)

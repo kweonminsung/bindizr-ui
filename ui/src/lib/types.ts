@@ -1,8 +1,8 @@
 /** Largest DNS TTL in seconds (unsigned 32-bit wire value). */
 export const MAX_TTL = 2 ** 32 - 1;
 
-export interface Zone {
-  id: number;
+export interface ZoneResponse {
+  id: number | null;
   name: string;
   /** SOA MNAME: the primary nameserver. */
   mname: string;
@@ -15,13 +15,21 @@ export interface Zone {
   expire: number;
   minimum_ttl: number;
   /** Whether the DNS plane serves the zone. A disabled one stays editable but
-   * leaves the catalog and answers no transfer, so secondaries drop it. */
+   * leaves the catalog and answers no transfer. */
   enabled: boolean;
   /** Free-text note for operators; Bindizr never reads it. */
   description: string | null;
+  created_at: string | null;
 }
 
-export interface ZonePayload {
+/** Zone data returned by a read of a stored zone. */
+export type StoredZoneResponse = ZoneResponse & {
+  id: number;
+  created_at: string;
+};
+
+export interface CreateZoneRequest {
+  dry_run?: boolean;
   name: string;
   mname: string;
   rname: string;
@@ -38,8 +46,8 @@ export interface ZonePayload {
 }
 
 /** An omitted field keeps its value; a different `name` renames the zone. */
-export type UpdateZonePayload = Partial<
-  Omit<ZonePayload, "serial" | "apex_ns">
+export type UpdateZoneRequest = Partial<
+  Omit<CreateZoneRequest, "serial" | "apex_ns">
 > & {
   /** `false` stops the DNS plane serving the zone without deleting it. */
   enabled?: boolean | null;
@@ -84,7 +92,8 @@ export interface Record {
   actions: Action[];
 }
 
-export interface CreateRecordPayload {
+export interface CreateRecordRequest {
+  dry_run?: boolean;
   name: string;
   type: RecordType;
   value: RecordValue;
@@ -96,7 +105,8 @@ export interface CreateRecordPayload {
 }
 
 /** An omitted field keeps its value; `value` is required when `type` changes. */
-export interface UpdateRecordPayload {
+export interface UpdateRecordRequest {
+  dry_run?: boolean;
   name?: string;
   type?: RecordType;
   value?: RecordValue;
@@ -117,7 +127,7 @@ export const DERIVED_RECORD_TYPES = [
 ] as const;
 
 /** A row of the signed listing: user records plus derived DNSSEC rows. */
-export interface SignedRecord {
+export interface RecordResponse {
   /** Absent on derived DNSSEC rows. */
   id?: number | null;
   name: string;
@@ -161,7 +171,7 @@ export const RECORD_DIFF_CHANGES = ["added", "removed", "changed"] as const;
 export type RecordDiffChange = (typeof RECORD_DIFF_CHANGES)[number];
 
 /** One record on one side of a diff; rendering the rdata is left to the client. */
-export interface RecordDiffValue {
+export interface RecordDiffValueResponse {
   value: RecordValue;
   /** Seconds, 0–4294967295 (RFC 8767). */
   ttl: number;
@@ -169,25 +179,25 @@ export interface RecordDiffValue {
 }
 
 /** One RRset (owner name + type) whose records differ. */
-export interface RecordDiffEntry {
+export interface RecordDiffEntryResponse {
   change: RecordDiffChange;
   name: string;
   type: string;
   /** Empty for `added`. */
-  from: RecordDiffValue[];
+  from: RecordDiffValueResponse[];
   /** Empty for `removed`. */
-  to: RecordDiffValue[];
+  to: RecordDiffValueResponse[];
 }
 
-export interface RecordDiffSummary {
+export interface RecordDiffSummaryResponse {
   added: number;
   removed: number;
   changed: number;
 }
 
-export interface RecordDiff {
-  entries: RecordDiffEntry[];
-  summary: RecordDiffSummary;
+export interface RecordDiffResponse {
+  entries: RecordDiffEntryResponse[];
+  summary: RecordDiffSummaryResponse;
 }
 
 /** A record a write reports back; a dry run writes nothing to carry an id. */
@@ -196,15 +206,15 @@ export interface WrittenRecord extends Omit<Record, "id"> {
 }
 
 /** A record write: the record it left, and the change as a diff. */
-export interface RecordWriteResult {
+export interface WriteRecordResponse {
   applied: boolean;
   dry_run: boolean;
   record: WrittenRecord;
-  diff: RecordDiff;
+  diff: RecordDiffResponse;
 }
 
 /** A record deletion or its preview. */
-export interface DeleteRecordsResult {
+export interface DeleteRecordsResponse {
   /** Whether apply mode completed, including when it matched zero records. */
   applied: boolean;
   dry_run: boolean;
@@ -212,21 +222,21 @@ export interface DeleteRecordsResult {
   deleted: number;
   records: WrittenRecord[];
   /** The removal preview. An applied operation returns an empty diff. */
-  diff: RecordDiff;
+  diff: RecordDiffResponse;
 }
 
 /** A zone write: its fields are the change, so there is no diff. */
-export interface ZoneWriteResult {
+export interface WriteZoneResponse {
   applied: boolean;
   dry_run: boolean;
-  zone: Zone;
+  zone: ZoneResponse;
 }
 
 /** What deleting a zone takes with it; a dry run reports the counts only. */
-export interface DeleteZoneResult {
+export interface DeleteZoneResponse {
   applied: boolean;
   dry_run: boolean;
-  zone: Zone;
+  zone: ZoneResponse;
   /** Counts of what goes with the zone, not the rows themselves. */
   records_deleted: number;
   versions_deleted: number;
@@ -236,8 +246,14 @@ export const IMPORT_MODES = ["append", "upsert", "replace"] as const;
 
 export type ImportMode = (typeof IMPORT_MODES)[number];
 
+export const IMPORT_MODE_DESCRIPTIONS: { [Mode in ImportMode]: string } = {
+  append: "Only add records that do not exist yet.",
+  upsert: "Add records and replace existing records of the same name and type.",
+  replace: "Replace all non-protected records with the imported records.",
+};
+
 /** Exactly one of `content` (zone file text) and `from_server` (AXFR source). */
-export interface ImportZonePayload {
+export interface ImportZoneRequest {
   content?: string;
   from_server?: string;
   mode?: ImportMode;
@@ -247,7 +263,7 @@ export interface ImportZonePayload {
 }
 
 /** Counts of applied changes or the changes shown in a preview. */
-export interface ImportSummary {
+export interface ImportZoneSummaryResponse {
   parsed: number;
   added: number;
   deleted: number;
@@ -256,17 +272,18 @@ export interface ImportSummary {
   skipped: number;
 }
 
-export interface ImportZoneResult {
+export interface ImportZoneResponse {
   applied: boolean;
+  changed: boolean;
   dry_run: boolean;
-  summary: ImportSummary;
-  diff: RecordDiff;
+  summary: ImportZoneSummaryResponse;
+  diff: RecordDiffResponse;
   errors: string[];
 }
 
 /** Exactly one of `zone_names` and `from_catalog` (the server's catalog
  * zone, RFC 9432) names the zones pulled over AXFR from `from_server`. */
-export interface ImportZonesPayload {
+export interface ImportZonesRequest {
   from_server: string;
   zone_names?: string[];
   from_catalog?: string;
@@ -280,30 +297,30 @@ export interface ImportZonesPayload {
 export type ImportResult = "ok" | "rejected" | "failed";
 
 /** An error answer's body. */
-export interface ErrorBody {
+export interface ErrorResponse {
   error: string;
   code: ErrorCode;
 }
 
 /** One zone of a bulk import: its result with the import answer or the error. */
-export interface ImportZonesItem {
+export interface ImportZonesItemResponse {
   zone_name: string;
   result: ImportResult;
-  import?: ImportZoneResult | null;
-  error?: ErrorBody | null;
+  import?: ImportZoneResponse | null;
+  error?: ErrorResponse | null;
 }
 
-export interface ImportZonesSummary {
+export interface ImportZonesSummaryResponse {
   zones: number;
   ok: number;
   rejected: number;
   failed: number;
 }
 
-export interface ImportZonesResult {
+export interface ImportZonesResponse {
   dry_run: boolean;
-  summary: ImportZonesSummary;
-  zones: ImportZonesItem[];
+  summary: ImportZonesSummaryResponse;
+  zones: ImportZonesItemResponse[];
 }
 
 export const TSIG_ALGORITHMS = [
@@ -315,18 +332,25 @@ export const TSIG_ALGORITHMS = [
 
 export type TsigAlgorithm = (typeof TSIG_ALGORITHMS)[number];
 
-export interface TsigKey {
+export interface TsigKeyResponse {
   id: number;
   name: string;
   algorithm: TsigAlgorithm;
   /** The role whose grants decide what updates and transfers the key may sign. */
   role_name: string;
   created_at: string;
-  /** Only returned on create and single-key reads. */
-  secret?: string | null;
 }
 
-export interface CreateTsigKeyPayload {
+export interface SingleTsigKeyResponse {
+  tsig_key: TsigKeyResponse;
+  secret: string;
+}
+
+export interface TsigKeyWithSecret extends TsigKeyResponse {
+  secret: string;
+}
+
+export interface CreateTsigKeyRequest {
   name: string;
   algorithm?: string | null;
   /** Existing base64 secret to import; omit to generate a random one. */
@@ -335,7 +359,7 @@ export interface CreateTsigKeyPayload {
 }
 
 /** A registered secondary server. */
-export interface Secondary {
+export interface SecondaryResponse {
   id: number;
   name: string;
   /** host[:port] */
@@ -343,31 +367,31 @@ export interface Secondary {
   /** Disabled: no NOTIFY, no unsigned transfer, no probe. */
   enabled: boolean;
   /** TSIG key its NOTIFY is signed with, if any. */
-  notify_key_name: string | null;
+  notify_tsig_key_name: string | null;
   created_at: string;
 }
 
-export interface CreateSecondaryPayload {
+export interface CreateSecondaryRequest {
   name: string;
   address: string;
-  notify_key_name?: string | null;
+  notify_tsig_key_name?: string | null;
 }
 
-/** An omitted field keeps its value; an empty `notify_key` clears it. */
-export interface UpdateSecondaryPayload {
+/** An omitted field keeps its value; an empty `notify_tsig_key_name` clears it. */
+export interface UpdateSecondaryRequest {
   address?: string;
   enabled?: boolean;
-  notify_key_name?: string;
+  notify_tsig_key_name?: string;
 }
 
-export interface NotifyCheck {
+export interface CheckNotifyResponse {
   address: string;
   error?: string | null;
 }
 
 /** What a secondary answered when checked. */
-export interface SecondaryCheck {
-  secondary: Secondary;
+export interface CheckSecondaryResponse {
+  secondary: SecondaryResponse;
   /** Socket addresses the registered address resolves to now. */
   addresses: string[];
   resolve_error?: string | null;
@@ -375,10 +399,10 @@ export interface SecondaryCheck {
   /** The serial Bindizr's own listener serves the catalog zone at; absent with `listener_error`. */
   catalog_serial?: number | null;
   listener_error?: string | null;
-  catalog: SecondaryStatusItem;
-  notifies: NotifyCheck[];
+  catalog: SecondaryStatusResponse;
+  notifies: CheckNotifyResponse[];
   /** How Bindizr served the secondary's transfers. */
-  transfers: TransferSummary;
+  transfers: TransferSummaryResponse;
 }
 
 /** Which transfer a secondary asked Bindizr for. */
@@ -389,27 +413,27 @@ export const TRANSFER_RESULTS = ["ok", "refused", "failed"] as const;
 
 export type TransferResult = (typeof TRANSFER_RESULTS)[number];
 
-export type TransferTransport = "udp" | "tcp" | "tls";
+export type DnsTransport = "udp" | "tcp" | "tls";
 
 /** One row of the transfer log: a transfer Bindizr answered, refused, or
- * failed for a client address. */
-export interface TransferLog {
-  address: string;
+ * failed for a client IP. */
+export interface TransferLogResponse {
+  client_ip: string;
   zone_name: string;
   kind: TransferKind;
   result: TransferResult;
-  transport: TransferTransport;
+  transport: DnsTransport;
   /** Whether the answer was a delta rather than the whole zone. */
   incremental: boolean;
   /** The serial the answer reached; absent when nothing was transferred. */
   serial?: number | null;
-  at: string;
+  created_at: string;
   /** Why the transfer was refused or failed. */
-  error?: string | null;
+  error_code?: string | null;
 }
 
 /** How a secondary's zones were last served. */
-export interface TransferSummary {
+export interface TransferSummaryResponse {
   zones: number;
   axfr: number;
   ixfr_full: number;
@@ -465,7 +489,7 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "access:manage":
     "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
   "log:read":
-    "Read the audit, access and transfer logs, including changes to credentials, roles, grants, secondaries and zone DNSSEC settings.",
+    "Read the activity, access and transfer logs, including changes to DNS data, credentials, roles, grants and secondaries.",
 };
 
 /** Actions on something no zone owns, so only an all-zones grant carries them. */
@@ -478,7 +502,7 @@ export const ALL_ZONES_ACTIONS: readonly Action[] = [
 ];
 
 /** A named set of grants that API tokens and TSIG keys authenticate into. */
-export interface Role {
+export interface RoleResponse {
   id: number;
   name: string;
   description?: string | null;
@@ -492,7 +516,7 @@ export interface Role {
   created_at: string;
 }
 
-export interface CreateRolePayload {
+export interface CreateRoleRequest {
   /** Letters, digits, `.`, `_`, and `-`: one URL path segment. */
   name: string;
   description?: string | null;
@@ -500,7 +524,7 @@ export interface CreateRolePayload {
 
 /** Actions in one zone, or in all zones when `zone_name` is null; the pattern
  * and types narrow its `record:*` actions only. */
-export interface RoleGrant {
+export interface RoleGrantResponse {
   id: number;
   role_name: string;
   zone_name: string | null;
@@ -513,7 +537,7 @@ export interface RoleGrant {
 }
 
 /** Omit `zone_name` to cover all zones; the pattern and types default to `*`. */
-export interface CreateRoleGrantPayload {
+export interface CreateRoleGrantRequest {
   zone_name?: string | null;
   actions: Action[];
   record_name_pattern?: string | null;
@@ -532,39 +556,27 @@ export interface ChangeActor {
   name: string;
 }
 
-/** The kind of entity a management change was made to. */
-export const AUDIT_ENTITIES = [
-  "token",
-  "role",
-  "role_grant",
-  "tsig_key",
-  "secondary",
-  "dnssec_policy",
-  "zone",
-] as const;
+export const ACTIVITY_RESULTS = ["changed", "succeeded", "failed"] as const;
 
-export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
+export type ActivityResult = (typeof ACTIVITY_RESULTS)[number];
 
-export const AUDIT_OPERATIONS = ["create", "update", "delete"] as const;
+export interface ActivityTarget {
+  name?: string | null;
+  zone_name?: string | null;
+  record_id?: number | null;
+  record_name?: string | null;
+  record_type?: string | null;
+}
 
-export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
-
-/** A management change, who made it, and when. Includes zone deletion and
- * DNSSEC settings changes. Zone data edits appear in version history. */
-export interface AuditLog {
+export interface ActivityLog {
   id: number;
-  entity: AuditEntity;
-  /** The entity's name as its row spelled it; a grant's is its role's. */
-  entity_name: string;
-  operation: AuditOperation;
-  /** What the change set, or what an update moved, in the request's field
-   * names; null for a delete. */
-  detail?: string | null;
-  change_source: ChangeSource;
-  /** The API token it was made under; null for socket commands and
-   * unauthenticated requests. */
-  changed_by?: ChangeActor | null;
+  operation: string;
+  result: ActivityResult;
+  target: ActivityTarget;
+  source: ChangeSource;
+  actor?: ChangeActor | null;
   created_at: string;
+  detail?: string | null;
 }
 
 /** The front end a logged request arrived at. */
@@ -580,25 +592,25 @@ export type AccessResult = (typeof ACCESS_RESULTS)[number];
 
 /** One row of the access log: a management API request or nsupdate Bindizr
  * answered, who made it, and how it ended. */
-export interface AccessLog {
+export interface AccessLogResponse {
   source: AccessSource;
-  /** The connection's peer address; a proxy in front shows as itself. */
-  address: string;
+  /** The connection's peer IP; a proxy in front shows as itself. */
+  client_ip: string;
   /** The HTTP method, or `UPDATE` for an nsupdate. */
   method: string;
   /** The request path without its query, or the zone an nsupdate named. */
   target: string;
   /** The HTTP status code, or the DNS RCODE. */
-  status: string;
+  response_code: string;
   result: AccessResult;
   /** The token or TSIG key that verified; null when none did, or with API
    * authentication off. */
-  caller?: ChangeActor | null;
-  error?: string | null;
+  actor?: ChangeActor | null;
+  error_code?: string | null;
   requested_at: string;
 }
 
-export interface ZoneVersion {
+export interface ZoneVersionResponse {
   serial: number;
   mname: string;
   rname: string;
@@ -607,15 +619,15 @@ export interface ZoneVersion {
   retry: number;
   expire: number;
   minimum_ttl: number;
-  change_source: ChangeSource;
+  source: ChangeSource;
   /** The API token or TSIG key it was made under; null for socket commands,
    * unauthenticated requests, unsigned updates, and background work. */
-  changed_by?: ChangeActor | null;
+  actor?: ChangeActor | null;
   created_at: string;
 }
 
 /** Reconstructed from the zone's journal, so it has no id. */
-export interface VersionRecord {
+export interface VersionRecordResponse {
   name: string;
   type: string;
   value: RecordValue;
@@ -624,30 +636,30 @@ export interface VersionRecord {
   priority?: number | null;
 }
 
-export interface VersionDetail {
-  version: ZoneVersion;
-  records: VersionRecord[];
+export interface GetZoneVersionResponse {
+  version: ZoneVersionResponse;
+  records: VersionRecordResponse[];
 }
 
-export interface VersionDiff {
+export interface DiffZoneVersionsResponse {
   from_serial: number;
   to_serial: number;
-  diff: RecordDiff;
+  diff: RecordDiffResponse;
 }
 
-export interface RollbackSummary {
+export interface RollbackZoneSummaryResponse {
   added: number;
   deleted: number;
   unchanged: number;
   soa_changed: boolean;
 }
 
-export interface RollbackZoneResult {
+export interface RollbackZoneResponse {
   applied: boolean;
   dry_run: boolean;
   target_serial: number;
   new_serial: number;
-  summary: RollbackSummary;
+  summary: RollbackZoneSummaryResponse;
 }
 
 export const DNSSEC_ALGORITHMS = [
@@ -668,8 +680,10 @@ export type DnssecDenialMode = (typeof DNSSEC_DENIAL_MODES)[number];
 /** Seeded at startup and refused for deletion. */
 export const DEFAULT_DNSSEC_POLICY_NAME = "default";
 
+export type DnssecKeyLayout = "csk" | "split";
+
 /** A named bundle of signing parameters that zones sign under. */
-export interface DnssecPolicy {
+export interface DnssecPolicyResponse {
   id: number;
   name: string;
   /** The built-in `default` policy, which cannot be deleted. */
@@ -677,7 +691,7 @@ export interface DnssecPolicy {
   algorithm: DnssecAlgorithm;
   denial: DnssecDenialMode;
   /** A KSK/ZSK pair instead of one CSK, so the ZSK rolls without touching the parent DS. */
-  split_keys: boolean;
+  key_layout: DnssecKeyLayout;
   signature_validity_days: number;
   signature_refresh_days: number;
   /** 0 disables scheduled ZSK rollovers. */
@@ -693,15 +707,15 @@ export interface DnssecPolicyTiming {
 }
 
 /** Algorithm, denial and key layout are fixed once the policy exists. */
-export interface CreateDnssecPolicyPayload extends DnssecPolicyTiming {
+export interface CreateDnssecPolicyRequest extends DnssecPolicyTiming {
   name: string;
   algorithm?: DnssecAlgorithm | null;
   denial?: DnssecDenialMode | null;
-  split_keys?: boolean;
+  key_layout?: DnssecKeyLayout;
 }
 
 /** An omitted field keeps its current value. */
-export type UpdateDnssecPolicyPayload = DnssecPolicyTiming;
+export type UpdateDnssecPolicyRequest = DnssecPolicyTiming;
 
 export type DnssecKeyRole = "csk" | "ksk" | "zsk";
 
@@ -709,7 +723,7 @@ export type DnssecKeyRole = "csk" | "ksk" | "zsk";
 export type DnssecKeyState = "published" | "active" | "retired";
 
 /** A signing key's public half; the private key never leaves the server. */
-export interface DnssecKey {
+export interface DnssecKeyResponse {
   id: number;
   role: DnssecKeyRole;
   state: DnssecKeyState;
@@ -724,7 +738,7 @@ export interface DnssecKey {
 }
 
 /** A key's DS form for parent-zone registration. */
-export interface DnssecDsRecord {
+export interface DnssecDsResponse {
   key_tag: number;
   algorithm: number;
   digest_type: number;
@@ -737,7 +751,7 @@ export interface DnssecDsRecord {
 export type DnssecDsState = "published" | "hidden";
 
 /** One of the zone's SEP keys against the parent's DS records. */
-export interface DnssecDelegationKeyInfo {
+export interface DnssecDelegationKeyResponse {
   id: number;
   key_tag: number;
   role: Exclude<DnssecKeyRole, "zsk">;
@@ -752,26 +766,26 @@ export interface DnssecDelegationKeyInfo {
 }
 
 /** What the parent zone's servers answered when asked for the zone's DS. */
-export interface DnssecDelegationInfo {
+export interface DnssecDelegationResponse {
   /** The nameservers asked, from the zone's `parent_ns_addrs`. */
   parent_ns_addrs: string[];
   ds_state: DnssecDsState;
   /** Key tags of the DS records the parent serves. */
   ds_key_tags: number[];
   /** The zone's SEP keys, each with whether the parent serves its DS. */
-  keys: DnssecDelegationKeyInfo[];
+  keys: DnssecDelegationKeyResponse[];
   /** How long caches may keep serving the parent's DS once removed. */
   ds_ttl?: number | null;
   checked_at: string;
 }
 
-export interface DnssecStatus {
+export interface DnssecStatusResponse {
   zone_name: string;
   enabled: boolean;
   /** Absent for an unsigned zone. */
-  policy?: DnssecPolicy | null;
-  keys: DnssecKey[];
-  ds_records: DnssecDsRecord[];
+  policy?: DnssecPolicyResponse | null;
+  keys: DnssecKeyResponse[];
+  ds_records: DnssecDsResponse[];
   /** Whether the RFC 8078 delete CDS/CDNSKEY pair asks the parent to drop the DS. */
   withdrawing: boolean;
   serial: number;
@@ -786,10 +800,10 @@ export interface DnssecStatus {
   /** Configured parent nameservers; may also be set while unsigned. */
   parent_ns_addrs?: string[] | null;
   /** Present only when the status comes from a parent DS check. */
-  delegation?: DnssecDelegationInfo | null;
+  delegation?: DnssecDelegationResponse | null;
 }
 
-export interface EnableDnssecPayload {
+export interface EnableDnssecRequest {
   /** Name of the policy to sign under; defaults to `default`. */
   policy_name?: string | null;
   /** Comma-separated `host[:port]` asked for the zone's DS by every later
@@ -798,7 +812,7 @@ export interface EnableDnssecPayload {
 }
 
 /** An omitted field keeps its value; `parent_ns_addrs` must name at least one server. */
-export interface UpdateDnssecSettingsPayload {
+export interface UpdateDnssecSettingsRequest {
   /** Must match the key layout; denial may change, and a new algorithm starts a rollover. */
   policy_name?: string | null;
   parent_ns_addrs?: string[] | null;
@@ -808,7 +822,7 @@ export interface UpdateDnssecSettingsPayload {
 export type DnssecRolloverRole = "ksk" | "zsk";
 
 /** An API token; the secret is only ever in the create response. */
-export interface ApiToken {
+export interface ApiTokenResponse {
   id: number;
   name: string;
   description?: string | null;
@@ -819,7 +833,7 @@ export interface ApiToken {
   created_at: string;
 }
 
-export interface CreateTokenPayload {
+export interface CreateApiTokenRequest {
   /** Letters, digits, `.`, `_`, and `-`: one URL path segment. */
   name: string;
   /** At most 255 characters. */
@@ -830,8 +844,8 @@ export interface CreateTokenPayload {
 }
 
 /** The secret is shown this once. */
-export interface CreatedToken {
-  token: ApiToken;
+export interface CreateApiTokenResponse {
+  token: ApiTokenResponse;
   secret: string;
 }
 
@@ -845,22 +859,22 @@ export const SECONDARY_STATUSES = [
 
 export type SecondaryStatus = (typeof SECONDARY_STATUSES)[number];
 
-export interface SecondaryStatusItem {
+export interface SecondaryStatusResponse {
   address: string;
   status: SecondaryStatus;
   visible_serial?: number | null;
   error?: string | null;
   /** The latest transfer of this zone Bindizr served the address. */
-  last_transfer?: TransferLog | null;
+  last_transfer?: TransferLogResponse | null;
 }
 
-export interface ZoneStatus {
+export interface ZoneStatusResponse {
   zone_name: string;
   serial: number;
-  secondaries: SecondaryStatusItem[];
+  secondaries: SecondaryStatusResponse[];
 }
 
-export interface Pagination {
+export interface PaginationResponse {
   limit: number;
   offset: number;
   total: number;
@@ -868,7 +882,7 @@ export interface Pagination {
 
 export interface ListResult<T> {
   items: T[];
-  pagination: Pagination;
+  pagination: PaginationResponse;
   hasNext: boolean;
 }
 
@@ -878,27 +892,31 @@ export interface PageQuery {
 }
 
 export interface ZoneVersionListQuery extends PageQuery {
-  /** Also list signer-only serials (DNSSEC re-signs and rollovers), hidden by default. */
-  include_signer_serials?: boolean;
+  /** Also list signer-only versions (DNSSEC re-signs and rollovers), hidden by default. */
+  include_signer_only_versions?: boolean;
 }
 
-export const AUDIT_LOG_SORT_FIELDS = [
+export const ACTIVITY_LOG_SORT_FIELDS = [
   "created_at",
-  "entity",
-  "entity_name",
   "operation",
+  "target",
 ] as const;
 
-export type AuditLogSortField = (typeof AUDIT_LOG_SORT_FIELDS)[number];
+export type ActivityLogSortField = (typeof ACTIVITY_LOG_SORT_FIELDS)[number];
 
-export interface AuditLogListQuery extends PageQuery {
-  entity?: AuditEntity;
-  entity_name?: string;
-  /** RFC 3339; rows made at or after it. */
+export interface ActivityLogListQuery extends PageQuery {
+  entity?: string;
+  operation?: string;
+  result?: string;
+  name?: string;
+  zone_name?: string;
+  record_name?: string;
+  record_type?: string;
+  /** RFC 3339; entries created at or after it. */
   since?: string;
-  /** RFC 3339; rows made before it. */
+  /** RFC 3339; entries created before it. */
   until?: string;
-  sort?: AuditLogSortField;
+  sort?: ActivityLogSortField;
   /** Newest first by default. */
   order?: SortOrder;
 }
@@ -907,9 +925,9 @@ export const ACCESS_LOG_SORT_FIELDS = [
   "requested_at",
   "source",
   "target",
-  "status",
+  "response_code",
   "result",
-  "address",
+  "client_ip",
 ] as const;
 
 export type AccessLogSortField = (typeof ACCESS_LOG_SORT_FIELDS)[number];
@@ -917,8 +935,8 @@ export type AccessLogSortField = (typeof ACCESS_LOG_SORT_FIELDS)[number];
 export interface AccessLogListQuery extends PageQuery {
   source?: AccessSource;
   result?: AccessResult;
-  caller_name?: string;
-  address?: string;
+  actor_name?: string;
+  client_ip?: string;
   /** RFC 3339; requests made at or after it. */
   since?: string;
   /** RFC 3339; requests made before it. */
@@ -929,8 +947,8 @@ export interface AccessLogListQuery extends PageQuery {
 }
 
 export const TRANSFER_LOG_SORT_FIELDS = [
-  "at",
-  "address",
+  "created_at",
+  "client_ip",
   "zone_name",
   "kind",
   "result",
@@ -939,14 +957,14 @@ export const TRANSFER_LOG_SORT_FIELDS = [
 export type TransferLogSortField = (typeof TRANSFER_LOG_SORT_FIELDS)[number];
 
 export interface TransferLogListQuery extends PageQuery {
-  /** The addresses this secondary resolves to now. */
+  /** The IP addresses this secondary resolves to now. */
   secondary_name?: string;
-  address?: string;
+  client_ip?: string;
   zone_name?: string;
   result?: TransferResult;
-  /** RFC 3339; transfers answered at or after it. */
+  /** RFC 3339; transfer log rows created at or after it. */
   since?: string;
-  /** RFC 3339; transfers answered before it. */
+  /** RFC 3339; transfer log rows created before it. */
   until?: string;
   sort?: TransferLogSortField;
   /** Newest first by default. */
@@ -966,13 +984,13 @@ export interface ZoneListQuery extends PageQuery {
   /** `true` keeps the zones the DNS plane serves, `false` the disabled ones. */
   enabled?: boolean;
   /** `true` keeps the zones signing under a DNSSEC policy, `false` the rest. */
-  signed?: boolean;
+  dnssec_enabled?: boolean;
   min_serial?: number;
   max_serial?: number;
   /** RFC 3339; keeps zones created at or after it. */
-  created_after?: string;
-  /** RFC 3339; keeps zones created at or before it. */
-  created_before?: string;
+  since?: string;
+  /** RFC 3339; keeps zones created before it. */
+  until?: string;
   sort?: ZoneSortField;
   order?: SortOrder;
 }
@@ -981,7 +999,7 @@ export interface RecordListQuery extends PageQuery {
   zone_name?: string;
   search?: string;
   name?: string;
-  /** A RecordType; signed listings also accept a derived DNSSEC type. */
+  /** A RecordType; generated DNSSEC records also accept a derived type. */
   type?: string;
   value?: string;
   ttl?: number;
@@ -990,6 +1008,7 @@ export interface RecordListQuery extends PageQuery {
   priority?: number;
   min_priority?: number;
   max_priority?: number;
+  include_dnssec?: boolean;
   sort?: RecordSortField;
   order?: SortOrder;
 }
@@ -1041,14 +1060,18 @@ export const ERROR_CODES = [
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
 /** Actions held, and record actions held with no name or type limit. */
-export interface PermittedActions {
+export interface PermittedActionsResponse {
   actions: Action[];
   whole_zone: Action[];
 }
 
+export interface ZonePermissionsResponse extends PermittedActionsResponse {
+  zone_name: string;
+}
+
 /** What the caller may do: `all_zones` for unlisted zones, `zones` where
  * zone grants add to it. */
-export interface Permissions {
-  all_zones: PermittedActions;
-  zones: (PermittedActions & { zone_name: string })[];
+export interface PermissionsResponse {
+  all_zones: PermittedActionsResponse;
+  zones: ZonePermissionsResponse[];
 }

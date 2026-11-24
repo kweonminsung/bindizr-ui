@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { getZone, notifyZones } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { Zone } from "@/lib/types";
+import { ZoneResponse } from "@/lib/types";
 import ZoneStatusPanel from "./ZoneStatusPanel";
 import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneSyncTabProps {
-  zone: Zone;
+  zone: ZoneResponse;
   onSerialChanged: (serial: number) => void;
 }
 
@@ -66,7 +66,7 @@ export default function ZoneSyncTab({
                 disabled={notifying}
                 onChange={(e) => setBumpSerial(e.target.checked)}
               />
-              <span>Bump serial first (forces a transfer)</span>
+              <span>Bump the SOA serial before sending NOTIFY</span>
             </label>
             <button
               type="button"

@@ -4,14 +4,14 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatRecordRdata } from "@/lib/recordValue";
 import {
   RecordDiffChange,
-  RecordDiffValue,
-  VersionDiff,
-  Zone,
+  RecordDiffValueResponse,
+  DiffZoneVersionsResponse,
+  ZoneResponse,
 } from "@/lib/types";
 import Notice from "./Notice";
 
 interface ZoneVersionDiffProps {
-  zone: Zone;
+  zone: ZoneResponse;
   from: number;
   /** Omitted compares against the current serial. */
   to?: number;
@@ -36,11 +36,11 @@ const CHANGE_SIGN_STYLES: Record<RecordDiffChange, string> = {
   changed: "text-amber-700",
 };
 
-const formatRdata = (values: RecordDiffValue[], recordType: string) =>
+const formatRdata = (values: RecordDiffValueResponse[], recordType: string) =>
   values.map((value) => formatRecordRdata(value, recordType)).join(", ");
 
 /** An RRset shares one TTL, so the first record stands for the whole side. */
-const sideTtl = (values: RecordDiffValue[]) => values[0]?.ttl ?? null;
+const sideTtl = (values: RecordDiffValueResponse[]) => values[0]?.ttl ?? null;
 
 export default function ZoneVersionDiff({
   zone,
@@ -48,7 +48,7 @@ export default function ZoneVersionDiff({
   to,
   onBack,
 }: ZoneVersionDiffProps) {
-  const [diff, setDiff] = useState<VersionDiff | null>(null);
+  const [diff, setDiff] = useState<DiffZoneVersionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

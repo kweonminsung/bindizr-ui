@@ -168,12 +168,12 @@ export default function AccountSettings() {
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-6">
       <h2 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">
-        Account Settings
+        UI Admin Account
       </h2>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="font-medium text-gray-900">Change Account</h3>
+          <h3 className="font-medium text-gray-900">Change UI Admin Account</h3>
           <p className="text-sm text-gray-500">
             Change your username and password.
           </p>
@@ -182,7 +182,7 @@ export default function AccountSettings() {
           onClick={handleOpenModal}
           className="btn-primary w-full sm:w-auto"
         >
-          Change Account
+          Change UI Admin Account
         </button>
       </div>
 
@@ -204,8 +204,8 @@ export default function AccountSettings() {
           {isLoading
             ? "Updating..."
             : isAccountEnabled
-              ? "Disable Account"
-              : "Enable Account"}
+              ? "Disable UI Admin Account"
+              : "Enable UI Admin Account"}
         </button>
       </div>
 
@@ -230,7 +230,7 @@ export default function AccountSettings() {
       >
         <form onSubmit={handleAccountChange} className="space-y-4">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Change Account
+            Change UI Admin Account
           </h2>
           <div>
             <label
@@ -293,7 +293,7 @@ export default function AccountSettings() {
       >
         <form onSubmit={handleEnableAccount} className="space-y-4">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Enable Account
+            Enable UI Admin Account
           </h2>
           <div>
             <label
@@ -346,7 +346,7 @@ export default function AccountSettings() {
 
           <div className="flex justify-end pt-4">
             <button type="submit" className="btn-primary" disabled={isLoading}>
-              {isLoading ? "Enabling..." : "Enable Account"}
+              {isLoading ? "Enabling..." : "Enable UI Admin Account"}
             </button>
           </div>
         </form>
