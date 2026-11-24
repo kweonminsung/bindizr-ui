@@ -1,13 +1,13 @@
 import AccessLogList from "@/components/AccessLogList";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function AccessLogPage() {
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        The API requests and nsupdates Bindizr answered, denied or failed: what
-        was asked, from where, under which token or TSIG key. Requests this UI
-        makes come from its own address.
-      </p>
+      <PageHeader
+        title="Access Log"
+        description="API requests and DNS updates by actor, client address and result. Requests from this UI use the UI server's address."
+      />
       <AccessLogList />
     </div>
   );

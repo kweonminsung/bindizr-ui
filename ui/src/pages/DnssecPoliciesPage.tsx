@@ -2,9 +2,13 @@ import { useState } from "react";
 import DnssecPolicyForm from "@/components/DnssecPolicyForm";
 import DnssecPolicyList from "@/components/DnssecPolicyList";
 import Modal from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
+import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 
 /** The signing-parameter bundles zones sign under, with their form. */
 export default function DnssecPoliciesPage() {
+  const { allows } = useBindizrToken();
+  const canManage = allows("dnssec:manage");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -15,14 +19,22 @@ export default function DnssecPoliciesPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        Signing parameter sets for zones. Apply a policy from a zone&apos;s
-        DNSSEC tab.
-      </p>
-      <DnssecPolicyList
-        key={refreshKey}
-        onCreatePolicy={() => setIsFormOpen(true)}
+      <PageHeader
+        title="DNSSEC Policies"
+        description="Apply signing policies from a zone's DNSSEC tab."
+        actions={
+          canManage && (
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(true)}
+              className="btn-primary"
+            >
+              Create Policy
+            </button>
+          )
+        }
       />
+      <DnssecPolicyList key={refreshKey} canManage={canManage} />
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)}>
         <DnssecPolicyForm
           onSuccess={handleCreated}

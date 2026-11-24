@@ -28,7 +28,6 @@ import {
 } from "@/lib/types";
 import Notice from "./Notice";
 import { useToast } from "@/contexts/ToastContext";
-import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 /** The comma-separated text of a parent nameserver list, as the field shows it. */
 function joinParentNsAddrs(addrs: string[] | null | undefined): string {
@@ -635,7 +634,7 @@ export default function ZoneDnssecTab({
                 key={`${ds.key_tag}-${index}`}
                 className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-2"
               >
-                <code className="min-w-0 flex-1 font-mono text-xs break-all">
+                <code className="min-w-0 flex-1 font-mono text-xs wrap-anywhere">
                   {ds.presentation}
                 </code>
                 <button
@@ -673,7 +672,9 @@ export default function ZoneDnssecTab({
             >
               {delegation.ds_state === "published" ? "DS published" : "No DS"}
             </span>
-            <span className="break-all">{describeDelegation(delegation)}</span>
+            <span className="wrap-anywhere">
+              {describeDelegation(delegation)}
+            </span>
             <span className="ml-auto whitespace-nowrap text-gray-400">
               {formatDateTime(delegation.checked_at)}
             </span>
@@ -694,7 +695,7 @@ export default function ZoneDnssecTab({
                 onChange={(e) => setParentNsAddrs(e.target.value)}
                 placeholder="ns1.parent.example, ns2.parent.example:5353"
                 aria-label="Parent nameservers"
-                className="flex-1"
+                className="min-w-0 flex-1"
               />
               <button
                 type="button"
@@ -713,7 +714,7 @@ export default function ZoneDnssecTab({
             </p>
           </>
         ) : (
-          <p className="text-sm text-gray-900 break-all">
+          <p className="text-sm text-gray-900 wrap-anywhere">
             {(status.parent_ns_addrs ?? []).join(", ") || "-"}
           </p>
         )}
@@ -727,7 +728,7 @@ export default function ZoneDnssecTab({
           <>
             <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
               <p className="text-sm text-gray-500">Signing under</p>
-              <p className="text-base text-gray-900 break-all">
+              <p className="text-base text-gray-900 wrap-anywhere">
                 {currentPolicy.name}
               </p>
               <p className="text-sm text-gray-500 mt-1">
@@ -738,63 +739,52 @@ export default function ZoneDnssecTab({
             </div>
             {canManage && (
               <>
-                {policies.length === 0 ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <p className="text-sm text-gray-500">
-                      Policies cannot be listed with this token; type the policy
-                      to move to. A different algorithm starts an algorithm
-                      rollover.
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={targetPolicy}
-                        onChange={(e) => setTargetPolicy(e.target.value.trim())}
-                        aria-label="Policy to move to"
-                        placeholder="Policy name"
-                        className="rounded"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleChangePolicy}
-                        disabled={busy || !targetPolicy || moveBlocked}
-                        className="btn-primary whitespace-nowrap"
-                      >
-                        {pending === "policy" ? "Moving..." : "Move Zone"}
-                      </button>
-                    </div>
-                  </div>
-                ) : compatiblePolicies.length === 0 ? (
+                {policies.length > 0 && compatiblePolicies.length === 0 ? (
                   <p className="text-sm text-gray-500">
                     No other policy matches the zone&apos;s key layout. See{" "}
                     {policiesLink}.
                   </p>
                 ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="space-y-2">
                     <p className="text-sm text-gray-500">
-                      A different denial mode replaces the denial chain. A
-                      different algorithm starts an algorithm rollover.
+                      {policies.length === 0
+                        ? "Policies cannot be listed with this token; type the policy to move to."
+                        : "A different denial mode replaces the denial chain."}{" "}
+                      A different algorithm starts an algorithm rollover.
                     </p>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={targetPolicy}
-                        onChange={(e) => setTargetPolicy(e.target.value)}
-                        aria-label="Policy to move to"
-                        className="rounded"
-                      >
-                        <option value="">Select a policy</option>
-                        {compatiblePolicies.map((policy) => (
-                          <option key={policy.id} value={policy.name}>
-                            {policy.name} ({policy.algorithm},{" "}
-                            {policy.denial.toUpperCase()})
-                          </option>
-                        ))}
-                      </select>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                      {policies.length === 0 ? (
+                        <input
+                          type="text"
+                          value={targetPolicy}
+                          onChange={(e) =>
+                            setTargetPolicy(e.target.value.trim())
+                          }
+                          aria-label="Policy to move to"
+                          placeholder="Policy name"
+                          className="min-w-0 max-w-full flex-1"
+                        />
+                      ) : (
+                        <select
+                          value={targetPolicy}
+                          onChange={(e) => setTargetPolicy(e.target.value)}
+                          aria-label="Policy to move to"
+                          className="min-w-0 max-w-full flex-1 truncate"
+                        >
+                          <option value="">Select a policy</option>
+                          {compatiblePolicies.map((policy) => (
+                            <option key={policy.id} value={policy.name}>
+                              {policy.name} ({policy.algorithm},{" "}
+                              {policy.denial.toUpperCase()})
+                            </option>
+                          ))}
+                        </select>
+                      )}
                       <button
                         type="button"
                         onClick={handleChangePolicy}
                         disabled={busy || !targetPolicy || moveBlocked}
-                        className="btn-primary whitespace-nowrap"
+                        className="btn-primary shrink-0 self-start whitespace-nowrap"
                       >
                         {pending === "policy" ? "Moving..." : "Move Zone"}
                       </button>
@@ -823,74 +813,50 @@ export default function ZoneDnssecTab({
         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2 mb-2">
           Signing Keys
         </h3>
-        <div className="overflow-x-auto rounded-md border border-gray-200">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50">
-              <tr>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  Role
-                </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  State
-                </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  Key Tag
-                </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  Algorithm
-                </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  Since
-                </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  Next Step
-                </th>
-                <th scope="col" className={TABLE_HEADER_CLASS}>
-                  At Parent
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {status.keys.map((key) => {
-                const parentAnswer = atParent(key);
-                return (
-                  <tr key={key.id}>
-                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 uppercase">
-                      {key.role}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${KEY_STATE_STYLES[key.state]}`}
-                      >
-                        {key.state}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                      {key.key_tag}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                      {key.algorithm}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                      {formatDateTime(key.state_changed_at)}
-                    </td>
-                    <td className="px-6 py-4 text-gray-500">
+        <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
+          {status.keys.map((key) => {
+            const parentAnswer = atParent(key);
+            return (
+              <li key={key.id} className="space-y-2 p-3 text-sm">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-semibold text-gray-900 uppercase">
+                    {key.role}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${KEY_STATE_STYLES[key.state]}`}
+                  >
+                    {key.state}
+                  </span>
+                  <span className="text-gray-500 tabular-nums">
+                    Key tag {key.key_tag}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-2 wrap-anywhere sm:grid-cols-4">
+                  <div>
+                    <dt className="text-xs text-gray-500">Algorithm</dt>
+                    <dd>{key.algorithm}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Since</dt>
+                    <dd>{formatDateTime(key.state_changed_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Next step</dt>
+                    <dd>
                       {key.eligible_at
                         ? `${key.state === "published" ? "Promotable" : "Removable"} ${formatDateTime(key.eligible_at)}`
                         : "-"}
-                    </td>
-                    <td
-                      className="px-6 py-4 text-gray-500"
-                      title={parentAnswer.hint}
-                    >
-                      {parentAnswer.label}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">At parent</dt>
+                    <dd title={parentAnswer.hint}>{parentAnswer.label}</dd>
+                  </div>
+                </dl>
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
       <div className="space-y-3">

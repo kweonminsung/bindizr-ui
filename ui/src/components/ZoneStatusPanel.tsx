@@ -102,7 +102,7 @@ export default function ZoneStatusPanel({
               className="flex items-start justify-between gap-3 p-3"
             >
               <div className="min-w-0">
-                <p className="font-medium text-gray-900 break-all">
+                <p className="font-medium text-gray-900 wrap-anywhere">
                   {secondary.address}
                 </p>
                 <p className="text-sm text-gray-500">
@@ -114,7 +114,7 @@ export default function ZoneStatusPanel({
                   </p>
                 )}
                 {secondary.error && (
-                  <p className="text-sm text-red-600 break-all">
+                  <p className="text-sm text-red-600 wrap-anywhere">
                     {secondary.error}
                   </p>
                 )}

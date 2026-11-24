@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Modal from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
 import TsigKeyDetails from "@/components/TsigKeyDetails";
 import TsigKeyForm from "@/components/TsigKeyForm";
 import TsigKeyList from "@/components/TsigKeyList";
@@ -27,13 +28,21 @@ export default function TsigKeysPage() {
 
   return (
     <div>
-      <p className="mb-4 text-sm text-gray-500">
-        TSIG keys authenticate nsupdate clients and zone transfers. Each key
-        acts under its role&apos;s grants.
-      </p>
+      <PageHeader
+        title="TSIG Keys"
+        description="TSIG keys authenticate nsupdate clients and zone transfers. Each key acts under its role's grants."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsFormOpen(true)}
+            className="btn-primary"
+          >
+            Create TSIG Key
+          </button>
+        }
+      />
       <TsigKeyList
         key={refreshKey}
-        onCreateKey={() => setIsFormOpen(true)}
         roleName={roleName || undefined}
         onRoleNameChange={handleRoleNameChange}
       />

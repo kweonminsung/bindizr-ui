@@ -95,12 +95,12 @@ export default function BindizrSettings() {
         Bindizr Settings
       </h2>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-gray-500">
             Configure the connection to the Bindizr server.
           </p>
           {self && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm text-gray-500 wrap-anywhere">
               Connected as{" "}
               <span className="font-medium text-gray-700">{self.name}</span> (
               role {self.role_name}).{" "}
@@ -116,7 +116,7 @@ export default function BindizrSettings() {
         </div>
         <button
           onClick={handleOpenModal}
-          className="btn-primary w-full sm:w-auto"
+          className="btn-primary w-full shrink-0 sm:w-auto"
         >
           Edit Bindizr Settings
         </button>

@@ -14,14 +14,17 @@ import { SortValue } from "@/lib/sort";
 import { useRowSort } from "@/lib/useRowSort";
 import {
   describeCount,
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 import SortControl from "./SortControl";
 
 interface TsigKeyListProps {
-  onCreateKey: () => void;
+  onCreateKey?: () => void;
   /** Lists only this role's; its column is then left out. */
   roleName?: string;
   /** Shows a role filter that reports the pick here. */
@@ -133,10 +136,6 @@ export default function TsigKeyList({
     }
   };
 
-  if (listing === null && !error) {
-    return <p className="text-center text-gray-500">Loading TSIG keys...</p>;
-  }
-
   const query = searchQuery.trim().toLowerCase();
   const visibleKeys = rowSort.sorted(
     (tsigKeys ?? []).filter((tsigKey) =>
@@ -145,38 +144,40 @@ export default function TsigKeyList({
   );
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
-        actions={
-          <>
-            <SortControl
-              options={SORT_OPTIONS}
-              sort={rowSort.sort}
-              order={rowSort.order}
-              onChange={rowSort.onChange}
+        sort={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={rowSort.sort}
+            order={rowSort.order}
+            onChange={rowSort.onChange}
+          />
+        }
+        scope={
+          onRoleNameChange && (
+            <RoleFilterSelect
+              value={roleName ?? ""}
+              onChange={onRoleNameChange}
             />
-            <button
-              onClick={onCreateKey}
-              className="btn-primary w-full sm:w-auto"
-            >
+          )
+        }
+        actions={
+          onCreateKey && (
+            <button type="button" onClick={onCreateKey} className="btn-primary">
               Create TSIG Key
             </button>
-          </>
+          )
         }
       >
         <input
           type="text"
+          aria-label="Search TSIG keys"
           placeholder="Search TSIG keys..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto"
+          className={LIST_FIELD_CLASS}
         />
-        {onRoleNameChange && (
-          <RoleFilterSelect
-            value={roleName ?? ""}
-            onChange={onRoleNameChange}
-          />
-        )}
       </ListToolbar>
       {/* Not an early return: a rejected role filter must stay correctable. */}
       {error && (
@@ -194,24 +195,27 @@ export default function TsigKeyList({
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Algorithm
               </th>
               {!roleName && (
-                <th scope="col" className={`w-40 ${TABLE_HEADER_CLASS}`}>
+                <th
+                  scope="col"
+                  className={`hidden w-40 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                >
                   Role
                 </th>
               )}
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Created
               </th>
               <th
                 scope="col"
-                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
+                className={`w-20 @min-[50rem]/list:w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -223,21 +227,40 @@ export default function TsigKeyList({
                 key={tsigKey.id}
                 {...clickableRowProps(() => setSelectedKey(tsigKey))}
               >
-                <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {tsigKey.name}
+                <td className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}>
+                  <div className="truncate" title={tsigKey.name}>
+                    {tsigKey.name}
+                  </div>
+                  {!roleName && (
+                    <p
+                      className="mt-1 truncate text-xs font-normal text-gray-600 @min-[37rem]/list:hidden"
+                      title={tsigKey.role_name}
+                    >
+                      {tsigKey.role_name}
+                    </p>
+                  )}
                 </td>
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {tsigKey.algorithm}
                 </td>
                 {!roleName && (
-                  <td className="truncate px-6 py-4 text-gray-700">
+                  <td
+                    className={`hidden @min-[37rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-700`}
+                    title={tsigKey.role_name}
+                  >
                     {tsigKey.role_name}
                   </td>
                 )}
-                <td className="hidden md:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {formatDateTime(tsigKey.created_at)}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right">
+                <td
+                  className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
+                >
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -267,6 +290,6 @@ export default function TsigKeyList({
               : describeCount(visibleKeys.length, "TSIG key", "TSIG keys")
         }
       />
-    </div>
+    </ListCard>
   );
 }

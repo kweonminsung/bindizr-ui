@@ -6,7 +6,10 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
+import { getModalToastTarget, subscribeToModalStack } from "@/components/Modal";
 import Notice, { NoticeTone } from "@/components/Notice";
 
 interface Toast {
@@ -36,6 +39,10 @@ const ToastContext = createContext<ToastApi | null>(null);
 /** Transient feedback, stacked top-center above everything else. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const modalToastTarget = useSyncExternalStore(
+    subscribeToModalStack,
+    getModalToastTarget,
+  );
   const nextId = useRef(0);
 
   const dismiss = useCallback((id: number) => {
@@ -62,23 +69,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [show],
   );
 
+  const notifications = (
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          onClick={() => dismiss(toast.id)}
+          className="toast-enter pointer-events-auto w-full max-w-md cursor-pointer"
+        >
+          <Notice tone={toast.tone} className="shadow-lg">
+            {toast.text}
+          </Notice>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <ToastContext.Provider value={api}>
       {children}
-      {/* Above the modal; clicks pass through the empty column. */}
-      <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            onClick={() => dismiss(toast.id)}
-            className="toast-enter pointer-events-auto w-full max-w-md cursor-pointer"
-          >
-            <Notice tone={toast.tone} className="shadow-lg">
-              {toast.text}
-            </Notice>
-          </div>
-        ))}
-      </div>
+      {modalToastTarget
+        ? createPortal(notifications, modalToastTarget)
+        : notifications}
     </ToastContext.Provider>
   );
 }

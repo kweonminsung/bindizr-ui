@@ -20,7 +20,7 @@ export default function Notice({ tone, children, className }: NoticeProps) {
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`p-3 rounded-md border text-sm whitespace-pre-wrap ${TONE_STYLES[tone]}${
+      className={`p-3 rounded-md border text-sm whitespace-pre-wrap wrap-anywhere ${TONE_STYLES[tone]}${
         className ? ` ${className}` : ""
       }`}
     >

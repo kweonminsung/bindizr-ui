@@ -5,24 +5,24 @@ import {
   IMPORT_MODES,
   IMPORT_MODE_DESCRIPTIONS,
   ImportMode,
-  ImportResult,
   ImportZonesItemResponse,
   ImportZonesResponse,
 } from "@/lib/types";
+import Badge from "./Badge";
+import ImportSummary from "./ImportSummary";
 import Notice from "./Notice";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
-import { TABLE_HEADER_CLASS } from "./ListLayout";
 
 interface ImportZonesFormProps {
   onApplied: () => void;
 }
 
-const RESULT_STYLES: Record<ImportResult, string> = {
-  ok: "bg-green-100 text-green-700",
-  rejected: "bg-amber-100 text-amber-700",
-  failed: "bg-red-100 text-red-700",
-};
+const RESULT_TONES = {
+  ok: "success",
+  rejected: "warning",
+  failed: "danger",
+} as const;
 
 /** The zone names a list gives, one per line; blank and `#` lines are skipped. */
 const parseZoneNames = (list: string) =>
@@ -33,13 +33,13 @@ const parseZoneNames = (list: string) =>
 
 /** What a zone's row says went wrong: the error of one that never ran, or
  * the first validation error of a rejected one. */
-function describeFailure(item: ImportZonesItemResponse): string {
+function describeFailure(item: ImportZonesItemResponse): string | undefined {
   if (item.error) {
     return item.error.error;
   }
   const errors = item.import?.errors ?? [];
   if (errors.length === 0) {
-    return "-";
+    return undefined;
   }
   return errors.length === 1
     ? errors[0]
@@ -103,7 +103,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+      <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
         Import zones from a server
       </h2>
 
@@ -129,7 +129,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
             Every zone is transferred over AXFR; the server must allow it.
           </p>
         </div>
-        <div className="flex gap-4 text-sm text-gray-600">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
           <label className="flex items-center space-x-2">
             <input
               type="radio"
@@ -261,76 +261,36 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
                 `; ${result.summary.rejected} rejected, ${result.summary.failed} failed`}
             </p>
           </Notice>
-          <div className="overflow-x-auto rounded-md border border-gray-200">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Zone
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Result
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    {result.dry_run ? "Would add" : "Added"}
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    {result.dry_run ? "Would update" : "Updated"}
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    {result.dry_run ? "Would delete" : "Deleted"}
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Unchanged
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Skipped
-                  </th>
-                  <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Error
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {result.zones.map((item) => {
-                  const summary = item.import?.summary;
-                  const count = (value?: number) => value ?? "-";
-                  return (
-                    <tr key={item.zone_name}>
-                      <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
-                        {item.zone_name}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${RESULT_STYLES[item.result]}`}
-                        >
-                          {item.result}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                        {count(summary?.added)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                        {count(summary?.updated)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                        {count(summary?.deleted)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                        {count(summary?.unchanged)}
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                        {count(summary?.skipped)}
-                      </td>
-                      <td className="px-6 py-4 text-gray-500">
-                        {describeFailure(item)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
+            {result.zones.map((item) => {
+              const error = describeFailure(item);
+              return (
+                <li key={item.zone_name} className="space-y-2 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 text-sm font-medium text-gray-900 wrap-anywhere">
+                      {item.zone_name}
+                    </p>
+                    <Badge tone={RESULT_TONES[item.result]}>
+                      {item.result}
+                    </Badge>
+                  </div>
+                  {item.import && (
+                    <div className="text-gray-600">
+                      <ImportSummary
+                        summary={item.import.summary}
+                        preview={result.dry_run}
+                      />
+                    </div>
+                  )}
+                  {error && (
+                    <p className="text-sm whitespace-pre-wrap wrap-anywhere text-red-700">
+                      {error}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 

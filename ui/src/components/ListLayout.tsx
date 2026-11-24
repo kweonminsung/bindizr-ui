@@ -1,62 +1,109 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useId, useState } from "react";
 import ChevronDownIcon from "./icons/ChevronDownIcon";
 
-/** The header cell every listing table uses. */
-export const TABLE_HEADER_CLASS =
-  "px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider";
+const LIST_INSET = "px-3 @min-[50rem]/list:px-4 @min-[65rem]/list:px-6";
+
+export const TABLE_HEADER_CLASS = `${LIST_INSET} py-3 text-xs font-medium text-gray-500 uppercase tracking-wider`;
+export const TABLE_CELL_CLASS = `${LIST_INSET} py-2.5 @min-[50rem]/list:py-4`;
+export const LIST_FIELD_CLASS = "min-w-0 w-full max-w-full min-h-[2.125rem]";
+
+export function ListCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="@container/list min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs">
+      {children}
+    </div>
+  );
+}
 
 interface ListToolbarProps {
-  /** Search and the selectors that set the listing's scope. */
+  /** The main search or scope selector. */
   children?: ReactNode;
-  /** The listing's further filter fields, behind a toggle beside the search. */
+  /** Additional scope fields that stay together as the toolbar wraps. */
+  scope?: ReactNode;
   filters?: ReactNode;
   activeFilterCount?: number;
   onResetFilters?: () => void;
-  /** Sort, then the listing's actions. */
+  sort?: ReactNode;
   actions?: ReactNode;
 }
 
-/** The row above a listing: what it searches and filters at the start, how
- * it sorts and what it can do at the end, all on one line; the filter fields
- * open beneath it. */
 export function ListToolbar({
   children,
+  scope,
   filters,
   activeFilterCount = 0,
   onResetFilters,
+  sort,
   actions,
 }: ListToolbarProps) {
+  const filtersId = useId();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterCount = activeFilterCount > 0 ? ` (${activeFilterCount})` : "";
+  const filterToggle = filters && (
+    <button
+      type="button"
+      onClick={() => setFiltersOpen((open) => !open)}
+      aria-expanded={filtersOpen}
+      aria-controls={filtersOpen ? filtersId : undefined}
+      className="flex min-h-[2.125rem] shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-gray-300 px-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+    >
+      Filters{filterCount}
+      <ChevronDownIcon
+        className={`size-4 transition-transform duration-200 ${
+          filtersOpen ? "rotate-180" : ""
+        }`}
+      />
+    </button>
+  );
+  const sortControl = sort && (
+    <div className="min-w-0 flex-[1_1_min(100%,10rem)] @min-[29rem]/toolbar:max-w-52">
+      {sort}
+    </div>
+  );
 
   return (
-    <div className="p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {children}
-          {filters && (
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((open) => !open)}
-              aria-expanded={filtersOpen}
-              className="flex items-center gap-1 whitespace-nowrap text-sm font-medium text-gray-600 hover:text-(--primary)"
-            >
-              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-              <ChevronDownIcon
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  filtersOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-          )}
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {actions}
-        </div>
+    <div className={`@container/toolbar ${LIST_INSET} py-3`}>
+      <div className="flex flex-wrap items-center gap-2">
+        {(children || (!scope && filters)) && (
+          <div
+            className={`flex min-w-0 items-center gap-2 ${
+              children
+                ? "flex-[1_1_min(100%,13rem)] @min-[29rem]/toolbar:max-w-80"
+                : "shrink-0"
+            }`}
+          >
+            {children && <div className="min-w-0 flex-1">{children}</div>}
+            {!scope && filterToggle}
+          </div>
+        )}
+        {scope && (
+          <div className="min-w-0 flex-[1_1_min(100%,14rem)] @min-[29rem]/toolbar:max-w-72">
+            {scope}
+          </div>
+        )}
+        {scope && filterToggle && sort ? (
+          <div className="flex min-w-0 flex-[1_1_min(100%,20rem)] items-center gap-2 @min-[29rem]/toolbar:max-w-[24rem]">
+            {filterToggle}
+            {sortControl}
+          </div>
+        ) : (
+          <>
+            {scope && filterToggle}
+            {sortControl}
+          </>
+        )}
+        {actions && (
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5 empty:hidden @min-[23rem]/toolbar:gap-2">
+            {actions}
+          </div>
+        )}
       </div>
       {filters && filtersOpen && (
-        <div className="mt-3 rounded-md border border-gray-200 p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">{filters}</div>
-          <div className="flex justify-end mt-4">
+        <div
+          id={filtersId}
+          className="mt-3 max-w-4xl rounded-md border border-gray-200 p-3"
+        >
+          <div className="mb-3 flex justify-end">
             <button
               type="button"
               onClick={onResetFilters}
@@ -65,6 +112,9 @@ export function ListToolbar({
             >
               Reset filters
             </button>
+          </div>
+          <div className="grid items-end gap-3 @min-[18rem]/toolbar:grid-cols-2 @min-[36rem]/toolbar:grid-cols-3">
+            {filters}
           </div>
         </div>
       )}
@@ -81,9 +131,17 @@ interface ListFooterProps {
 /** The row below a listing: what it shows, then its page controls. */
 export function ListFooter({ summary, children }: ListFooterProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4">
-      <p className="text-sm text-gray-700">{summary}</p>
-      {children}
+    <div
+      className={`@container/footer border-t border-gray-100 ${LIST_INSET} py-3`}
+    >
+      <div className="flex flex-col gap-3 @min-[29rem]/footer:flex-row @min-[29rem]/footer:items-center @min-[29rem]/footer:justify-between">
+        {summary && (
+          <p role="status" className="text-sm text-gray-700">
+            {summary}
+          </p>
+        )}
+        {children}
+      </div>
     </div>
   );
 }

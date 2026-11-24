@@ -134,27 +134,29 @@ export default function ZoneVersionDiff({
             return (
               <li
                 key={`${entry.name}-${entry.type}-${index}`}
-                className={`flex items-baseline gap-2 rounded-md border px-2 py-1 text-sm ${CHANGE_STYLES[entry.change]}`}
+                className={`grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-1 rounded-md border px-2 py-1 text-sm ${CHANGE_STYLES[entry.change]}`}
               >
                 <span
                   className={`font-mono font-bold ${CHANGE_SIGN_STYLES[entry.change]}`}
                 >
                   {CHANGE_SIGNS[entry.change]}
                 </span>
-                <span className="font-medium text-gray-900 break-all">
-                  {entry.name}
-                </span>
-                <span className="text-gray-500">{entry.type}</span>
-                {ttlChanged ? (
-                  <span className="text-gray-400">
-                    TTL {fromTtl} → {toTtl}
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                  <span className="min-w-0 font-medium text-gray-900 wrap-anywhere">
+                    {entry.name}
                   </span>
-                ) : (
-                  ttl != null && (
-                    <span className="text-gray-400">TTL {ttl}</span>
-                  )
-                )}
-                <span className="min-w-0 flex-1 text-right font-mono break-all whitespace-pre-wrap">
+                  <span className="text-gray-500">{entry.type}</span>
+                  {ttlChanged ? (
+                    <span className="text-gray-500">
+                      TTL {fromTtl} → {toTtl}
+                    </span>
+                  ) : (
+                    ttl != null && (
+                      <span className="text-gray-500">TTL {ttl}</span>
+                    )
+                  )}
+                </div>
+                <span className="col-start-2 min-w-0 font-mono whitespace-pre-wrap wrap-anywhere">
                   {entry.change !== "added" && (
                     <span className="text-red-700">
                       {formatRdata(entry.from, entry.type)}

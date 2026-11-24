@@ -34,19 +34,20 @@ import Notice from "./Notice";
 import PaginationControls from "./PaginationControls";
 import RecordDetails from "./RecordDetails";
 import SortControl from "./SortControl";
-import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
 import {
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
   PageSummary,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 
 interface RecordListProps {
   zoneName?: string;
   zones?: ZoneResponse[];
-  onCreateRecord: () => void;
 }
 
 interface RecordFilters {
@@ -82,13 +83,8 @@ const SIGNED_FILTER_TYPES: readonly string[] = [
   ...DERIVED_RECORD_TYPES,
 ];
 
-export default function RecordList({
-  zoneName,
-  zones = [],
-  onCreateRecord,
-}: RecordListProps) {
+export default function RecordList({ zoneName, zones = [] }: RecordListProps) {
   const toast = useToast();
-  const { canCreateRecords } = useBindizrToken();
   const [searchParams, setSearchParams] = useSearchParams();
   const sort = getSortFromSearchParams(
     searchParams,
@@ -114,13 +110,20 @@ export default function RecordList({
     (searchParams.get("include_dnssec") ?? searchParams.get("signed")) ===
     "true";
   const typeParam = searchParams.get("type") ?? "";
+  const mnemonic = typeParam.toUpperCase();
+  const selectedType = SIGNED_FILTER_TYPES.includes(mnemonic)
+    ? mnemonic
+    : typeParam;
   const availableTypes: readonly string[] = includeDnssec
     ? SIGNED_FILTER_TYPES
     : RECORD_TYPES;
-  const selectedType = typeParam;
+  const typeOptions =
+    selectedType && !availableTypes.includes(selectedType)
+      ? [selectedType, ...availableTypes]
+      : availableTypes;
   const [filters, setFilters] = useState<RecordFilters>(defaultFilters);
   const [refreshKey, setRefreshKey] = useState(0);
-  const activeFilterCount = countActiveFilters(filters);
+  const activeFilterCount = countActiveFilters(filters) + Number(includeDnssec);
   const derivedTypeSelected = DERIVED_RECORD_TYPES.includes(
     selectedType as (typeof DERIVED_RECORD_TYPES)[number],
   );
@@ -136,11 +139,6 @@ export default function RecordList({
     (!includeDnssec || userPlaneOnly) && derivedTypeSelected
       ? ""
       : selectedType;
-  const [typeDraft, setTypeDraft] = useState(requestedType);
-
-  useEffect(() => {
-    setTypeDraft(requestedType);
-  }, [requestedType]);
 
   // Rows fetched for another request are never drawn under this one.
   const request = JSON.stringify([
@@ -164,22 +162,12 @@ export default function RecordList({
   const records = listing?.request === request ? listing.records : null;
   const totalRecords = listing?.total ?? 0;
 
-  // Blur and another filter change can run before the URL update renders.
-  const filterSearchParams = new URLSearchParams(searchParams);
-  if (typeDraft !== requestedType) {
-    if (typeDraft) {
-      filterSearchParams.set("type", typeDraft);
-    } else {
-      filterSearchParams.delete("type");
-    }
-  }
-
   const handlePageChange = (page: number) => {
-    setSearchParams(updatePageSearchParam(filterSearchParams, page));
+    setSearchParams(updatePageSearchParam(searchParams, page));
   };
 
   const handlePageSizeChange = (pageSize: number) => {
-    setSearchParams(updatePageSizeSearchParam(filterSearchParams, pageSize));
+    setSearchParams(updatePageSizeSearchParam(searchParams, pageSize));
   };
 
   const handleFilterChange = (key: keyof RecordFilters, value: string) => {
@@ -191,7 +179,7 @@ export default function RecordList({
   const handleSortChange = (nextSort: string, nextOrder: SortOrder) => {
     setSearchParams(
       updateSortSearchParams(
-        filterSearchParams,
+        searchParams,
         nextSort,
         nextOrder,
         DEFAULT_RECORD_SORT,
@@ -204,7 +192,7 @@ export default function RecordList({
     key: "zone_name" | "type" | "include_dnssec",
     value: string,
   ) => {
-    const nextSearchParams = updatePageSearchParam(filterSearchParams, 1);
+    const nextSearchParams = updatePageSearchParam(searchParams, 1);
     if (key === "zone_name") nextSearchParams.delete("zoneName");
     if (key === "include_dnssec") nextSearchParams.delete("signed");
     if (value) {
@@ -278,24 +266,74 @@ export default function RecordList({
     setIsDetailModalOpen(false);
   };
 
-  if (
-    listing === null &&
-    !error &&
-    searchQuery === "" &&
-    selectedType === "" &&
-    activeFilterCount === 0 &&
-    currentPage === 1
-  ) {
-    return <p className="text-center text-gray-500">Loading records...</p>;
-  }
-
   const indexOfFirstRecord = (currentPage - 1) * recordsPerPage;
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
+        scope={
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(6.75rem,0.65fr)] gap-2">
+            <select
+              value={zoneName ?? ""}
+              onChange={(e) =>
+                handleUrlFilterChange("zone_name", e.target.value)
+              }
+              aria-label="Filter by zone"
+              className={LIST_FIELD_CLASS}
+            >
+              <option value="">All Zones</option>
+              {/* Keep a deep-linked zone selectable while zones load. */}
+              {zoneName && !zones.some((zone) => zone.name === zoneName) && (
+                <option value={zoneName}>{zoneName}</option>
+              )}
+              {zones.map((zone) => (
+                <option key={zone.id} value={zone.name}>
+                  {zone.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedType}
+              onChange={(e) => handleUrlFilterChange("type", e.target.value)}
+              aria-label="Filter by record type"
+              title={selectedType || undefined}
+              className={`${LIST_FIELD_CLASS} truncate`}
+            >
+              <option value="">All Types</option>
+              {typeOptions.map((type) => (
+                <option
+                  key={type}
+                  value={type}
+                  disabled={!availableTypes.includes(type)}
+                >
+                  {type}
+                  {selectedType === type &&
+                    requestedType !== type &&
+                    " (inactive)"}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
         filters={
           <>
+            <label
+              title="Include the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY) in the listing — read-only rows"
+              className="col-span-full flex min-h-8 cursor-pointer items-center gap-2 text-sm text-gray-700"
+            >
+              <input
+                type="checkbox"
+                className="shrink-0"
+                checked={includeDnssec}
+                onChange={(e) =>
+                  handleUrlFilterChange(
+                    "include_dnssec",
+                    e.target.checked ? "true" : "",
+                  )
+                }
+              />
+              <span>Show generated DNSSEC records</span>
+            </label>
             <FilterField
               id="filter_record_name"
               label="Name"
@@ -341,101 +379,39 @@ export default function RecordList({
         activeFilterCount={activeFilterCount}
         onResetFilters={() => {
           setFilters(defaultFilters);
-          handlePageChange(1);
+          handleUrlFilterChange("include_dnssec", "");
         }}
-        actions={
-          <>
-            <SortControl
-              options={RECORD_SORT_OPTIONS}
-              sort={sort}
-              order={order}
-              onChange={handleSortChange}
-            />
-            {canCreateRecords(zoneName) && (
-              <button
-                onClick={onCreateRecord}
-                className="btn-primary w-full sm:w-auto"
-              >
-                Create Record
-              </button>
-            )}
-          </>
+        sort={
+          <SortControl
+            options={RECORD_SORT_OPTIONS}
+            sort={sort}
+            order={order}
+            onChange={handleSortChange}
+          />
         }
       >
         <input
           type="text"
+          aria-label="Search records"
           placeholder="Search records..."
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
             handlePageChange(1);
           }}
-          className="w-full sm:w-auto"
+          className={LIST_FIELD_CLASS}
         />
-        <select
-          value={zoneName ?? ""}
-          onChange={(e) => handleUrlFilterChange("zone_name", e.target.value)}
-          aria-label="Filter by zone"
-          className="w-full sm:w-auto"
-        >
-          <option value="">All Zones</option>
-          {/* Keep a deep-linked zone selectable while zones load. */}
-          {zoneName && !zones.some((zone) => zone.name === zoneName) && (
-            <option value={zoneName}>{zoneName}</option>
-          )}
-          {zones.map((zone) => (
-            <option key={zone.id} value={zone.name}>
-              {zone.name}
-            </option>
-          ))}
-        </select>
-        <input
-          list="record-filter-types"
-          value={typeDraft}
-          onChange={(e) => setTypeDraft(e.target.value.toUpperCase())}
-          onBlur={() => {
-            if (typeDraft !== requestedType) {
-              handleUrlFilterChange("type", typeDraft);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              e.currentTarget.blur();
-            }
-          }}
-          aria-label="Filter by record type"
-          placeholder="All Types"
-          className="w-full sm:w-40"
-        />
-        <datalist id="record-filter-types">
-          {availableTypes.map((type) => (
-            <option key={type} value={type} />
-          ))}
-        </datalist>
-        <label
-          title="Include the derived DNSSEC records (DNSKEY, RRSIG, the denial chain, CDS/CDNSKEY) in the listing — read-only rows"
-          className="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer"
-        >
-          <input
-            type="checkbox"
-            checked={includeDnssec}
-            onChange={(e) =>
-              handleUrlFilterChange(
-                "include_dnssec",
-                e.target.checked ? "true" : "",
-              )
-            }
-          />
-          <span className="whitespace-nowrap">
-            Include generated DNSSEC records
-          </span>
-        </label>
       </ListToolbar>
+      {derivedTypeSelected && !includeDnssec && (
+        <Notice tone="info" className="mx-4 mb-4">
+          Show generated DNSSEC records in Filters to apply the {selectedType}{" "}
+          type filter.
+        </Notice>
+      )}
       {includeDnssec && userPlaneOnly && (
         <p className="mx-4 mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
-          Derived rows are hidden while filtering by value, priority or a user
-          record type.
+          Generated DNSSEC records are hidden while searching or filtering by
+          value, priority or a user record type.
           {derivedTypeSelected &&
             ` The ${selectedType} filter applies once they are cleared.`}
         </p>
@@ -455,82 +431,110 @@ export default function RecordList({
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
               <th scope="col" className={TABLE_HEADER_CLASS}>
-                Name
+                <span className="@min-[37rem]/list:hidden">Record</span>
+                <span className="hidden @min-[37rem]/list:inline">Name</span>
               </th>
-              <th scope="col" className={`w-36 ${TABLE_HEADER_CLASS}`}>
+              <th
+                scope="col"
+                className={`hidden w-24 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+              >
                 Type
               </th>
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Value
               </th>
               <th
                 scope="col"
-                className={`w-40 text-right ${TABLE_HEADER_CLASS}`}
+                className={`w-24 text-right @min-[37rem]/list:w-32 ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {(records ?? []).map((record, index) => (
-              <tr
-                key={record.id ?? `derived-${index}`}
-                {...clickableRowProps(() => handleShowDetails(record))}
-              >
-                <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {record.name}
-                  {record.id == null && (
-                    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                      Derived
-                    </span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                  {record.type}
-                </td>
-                <td
-                  className="hidden md:table-cell overflow-hidden text-ellipsis whitespace-pre px-6 py-4 text-gray-500"
-                  title={formatRecordValue(record.value, record.type)}
+            {(records ?? []).map((record, index) => {
+              const value = formatRecordValue(record.value, record.type);
+              return (
+                <tr
+                  key={record.id ?? `derived-${index}`}
+                  {...clickableRowProps(() => handleShowDetails(record))}
                 >
-                  {formatRecordValue(record.value, record.type)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right">
-                  {record.id != null &&
-                  (record.actions.includes("record:update") ||
-                    record.actions.includes("record:delete")) ? (
-                    <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                      {record.actions.includes("record:update") && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShowDetails(record, true);
-                          }}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {record.actions.includes("record:delete") && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(record);
-                          }}
-                          className="font-medium text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
+                  <td
+                    className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}
+                  >
+                    <div className="truncate" title={record.name}>
+                      {record.name}
+                    </div>
+                    <div
+                      className={`mt-1 flex flex-wrap items-center gap-1 text-xs leading-5 text-gray-500 ${record.id != null ? "@min-[37rem]/list:hidden" : ""}`}
+                    >
+                      <span className="@min-[37rem]/list:hidden">
+                        {record.type}
+                      </span>
+                      {record.id == null && (
+                        <span className="rounded-full bg-gray-100 px-2 text-gray-600">
+                          Derived
+                        </span>
                       )}
                     </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">read-only</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    <p
+                      className="mt-1 truncate font-normal text-gray-500 @min-[46rem]/list:hidden"
+                      title={value}
+                    >
+                      {value}
+                    </p>
+                  </td>
+                  <td
+                    className={`hidden @min-[37rem]/list:table-cell whitespace-nowrap ${TABLE_CELL_CLASS} text-gray-500`}
+                  >
+                    {record.type}
+                  </td>
+                  <td
+                    className={`hidden @min-[46rem]/list:table-cell overflow-hidden text-ellipsis whitespace-pre ${TABLE_CELL_CLASS} text-gray-500`}
+                    title={value}
+                  >
+                    {value}
+                  </td>
+                  <td
+                    className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
+                  >
+                    {record.id != null &&
+                    (record.actions.includes("record:update") ||
+                      record.actions.includes("record:delete")) ? (
+                      <div className="flex flex-col items-end justify-end gap-1 @min-[37rem]/list:flex-row @min-[37rem]/list:gap-2">
+                        {record.actions.includes("record:update") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleShowDetails(record, true);
+                            }}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {record.actions.includes("record:delete") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(record);
+                            }}
+                            className="font-medium text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">read-only</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -565,10 +569,11 @@ export default function RecordList({
           currentPage={currentPage}
           pageSize={recordsPerPage}
           totalItems={totalRecords}
+          disabled={records === null}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
       </ListFooter>
-    </div>
+    </ListCard>
   );
 }

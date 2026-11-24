@@ -56,8 +56,8 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+    <div className="m-auto w-full max-w-md">
+      <div className="space-y-6 rounded-lg bg-white p-6 shadow-md sm:p-8">
         <h1 className="text-2xl font-bold text-center">Initial Setup</h1>
         <form onSubmit={handleSetup} className="space-y-6">
           <div>

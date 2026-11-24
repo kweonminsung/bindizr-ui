@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ListToolbar } from "@/components/ListLayout";
+import { ListCard } from "@/components/ListLayout";
 import Modal from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
 import WebhookDeliveries from "@/components/WebhookDeliveries";
 import WebhookForm from "@/components/WebhookForm";
 import WebhookList from "@/components/WebhookList";
@@ -117,32 +118,32 @@ export default function WebhooksPage() {
 
   return (
     <>
-      <p className="mb-4 text-sm text-gray-500">
-        Subscribe to events for operations performed through this UI.
-      </p>
-      <div className="rounded-lg bg-white shadow">
-        <ListToolbar
-          actions={
-            <>
-              <button
-                type="button"
-                onClick={refreshWebhooks}
-                disabled={!current || deleting}
-                className="btn-secondary"
-              >
-                Refresh Webhooks
-              </button>
-              <button
-                type="button"
-                onClick={() => openForm(null)}
-                disabled={!collection || deleting}
-                className="btn-primary"
-              >
-                Create Webhook
-              </button>
-            </>
-          }
-        />
+      <PageHeader
+        title="Webhooks"
+        description="Subscribe to events for operations performed through this UI."
+        actions={
+          <>
+            <button
+              type="button"
+              aria-label="Refresh Webhooks"
+              onClick={refreshWebhooks}
+              disabled={!current || deleting}
+              className="btn-secondary"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => openForm(null)}
+              disabled={!collection || deleting}
+              className="btn-primary"
+            >
+              Create Webhook
+            </button>
+          </>
+        }
+      />
+      <ListCard>
         <WebhookList
           webhooks={collection?.items ?? null}
           error={listError}
@@ -151,9 +152,14 @@ export default function WebhooksPage() {
           onDeliveries={(webhook) => setModal({ kind: "deliveries", webhook })}
           onDelete={handleDelete}
         />
-      </div>
+      </ListCard>
       {modal && (
-        <Modal isOpen onClose={closeModal} wide={modal.kind === "deliveries"}>
+        <Modal
+          isOpen
+          onClose={closeModal}
+          wide={modal.kind === "deliveries"}
+          structured
+        >
           {modal.kind === "form" ? (
             <WebhookForm
               webhook={modal.webhook}

@@ -14,14 +14,17 @@ import { SortValue } from "@/lib/sort";
 import { useRowSort } from "@/lib/useRowSort";
 import {
   describeCount,
+  ListCard,
   ListFooter,
+  LIST_FIELD_CLASS,
   ListToolbar,
+  TABLE_CELL_CLASS,
   TABLE_HEADER_CLASS,
 } from "./ListLayout";
 import SortControl from "./SortControl";
 
 interface TokenListProps {
-  onCreateToken: () => void;
+  onCreateToken?: () => void;
   /** Lists only this role's; its column is then left out. */
   roleName?: string;
   /** Shows a role filter that reports the pick here. */
@@ -132,10 +135,6 @@ export default function TokenList({
     }
   };
 
-  if (listing === null && !error) {
-    return <p className="text-center text-gray-500">Loading API tokens...</p>;
-  }
-
   const query = searchQuery.trim().toLowerCase();
   const visibleTokens = rowSort.sorted(
     (tokens ?? []).filter(
@@ -146,38 +145,44 @@ export default function TokenList({
   );
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <ListCard>
       <ListToolbar
-        actions={
-          <>
-            <SortControl
-              options={SORT_OPTIONS}
-              sort={rowSort.sort}
-              order={rowSort.order}
-              onChange={rowSort.onChange}
+        sort={
+          <SortControl
+            options={SORT_OPTIONS}
+            sort={rowSort.sort}
+            order={rowSort.order}
+            onChange={rowSort.onChange}
+          />
+        }
+        scope={
+          onRoleNameChange && (
+            <RoleFilterSelect
+              value={roleName ?? ""}
+              onChange={onRoleNameChange}
             />
+          )
+        }
+        actions={
+          onCreateToken && (
             <button
+              type="button"
               onClick={onCreateToken}
-              className="btn-primary w-full sm:w-auto"
+              className="btn-primary"
             >
               Create API Token
             </button>
-          </>
+          )
         }
       >
         <input
           type="text"
+          aria-label="Search API tokens"
           placeholder="Search API tokens..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-auto"
+          className={LIST_FIELD_CLASS}
         />
-        {onRoleNameChange && (
-          <RoleFilterSelect
-            value={roleName ?? ""}
-            onChange={onRoleNameChange}
-          />
-        )}
       </ListToolbar>
       {/* Not an early return: a rejected role filter must stay correctable. */}
       {error && (
@@ -194,31 +199,34 @@ export default function TokenList({
                 Name
               </th>
               {!roleName && (
-                <th scope="col" className={`w-40 ${TABLE_HEADER_CLASS}`}>
+                <th
+                  scope="col"
+                  className={`hidden w-40 @min-[37rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
+                >
                   Role
                 </th>
               )}
               <th
                 scope="col"
-                className={`hidden md:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[46rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Description
               </th>
               <th
                 scope="col"
-                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[60rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Expires
               </th>
               <th
                 scope="col"
-                className={`hidden lg:table-cell ${TABLE_HEADER_CLASS}`}
+                className={`hidden @min-[60rem]/list:table-cell ${TABLE_HEADER_CLASS}`}
               >
                 Last Used
               </th>
               <th
                 scope="col"
-                className={`w-24 text-right ${TABLE_HEADER_CLASS}`}
+                className={`w-20 @min-[50rem]/list:w-24 text-right ${TABLE_HEADER_CLASS}`}
               >
                 Actions
               </th>
@@ -230,36 +238,55 @@ export default function TokenList({
                 key={token.id}
                 {...clickableRowProps(() => setSelectedToken(token))}
               >
-                <td className="truncate px-6 py-4 font-medium text-gray-900">
-                  {token.name}
+                <td className={`${TABLE_CELL_CLASS} font-medium text-gray-900`}>
+                  <div className="truncate" title={token.name}>
+                    {token.name}
+                  </div>
                   {isTokenExpired(token) && (
-                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <span className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                       Expired
                     </span>
                   )}
+                  {!roleName && (
+                    <p
+                      className="mt-1 truncate text-xs font-normal text-gray-600 @min-[37rem]/list:hidden"
+                      title={token.role_name}
+                    >
+                      {token.role_name}
+                    </p>
+                  )}
                 </td>
                 {!roleName && (
-                  <td className="truncate px-6 py-4 text-gray-700">
+                  <td
+                    className={`hidden @min-[37rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-700`}
+                    title={token.role_name}
+                  >
                     {token.role_name}
                   </td>
                 )}
                 <td
-                  className="hidden md:table-cell truncate px-6 py-4 text-gray-500"
+                  className={`hidden @min-[46rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
                   title={token.description ?? undefined}
                 >
                   {token.description || "-"}
                 </td>
-                <td className="hidden lg:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[60rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {token.expires_at
                     ? formatDateTime(token.expires_at)
                     : "Never"}
                 </td>
-                <td className="hidden lg:table-cell truncate px-6 py-4 text-gray-500">
+                <td
+                  className={`hidden @min-[60rem]/list:table-cell truncate ${TABLE_CELL_CLASS} text-gray-500`}
+                >
                   {token.last_used_at
                     ? formatDateTime(token.last_used_at)
                     : "Never"}
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-right">
+                <td
+                  className={`whitespace-nowrap ${TABLE_CELL_CLASS} text-right`}
+                >
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -289,6 +316,6 @@ export default function TokenList({
               : describeCount(visibleTokens.length, "API token", "API tokens")
         }
       />
-    </div>
+    </ListCard>
   );
 }

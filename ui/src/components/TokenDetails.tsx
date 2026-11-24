@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
 import { formatDateTime } from "@/lib/datetime";
 import { ApiTokenResponse } from "@/lib/types";
-import Notice from "./Notice";
+import CredentialSecret from "./CredentialSecret";
 import RoleNote from "./RoleNote";
-import { useToast } from "@/contexts/ToastContext";
 
 interface TokenDetailsProps {
   token: ApiTokenResponse;
@@ -38,18 +36,18 @@ export function TokenMetadata({ token, showName = false }: TokenMetadataProps) {
       {showName && (
         <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Name</p>
-          <p className="text-base text-gray-900 break-all">{token.name}</p>
+          <p className="text-base text-gray-900 wrap-anywhere">{token.name}</p>
         </div>
       )}
       {token.description && (
         <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Description</p>
-          <p className="text-base text-gray-900 break-words">
+          <p className="text-base text-gray-900 wrap-anywhere">
             {token.description}
           </p>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 @xs:grid-cols-2 @xl:grid-cols-3">
         <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
           <p className="text-sm text-gray-500">Expires</p>
           <p className="text-base text-gray-900">
@@ -74,66 +72,23 @@ export function TokenMetadata({ token, showName = false }: TokenMetadataProps) {
 }
 
 export default function TokenDetails({ token, secret }: TokenDetailsProps) {
-  const toast = useToast();
-  const [revealed, setRevealed] = useState(true);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    setRevealed(true);
-    setCopied(false);
-  }, [token, secret]);
-
-  const handleCopy = async () => {
-    if (!secret) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(secret);
-      setCopied(true);
-    } catch {
-      toast.error("Failed to copy the secret to the clipboard");
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-2xl font-bold text-gray-800 break-all">
+          <h2 className="text-2xl font-bold text-gray-800 wrap-anywhere">
             {secret ? "API Token Created" : token.name}
           </h2>
           <ExpiredTokenBadge token={token} />
         </div>
 
         {secret && (
-          <Notice tone="warning" className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-amber-900">Secret</p>
-              <div className="space-x-3 text-sm">
-                <button
-                  type="button"
-                  onClick={() => setRevealed((prev) => !prev)}
-                  className="font-medium text-blue-600 hover:underline"
-                >
-                  {revealed ? "Hide" : "Reveal"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="font-medium text-green-600 hover:underline"
-                >
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-            <p className="text-sm text-gray-900 font-mono break-all">
-              {revealed ? secret : "•".repeat(secret.length)}
-            </p>
-            <p className="text-sm text-amber-800">
-              Copy it now; it is shown only once.
-            </p>
-          </Notice>
+          <CredentialSecret
+            key={token.id}
+            secret={secret}
+            initiallyRevealed
+            shownOnce
+          />
         )}
 
         <TokenMetadata token={token} showName={!!secret} />

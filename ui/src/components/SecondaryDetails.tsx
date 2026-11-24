@@ -10,6 +10,7 @@ import {
   UpdateSecondaryRequest,
 } from "@/lib/types";
 import Notice from "./Notice";
+import { ModalContent } from "./Modal";
 import NotifyTsigKeySelect from "./NotifyTsigKeySelect";
 import TabBar from "./TabBar";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
@@ -95,25 +96,32 @@ export default function SecondaryDetails({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-2xl font-bold text-gray-800 break-all">
+    <ModalContent
+      scrollKey={activeTab}
+      header={
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
+              Secondary details
+            </h2>
+            {secondary.enabled ? (
+              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                Enabled
+              </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                Disabled
+              </span>
+            )}
+          </div>
+          <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        </div>
+      }
+    >
+      <div className="min-w-0 space-y-4">
+        <p className="text-sm font-medium text-gray-700 wrap-anywhere">
           {secondary.name}
-        </h2>
-        {secondary.enabled ? (
-          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-            Enabled
-          </span>
-        ) : (
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-            Disabled
-          </span>
-        )}
-      </div>
-
-      <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
-
-      <div className="max-h-[65vh] overflow-y-auto scrollbar-visible">
+        </p>
         {activeTab === "settings" && (
           <div className="space-y-4">
             <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
@@ -140,13 +148,13 @@ export default function SecondaryDetails({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">Address</p>
-                  <p className="text-base text-gray-900 font-mono break-all">
+                  <p className="text-base text-gray-900 font-mono wrap-anywhere">
                     {secondary.address}
                   </p>
                 </div>
                 <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
                   <p className="text-sm text-gray-500">NOTIFY TSIG key</p>
-                  <p className="text-base text-gray-900 break-all">
+                  <p className="text-base text-gray-900 wrap-anywhere">
                     {secondary.notify_tsig_key_name ?? "Unsigned"}
                   </p>
                 </div>
@@ -226,7 +234,7 @@ export default function SecondaryDetails({
 
         {activeTab === "check" && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-gray-500">
                 Resolves the address, compares the catalog zone serial with
                 Bindizr&apos;s, and sends a NOTIFY.
@@ -244,7 +252,7 @@ export default function SecondaryDetails({
           </div>
         )}
       </div>
-    </div>
+    </ModalContent>
   );
 }
 

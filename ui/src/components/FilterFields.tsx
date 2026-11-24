@@ -17,7 +17,7 @@ export function FilterField({
   placeholder,
 }: FilterFieldProps) {
   return (
-    <div>
+    <div className="min-w-0">
       <label
         htmlFor={id}
         className="block text-sm font-medium text-gray-600 mb-1"
@@ -31,7 +31,7 @@ export function FilterField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full"
+        className="min-w-0 w-full max-w-full min-h-[2.125rem]"
       />
     </div>
   );
@@ -55,7 +55,7 @@ export function FilterSelect({
   options,
 }: FilterSelectProps) {
   return (
-    <div>
+    <div className="min-w-0">
       <label
         htmlFor={id}
         className="block text-sm font-medium text-gray-600 mb-1"
@@ -67,7 +67,7 @@ export function FilterSelect({
         name={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full"
+        className="min-w-0 w-full max-w-full min-h-[2.125rem]"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

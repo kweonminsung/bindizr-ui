@@ -26,7 +26,7 @@ export default function SortControl({
   const id = useId();
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 max-w-full items-center gap-1">
       <label htmlFor={id} className="sr-only">
         Sort by
       </label>
@@ -34,7 +34,7 @@ export default function SortControl({
         id={id}
         value={sort}
         onChange={(e) => onChange(e.target.value, order)}
-        className="text-sm"
+        className="min-h-[2.125rem] min-w-0 flex-1 text-sm"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -47,7 +47,7 @@ export default function SortControl({
         onClick={() => onChange(sort, ascending ? "desc" : "asc")}
         title={ascending ? "Ascending" : "Descending"}
         aria-label={`Sorted ${ascending ? "ascending" : "descending"}; click to reverse`}
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+        className="min-h-[2.125rem] w-9 shrink-0 rounded border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
       >
         {ascending ? "↑" : "↓"}
       </button>

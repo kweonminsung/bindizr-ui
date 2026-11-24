@@ -8,6 +8,7 @@ import {
   ImportZoneResponse,
   ZoneResponse,
 } from "@/lib/types";
+import ImportSummary from "./ImportSummary";
 import Notice from "./Notice";
 import { useBindizrToken } from "@/contexts/BindizrTokenContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -61,12 +62,15 @@ export default function ZoneImportForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        Import into <span className="font-bold">{zone.name}</span>
-      </h2>
+      <div className="space-y-1">
+        <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
+          Import records
+        </h2>
+        <p className="text-sm text-gray-500 wrap-anywhere">{zone.name}</p>
+      </div>
 
       <div className="space-y-4">
-        <div className="flex gap-4 text-sm text-gray-600">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
           <label className="flex items-center space-x-2">
             <input
               type="radio"
@@ -179,15 +183,11 @@ export default function ZoneImportForm({
                 ? "Import applied"
                 : "Dry run result (no changes applied)"}
           </p>
-          <p>
-            Parsed {result.summary.parsed},{" "}
-            {result.applied ? "added" : "would add"} {result.summary.added},{" "}
-            {result.applied ? "updated" : "would update"}{" "}
-            {result.summary.updated},{" "}
-            {result.applied ? "deleted" : "would delete"}{" "}
-            {result.summary.deleted}, unchanged {result.summary.unchanged},
-            skipped {result.summary.skipped}
-          </p>
+          <ImportSummary
+            summary={result.summary}
+            preview={!result.applied}
+            showParsed
+          />
           {result.errors.length > 0 && (
             <ul className="list-disc list-inside mt-2 space-y-1">
               {result.errors.map((error, index) => (
