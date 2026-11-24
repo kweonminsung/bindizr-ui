@@ -3,6 +3,7 @@ import { activityOperationLabel } from "@/lib/activity";
 import { Webhook, WebhookInput } from "@/lib/webhooks";
 import { ModalContent } from "./Modal";
 import Notice from "./Notice";
+import SelectionButtons from "./SelectionButtons";
 
 interface WebhookFormProps {
   webhook: Webhook | null;
@@ -24,6 +25,7 @@ export default function WebhookForm({
   const [name, setName] = useState(webhook?.name ?? "");
   const [url, setUrl] = useState(webhook?.url ?? "");
   const [secret, setSecret] = useState("");
+  const [clearSecret, setClearSecret] = useState(false);
   const [enabled, setEnabled] = useState(webhook?.enabled ?? true);
   const [subscribedOperations, setSubscribedOperations] = useState(
     webhook?.operations ?? [],
@@ -33,11 +35,7 @@ export default function WebhookForm({
     available.has(operation),
   );
   const operationsToSave = enabled ? supportedOperations : subscribedOperations;
-  const canSave =
-    !saving &&
-    name.trim() !== "" &&
-    operationsToSave.length > 0 &&
-    (webhook !== null || secret.trim() !== "");
+  const canSave = !saving && name.trim() !== "" && operationsToSave.length > 0;
 
   const toggleOperation = (operation: string) => {
     setSubscribedOperations((previous) =>
@@ -56,7 +54,8 @@ export default function WebhookForm({
     onSubmit({
       name: name.trim(),
       url: url.trim(),
-      secret: secret.trim() ? secret : undefined,
+      secret: !clearSecret && secret.trim() ? secret : undefined,
+      clear_secret: clearSecret || undefined,
       operations: operationsToSave,
       enabled,
     });
@@ -132,7 +131,7 @@ export default function WebhookForm({
               htmlFor="webhook-secret"
               className="block text-sm font-medium text-gray-600 mb-1"
             >
-              Signing secret {webhook && "(optional)"}
+              Signing secret (optional)
             </label>
             <input
               id="webhook-secret"
@@ -140,20 +139,41 @@ export default function WebhookForm({
               autoComplete="new-password"
               value={secret}
               onChange={(event) => setSecret(event.target.value)}
-              required={!webhook}
+              disabled={clearSecret}
               aria-describedby="webhook-secret-hint"
               className="w-full font-mono"
             />
             <p id="webhook-secret-hint" className="mt-1 text-sm text-gray-500">
-              {webhook
+              {webhook?.signing_enabled
                 ? "Leave empty to keep the current secret."
-                : "Use the same secret to verify signatures on the receiving server."}
+                : "Set a secret if the receiver verifies signatures."}
             </p>
+            {webhook?.signing_enabled && (
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={clearSecret}
+                  onChange={(event) => setClearSecret(event.target.checked)}
+                  className="accent-(--primary)"
+                />
+                Remove signing secret
+              </label>
+            )}
           </div>
-          <fieldset className="min-w-0">
+          <fieldset className="min-w-0 space-y-2">
             <legend className="mb-2 text-sm font-medium text-gray-600">
               Operations (select at least one)
             </legend>
+            <SelectionButtons
+              canSelectAll={supportedOperations.length < operations.length}
+              canClear={subscribedOperations.length > 0}
+              onSelectAll={() =>
+                setSubscribedOperations((previous) => [
+                  ...new Set([...previous, ...operations]),
+                ])
+              }
+              onClear={() => setSubscribedOperations([])}
+            />
             {operations.length === 0 && (
               <p className="text-sm text-gray-500">
                 No operations are available to subscribe to.

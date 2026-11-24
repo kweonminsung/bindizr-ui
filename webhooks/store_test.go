@@ -55,7 +55,7 @@ func addSubscription(t *testing.T, service *Service, name, eventType string, ena
 	if err := json.Unmarshal(response, &item); err != nil {
 		t.Fatal(err)
 	}
-	if item.ID == 0 || item.Name != name || len(item.Operations) != 1 || item.Operations[0] != eventType || item.Enabled != enabled {
+	if item.ID == 0 || item.Name != name || len(item.Operations) != 1 || item.Operations[0] != eventType || item.Enabled != enabled || !item.SigningEnabled {
 		t.Fatalf("unexpected subscription: %+v", item)
 	}
 	if bytes.Contains(response, []byte("secret")) {
@@ -180,6 +180,32 @@ func TestWebhookSettingsPreserveSigningSecretWhenEditLeavesItBlank(t *testing.T)
 	}
 }
 
+func TestWebhookCreateAcceptsAbsentSigningSecret(t *testing.T) {
+	service := openWebhookStore(t)
+	body := `{"name":"Unsigned","url":"https://example.com/hook","operations":["zone.create"],"enabled":true}`
+	response := requestWebhookAPI(t, service, http.MethodPost, route, body, http.StatusCreated)
+	if !bytes.Contains(response, []byte(`"signing_enabled":false`)) || bytes.Contains(response, []byte(`"secret"`)) {
+		t.Fatalf("unexpected unsigned webhook: %s", response)
+	}
+}
+
+func TestWebhookSettingsClearSigningSecretOnRequest(t *testing.T) {
+	service := openWebhookStore(t)
+	item := addSubscription(t, service, "Changes", "zone.update", true)
+	path := route + "/" + strconv.FormatInt(item.ID, 10)
+	body := `{"name":"Changes","url":"https://example.com/hook","operations":["zone.update"],"enabled":true,"clear_secret":true}`
+	response := requestWebhookAPI(t, service, http.MethodPut, path, body, http.StatusOK)
+	if !bytes.Contains(response, []byte(`"signing_enabled":false`)) || bytes.Contains(response, []byte(`"secret"`)) {
+		t.Fatalf("unexpected webhook after clearing its secret: %s", response)
+	}
+
+	requestWebhookAPI(t, service, http.MethodPost, path+"/test", "", http.StatusAccepted)
+	job, err := service.claim(t.Context(), time.Now())
+	if err != nil || job == nil || job.Secret != "" {
+		t.Fatalf("expected unsigned test delivery after clearing the secret: %v", err)
+	}
+}
+
 func TestWebhookCreateRejectsUnsupportedSettings(t *testing.T) {
 	service := openWebhookStore(t)
 	for _, fixture := range []struct {
@@ -187,7 +213,7 @@ func TestWebhookCreateRejectsUnsupportedSettings(t *testing.T) {
 		body string
 	}{
 		{"missing name", `{"url":"https://example.com/hook","operations":["zone.create"],"secret":"key"}`},
-		{"missing secret", `{"name":"events","url":"https://example.com/hook","operations":["zone.create"]}`},
+		{"conflicting signing settings", `{"name":"events","url":"https://example.com/hook","operations":["zone.create"],"secret":"key","clear_secret":true}`},
 		{"missing operations", `{"name":"events","url":"https://example.com/hook","secret":"key"}`},
 		{"test subscription", `{"name":"events","url":"https://example.com/hook","operations":["webhook.test"],"secret":"key"}`},
 		{"inline credentials", `{"name":"events","url":"https://user:example-secret@example.com/hook","operations":["zone.create"],"secret":"key"}`},

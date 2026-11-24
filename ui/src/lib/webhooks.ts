@@ -12,6 +12,7 @@ interface WebhookSettings {
 
 export interface Webhook extends WebhookSettings {
   id: number;
+  signing_enabled: boolean;
 }
 
 export interface WebhookCollection {
@@ -21,6 +22,7 @@ export interface WebhookCollection {
 
 export interface WebhookInput extends WebhookSettings {
   secret?: string;
+  clear_secret?: boolean;
 }
 
 export interface WebhookDelivery {

@@ -54,11 +54,15 @@ Register secondary servers, select a TSIG key for signed NOTIFY, and pause a ser
 
 ### Webhooks
 
-Open **Settings → Webhooks**, enter an HTTP(S) endpoint and a signing secret, then select operations from the UI's catalog. Use **Send test** to check the receiver. **Delivery history** shows the latest 50 deliveries with the queue time, event, target, delivery status, HTTP status, and attempt count.
+Open **Settings → Webhooks**, enter an HTTP(S) endpoint, and select operations from the UI's catalog. Set a signing secret if the receiver verifies signatures. To disable signing for an existing webhook, select **Remove signing secret** when editing it. Use **Send test** to check the receiver. **Delivery history** shows the latest 50 deliveries with the queue time, event, target, delivery status, HTTP status, and attempt count.
 
 The UI server queues events after it observes successful Bindizr responses through its proxy. A subscription uses the configured Bindizr connection and the usual permissions for each operation. The proxy observes JSON or gzip responses up to 16 MiB. A change still needs an observable response before the UI can queue its event. Keep the local SQLite database on a persistent volume to retain queued deliveries through restarts. Keep the UI behind its admin account or an authenticated proxy on shared deployments.
 
-The receiver gets a JSON POST with `id`, `type`, and `created_at`, the time Bindizr UI created the event. A server event uses the canonical operation name as its type, such as `record.create`, and includes its observed `result` and target when available. A successful response can confirm an operation without reporting whether it changed stored data. A test has the type `webhook.test`. Compute HMAC-SHA256 over `<timestamp>.<raw request body>` with the shared secret and compare the lowercase hex digest to the value after `sha256=` in `X-Bindizr-Webhook-Signature`. The Unix timestamp in seconds is in `X-Bindizr-Webhook-Timestamp`. The event ID and type are also in `X-Bindizr-Webhook-Id` and `X-Bindizr-Webhook-Event`.
+Each delivery includes the event ID and type in `X-Bindizr-Webhook-Id` and `X-Bindizr-Webhook-Event`. Server events use the canonical operation name as their type, such as `record.create`, and tests use `webhook.test`.
+
+General receivers get a JSON POST with `id`, `type`, and `created_at`, the time Bindizr UI created the event, plus its observed `result` and target when available. A successful response can confirm an operation without reporting whether it changed stored data. Slack Incoming Webhook URLs (`https://hooks.slack.com/services/…`) receive a Slack message with the event details.
+
+Signed deliveries also include `X-Bindizr-Webhook-Signature` and the Unix timestamp in seconds in `X-Bindizr-Webhook-Timestamp`. To verify the signature, compute HMAC-SHA256 over `<timestamp>.<raw request body>` with the shared secret and compare the lowercase hex digest to the value after `sha256=` in the signature header.
 
 A 2xx response completes delivery. The server retries other statuses and network errors up to two more times, after five and ten seconds. The event ID stays the same, so the receiver can deduplicate retries. Use the final destination URL because the sender stops at a redirect response.
 

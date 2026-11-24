@@ -2,7 +2,11 @@ package webhooks
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -82,6 +86,127 @@ func TestWebhookDeliverySignsExactRequestBody(t *testing.T) {
 	}
 	if statusCode, failure := sendDelivery(t.Context(), job, time.Unix(1795000123, 0)); statusCode != http.StatusAccepted || failure != "" {
 		t.Fatalf("delivery returned status %d and failure %q", statusCode, failure)
+	}
+}
+
+func TestWebhookDeliveryOmitsSigningHeadersWhenSecretIsAbsent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, name := range []string{"X-Bindizr-Webhook-Timestamp", "X-Bindizr-Webhook-Signature"} {
+			if _, exists := r.Header[http.CanonicalHeaderKey(name)]; exists {
+				t.Errorf("unsigned request includes %s", name)
+			}
+		}
+		if r.Header.Get("X-Bindizr-Webhook-Id") != "event-fixture" || r.Header.Get("X-Bindizr-Webhook-Event") != testEventType {
+			t.Error("unsigned request is missing event headers")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	job := &deliveryJob{URL: server.URL, EventID: "event-fixture", EventType: testEventType}
+	if statusCode, failure := sendDelivery(t.Context(), job, time.Now()); statusCode != http.StatusNoContent || failure != "" {
+		t.Fatalf("delivery returned status %d and failure %q", statusCode, failure)
+	}
+}
+
+func TestWebhookDeliveryRendersSlackMessageForTestEvent(t *testing.T) {
+	job := &deliveryJob{
+		URL:       "https://hooks.slack.com/services/team-fixture/app-fixture/token-fixture",
+		EventID:   "event-fixture",
+		EventType: testEventType,
+		Payload:   []byte(`{"id":"event-fixture","type":"webhook.test","created_at":"2026-11-24T12:00:00Z"}`),
+	}
+	request, err := newDeliveryRequest(t.Context(), job, time.Unix(1795000123, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer request.Body.Close()
+	var message struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(request.Body).Decode(&message); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(message.Text, "Bindizr UI webhook test") {
+		t.Errorf("Slack text = %q, want a Bindizr UI webhook test message", message.Text)
+	}
+	if request.Header.Get("X-Bindizr-Webhook-Signature") != "" ||
+		request.Header.Get("X-Bindizr-Webhook-Timestamp") != "" {
+		t.Error("unsigned Slack request includes signing headers")
+	}
+}
+
+func TestWebhookDeliverySignsRenderedSlackOperationBody(t *testing.T) {
+	const timestamp = "1795000123"
+	job := &deliveryJob{
+		URL:       "https://hooks.slack.com/services/team-fixture/app-fixture/token-fixture",
+		Secret:    "shared-fixture",
+		EventID:   "event-fixture",
+		EventType: "record.update",
+		Payload: []byte(`{"id":"event-fixture","type":"record.update","created_at":"2026-11-24T12:00:00Z","result":"changed","source":"api",
+			"target":{"zone_name":"example.test.","record_name":"www","record_type":"A"}}`),
+	}
+	request, err := newDeliveryRequest(t.Context(), job, time.Unix(1795000123, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer request.Body.Close()
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var message struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(body, &message); err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"record.update", "changed", "example.test.", "www"} {
+		if !strings.Contains(message.Text, expected) {
+			t.Errorf("Slack text = %q, want it to include %q", message.Text, expected)
+		}
+	}
+	if got := request.Header.Get("X-Bindizr-Webhook-Timestamp"); got != timestamp {
+		t.Errorf("request timestamp = %q, want %q", got, timestamp)
+	}
+	mac := hmac.New(sha256.New, []byte(job.Secret))
+	mac.Write([]byte(timestamp + "."))
+	mac.Write(body)
+	expectedSignature := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+	if got := request.Header.Get("X-Bindizr-Webhook-Signature"); got != expectedSignature {
+		t.Errorf("request signature = %q, want %q for rendered Slack body", got, expectedSignature)
+	}
+}
+
+func TestWebhookDeliveryPreservesRawBodyOutsideSlackIncomingURLs(t *testing.T) {
+	const payload = `{ "id" : "event-fixture", "type" : "webhook.test" }`
+	for _, destination := range []string{
+		"http://hooks.slack.com/services/team-fixture/app-fixture/token-fixture",
+		"https://hooks.slack.com/triggers/team-fixture/app-fixture/token-fixture",
+		"https://hooks.slack.com/services-other/team-fixture/app-fixture/token-fixture",
+		"https://hooks.slack.com.example.test/services/team-fixture/app-fixture/token-fixture",
+		"https://pretend-hooks.slack.com/services/team-fixture/app-fixture/token-fixture",
+	} {
+		t.Run(destination, func(t *testing.T) {
+			job := &deliveryJob{
+				URL:       destination,
+				EventID:   "event-fixture",
+				EventType: testEventType,
+				Payload:   []byte(payload),
+			}
+			request, err := newDeliveryRequest(t.Context(), job, time.Unix(1795000123, 0))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer request.Body.Close()
+			body, err := io.ReadAll(request.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(body) != payload {
+				t.Errorf("request body = %q, want %q", body, payload)
+			}
+		})
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"log"
 	"net"
@@ -22,7 +23,10 @@ const (
 	initialRetryDelay    = 5 * time.Second
 )
 
-var errInvalidDestination = errors.New("Enter a valid HTTP or HTTPS URL without credentials or a fragment")
+var (
+	errInvalidDestination = errors.New("Enter a valid HTTP or HTTPS URL without credentials or a fragment")
+	slackTextEscaper      = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+)
 
 func parseDestination(rawURL string) (*url.URL, error) {
 	rawURL = strings.TrimSpace(rawURL)
@@ -80,27 +84,79 @@ func (s *Service) Run(ctx context.Context) {
 	}
 }
 
-func sendDelivery(ctx context.Context, job *deliveryJob, now time.Time) (statusCode int, failure string) {
+func newDeliveryRequest(ctx context.Context, job *deliveryJob, now time.Time) (*http.Request, error) {
 	destination, err := parseDestination(job.URL)
 	if err != nil {
-		return 0, err.Error()
+		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, deliveryTimeout)
-	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, destination.String(), bytes.NewReader(job.Payload))
+	body := job.Payload
+	if destination.Scheme == "https" && strings.EqualFold(destination.Hostname(), "hooks.slack.com") &&
+		strings.HasPrefix(destination.EscapedPath(), "/services/") {
+		body, err = slackDeliveryBody(job)
+		if err != nil {
+			return nil, errors.New("Could not format the Slack webhook message")
+		}
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, destination.String(), bytes.NewReader(body))
 	if err != nil {
-		return 0, errInvalidDestination.Error()
+		return nil, errInvalidDestination
 	}
-	timestamp := strconv.FormatInt(now.Unix(), 10)
-	mac := hmac.New(sha256.New, []byte(job.Secret))
-	mac.Write([]byte(timestamp + "."))
-	mac.Write(job.Payload)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Bindizr-Webhook-Id", job.EventID)
 	request.Header.Set("X-Bindizr-Webhook-Event", job.EventType)
-	request.Header.Set("X-Bindizr-Webhook-Timestamp", timestamp)
-	request.Header.Set("X-Bindizr-Webhook-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+	if job.Secret != "" {
+		timestamp := strconv.FormatInt(now.Unix(), 10)
+		mac := hmac.New(sha256.New, []byte(job.Secret))
+		mac.Write([]byte(timestamp + "."))
+		mac.Write(body)
+		request.Header.Set("X-Bindizr-Webhook-Timestamp", timestamp)
+		request.Header.Set("X-Bindizr-Webhook-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+	}
 	request.Close = true
+	return request, nil
+}
+
+func slackDeliveryBody(job *deliveryJob) ([]byte, error) {
+	text := "Bindizr UI webhook test"
+	if job.EventType != testEventType {
+		event, err := decodeStoredEvent(job.Payload)
+		if err != nil {
+			return nil, err
+		}
+		lines := []string{"Bindizr UI · " + job.EventType}
+		if event.Result != "" {
+			lines = append(lines, "Result: "+event.Result)
+		}
+		if target := event.Target; target != nil {
+			if target.Name != "" {
+				lines = append(lines, "Name: "+target.Name)
+			}
+			if target.ZoneName != "" {
+				lines = append(lines, "Zone: "+target.ZoneName)
+			}
+			if record := strings.TrimSpace(target.RecordName + " " + target.RecordType); record != "" {
+				lines = append(lines, "Record: "+record)
+			}
+			if target.RecordName == "" && target.RecordID != 0 {
+				lines = append(lines, "Record ID: "+strconv.FormatInt(target.RecordID, 10))
+			}
+		}
+		text = strings.Join(lines, "\n")
+	}
+	return json.Marshal(struct {
+		Text   string `json:"text"`
+		Mrkdwn bool   `json:"mrkdwn"`
+	}{Text: slackTextEscaper.Replace(text)})
+}
+
+func sendDelivery(ctx context.Context, job *deliveryJob, now time.Time) (statusCode int, failure string) {
+	ctx, cancel := context.WithTimeout(ctx, deliveryTimeout)
+	defer cancel()
+	request, err := newDeliveryRequest(ctx, job, now)
+	if err != nil {
+		return 0, err.Error()
+	}
 
 	// RoundTrip preserves redirect responses as delivery failures.
 	response, err := http.DefaultTransport.RoundTrip(request)

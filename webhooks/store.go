@@ -81,17 +81,34 @@ type eventPayload struct {
 	Source    string       `json:"source,omitempty"`
 }
 
+func decodeStoredEvent(payload []byte) (eventPayload, error) {
+	var event struct {
+		eventPayload
+		ZoneName string `json:"zone_name"`
+		RecordID int64  `json:"record_id"`
+	}
+	if err := json.Unmarshal(payload, &event); err != nil {
+		return eventPayload{}, err
+	}
+	if event.Target == nil && (event.ZoneName != "" || event.RecordID != 0) {
+		event.Target = &EventTarget{ZoneName: event.ZoneName, RecordID: event.RecordID}
+	}
+	return event.eventPayload, nil
+}
+
 type webhook struct {
-	ID         int64    `json:"id"`
-	Name       string   `json:"name"`
-	URL        string   `json:"url"`
-	Operations []string `json:"operations"`
-	Enabled    bool     `json:"enabled"`
+	ID             int64    `json:"id"`
+	Name           string   `json:"name"`
+	URL            string   `json:"url"`
+	Operations     []string `json:"operations"`
+	Enabled        bool     `json:"enabled"`
+	SigningEnabled bool     `json:"signing_enabled"`
 }
 
 type webhookSettings struct {
 	webhook
-	Secret string `json:"secret"`
+	Secret      string `json:"secret"`
+	ClearSecret bool   `json:"clear_secret"`
 }
 
 type delivery struct {
@@ -196,7 +213,7 @@ func (s *Service) supports(operation string) bool {
 }
 
 func (s *Service) listWebhooks(ctx context.Context) ([]webhook, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name, url, operations, enabled FROM webhooks ORDER BY id")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, name, url, operations, enabled, secret <> '' FROM webhooks ORDER BY id")
 	if err != nil {
 		return nil, err
 	}
@@ -214,13 +231,13 @@ func (s *Service) listWebhooks(ctx context.Context) ([]webhook, error) {
 }
 
 func (s *Service) getWebhook(ctx context.Context, id int64) (webhook, error) {
-	return scanWebhook(s.db.QueryRowContext(ctx, "SELECT id, name, url, operations, enabled FROM webhooks WHERE id = ?", id))
+	return scanWebhook(s.db.QueryRowContext(ctx, "SELECT id, name, url, operations, enabled, secret <> '' FROM webhooks WHERE id = ?", id))
 }
 
 func scanWebhook(row interface{ Scan(...any) error }) (webhook, error) {
 	var item webhook
 	var operations string
-	err := row.Scan(&item.ID, &item.Name, &item.URL, &operations, &item.Enabled)
+	err := row.Scan(&item.ID, &item.Name, &item.URL, &operations, &item.Enabled, &item.SigningEnabled)
 	if err == nil {
 		err = json.Unmarshal([]byte(operations), &item.Operations)
 	}
@@ -234,7 +251,7 @@ func (s *Service) createWebhook(ctx context.Context, settings webhookSettings) (
 	}
 	return scanWebhook(s.db.QueryRowContext(ctx, `
 		INSERT INTO webhooks (name, url, operations, enabled, secret) VALUES (?, ?, ?, ?, ?)
-		RETURNING id, name, url, operations, enabled`, settings.Name, settings.URL, string(operations), settings.Enabled, settings.Secret))
+		RETURNING id, name, url, operations, enabled, secret <> ''`, settings.Name, settings.URL, string(operations), settings.Enabled, settings.Secret))
 }
 
 func (s *Service) updateWebhook(ctx context.Context, id int64, settings webhookSettings) (webhook, error) {
@@ -249,10 +266,11 @@ func (s *Service) updateWebhook(ctx context.Context, id int64, settings webhookS
 	defer tx.Rollback()
 
 	item, err := scanWebhook(tx.QueryRowContext(ctx, `
-		UPDATE webhooks SET name = ?, url = ?, operations = ?, enabled = ?, secret = COALESCE(NULLIF(?, ''), secret),
+		UPDATE webhooks SET name = ?, url = ?, operations = ?, enabled = ?,
+			secret = CASE WHEN ? THEN '' ELSE COALESCE(NULLIF(?, ''), secret) END,
 			destination_revision = destination_revision + (url <> ?)
-		WHERE id = ? RETURNING id, name, url, operations, enabled`,
-		settings.Name, settings.URL, string(operations), settings.Enabled, settings.Secret, settings.URL, id))
+		WHERE id = ? RETURNING id, name, url, operations, enabled, secret <> ''`,
+		settings.Name, settings.URL, string(operations), settings.Enabled, settings.ClearSecret, settings.Secret, settings.URL, id))
 	if err != nil {
 		return webhook{}, err
 	}
@@ -315,18 +333,11 @@ func (s *Service) listDeliveries(ctx context.Context, webhookID int64) ([]delive
 			&item.HTTPStatus, &item.ErrorMessage, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
-		var event struct {
-			eventPayload
-			ZoneName string `json:"zone_name"`
-			RecordID int64  `json:"record_id"`
-		}
-		if err := json.Unmarshal(payload, &event); err != nil {
+		event, err := decodeStoredEvent(payload)
+		if err != nil {
 			return nil, err
 		}
 		item.Target = event.Target
-		if item.Target == nil && (event.ZoneName != "" || event.RecordID != 0) {
-			item.Target = &EventTarget{ZoneName: event.ZoneName, RecordID: event.RecordID}
-		}
 		item.CreatedAt = time.UnixMilli(createdAt).UTC()
 		item.UpdatedAt = time.UnixMilli(updatedAt).UTC()
 		items = append(items, item)

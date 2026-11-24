@@ -76,10 +76,6 @@ func (s *Service) serveCollection(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if settings.Secret == "" {
-			writeError(w, http.StatusBadRequest, "A signing secret is required")
-			return
-		}
 		item, err := s.createWebhook(r.Context(), settings)
 		if err != nil {
 			writeStoreError(w, err, "Failed to create webhook")
@@ -163,6 +159,9 @@ func (s *Service) readSettings(w http.ResponseWriter, r *http.Request) (webhookS
 	settings.Operations = slices.Compact(settings.Operations)
 	if strings.TrimSpace(settings.Secret) == "" {
 		settings.Secret = ""
+	}
+	if settings.ClearSecret && settings.Secret != "" {
+		return webhookSettings{}, errors.New("Choose whether to set or remove the signing secret")
 	}
 	return settings, nil
 }
