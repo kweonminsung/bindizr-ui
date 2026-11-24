@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -36,14 +36,9 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if payload.BindizrUrl == "" {
-		writeJSONError(w, "Bindizr URL is required.", http.StatusBadRequest)
-		return
-	}
-
-	bindizrURL, ok := normalizeBindizrURL(payload.BindizrUrl)
-	if !ok {
-		writeJSONError(w, "Invalid Bindizr URL. Only http:// and https:// URLs are supported.", http.StatusBadRequest)
+	baseURL, err := parseBindizrURL(payload.BindizrUrl)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -57,7 +52,7 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := http.NewRequest("GET", bindizrURL+"/zones", nil)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, baseURL.String()+"/zones", nil)
 	if err != nil {
 		writeJSONError(w, "Failed to create request", http.StatusInternalServerError)
 		return
@@ -68,11 +63,8 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &http.Client{
-		Timeout: 10 * time.Second,
-		// Never follow redirects
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+		Timeout:       10 * time.Second,
+		CheckRedirect: stopBindizrRedirect,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -83,13 +75,14 @@ func PublicBindizrTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		writeJSONError(w, "The server redirected the request. Enter the final URL instead.", http.StatusBadGateway)
+		writeJSONError(w, bindizrRedirectMessage, http.StatusBadGateway)
 		return
 	}
 	if resp.StatusCode == http.StatusOK {
 		json.NewEncoder(w).Encode(map[string]string{"message": "Connection successful."})
 	} else {
-		writeJSONError(w, "Connection failed: "+resp.Status, resp.StatusCode)
+		status := fmt.Sprintf("%d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+		writeJSONError(w, "Connection failed: "+strings.TrimSpace(status), resp.StatusCode)
 	}
 }
 
@@ -121,47 +114,33 @@ func PublicSettingsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if payload.BindizrUrl == "" {
-		http.Error(w, "Bindizr URL is required.", http.StatusBadRequest)
+	baseURL, err := parseBindizrURL(payload.BindizrUrl)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	bindizrURL, ok := normalizeBindizrURL(payload.BindizrUrl)
-	if !ok {
-		http.Error(w, "Invalid Bindizr URL. Only http:// and https:// URLs are supported.", http.StatusBadRequest)
-		return
-	}
-
-	db.SetSetting("bindizr_url", bindizrURL)
-	if payload.SecretKey != "" {
-		db.SetSetting("secret_key", payload.SecretKey)
-	}
-
+	var username, passwordHash string
 	if payload.Username != "" && payload.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), 10)
 		if err != nil {
 			http.Error(w, "Failed to hash password", http.StatusInternalServerError)
 			return
 		}
-		db.SetSetting("username", payload.Username)
-		db.SetSetting("password", string(hashedPassword))
+		username, passwordHash = payload.Username, string(hashedPassword)
 	}
 
-	db.SetSetting("setup_complete", "true")
+	connection := db.BindizrConnection{URL: baseURL.String(), Token: payload.SecretKey}
+	completed, err := db.CompleteSetup(r.Context(), connection, username, passwordHash)
+	if err != nil {
+		http.Error(w, "Failed to save initial settings", http.StatusInternalServerError)
+		return
+	}
+	if !completed {
+		http.Error(w, "Setup has already been completed.", http.StatusBadRequest)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Setup successful."})
-}
-
-func normalizeBindizrURL(rawURL string) (string, bool) {
-	parsedURL, err := url.Parse(strings.TrimRight(rawURL, "/"))
-	if err != nil || parsedURL.Host == "" {
-		return "", false
-	}
-
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return "", false
-	}
-
-	return parsedURL.String(), true
 }

@@ -8,11 +8,13 @@ import { useToast } from "@/contexts/ToastContext";
 
 interface ZoneSyncTabProps {
   zone: Zone;
-  /** The Zone and History tabs compare against the serial a bump changes. */
-  onZoneChanged?: (zone: Zone) => void;
+  onSerialChanged: (serial: number) => void;
 }
 
-export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
+export default function ZoneSyncTab({
+  zone,
+  onSerialChanged,
+}: ZoneSyncTabProps) {
   const toast = useToast();
   // Sending a NOTIFY, with or without a serial bump, is `zone:update`.
   const { allows } = useBindizrToken();
@@ -26,18 +28,21 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
     try {
       const message = await notifyZones(zone.name, bumpSerial);
       toast.success(message);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to send DNS NOTIFY"));
+    } finally {
       setStatusToken((prev) => prev + 1);
-      if (bumpSerial && onZoneChanged) {
-        // Best-effort: the NOTIFY already went out either way.
+      if (bumpSerial) {
+        // A committed serial bump can outlive a failure to send NOTIFY.
         try {
-          onZoneChanged(await getZone(zone.name));
+          const refreshedZone = await getZone(zone.name);
+          if (refreshedZone.id === zone.id) {
+            onSerialChanged(refreshedZone.serial);
+          }
         } catch {
           /* the list refetches on close */
         }
       }
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to send DNS NOTIFY"));
-    } finally {
       setNotifying(false);
     }
   };
@@ -58,6 +63,7 @@ export default function ZoneSyncTab({ zone, onZoneChanged }: ZoneSyncTabProps) {
               <input
                 type="checkbox"
                 checked={bumpSerial}
+                disabled={notifying}
                 onChange={(e) => setBumpSerial(e.target.checked)}
               />
               <span>Bump serial first (forces a transfer)</span>

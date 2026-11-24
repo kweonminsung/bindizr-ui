@@ -9,13 +9,6 @@ export async function testBindizrConnection(
   bindizrUrl: string,
   secretKey: string,
 ): Promise<TestConnectionResult> {
-  if (!bindizrUrl.startsWith("http://") && !bindizrUrl.startsWith("https://")) {
-    return {
-      ok: false,
-      message: "Please enter a valid URL starting with http:// or https://",
-    };
-  }
-
   try {
     const res = await fetch("/api/public/bindizr/test", {
       method: "POST",

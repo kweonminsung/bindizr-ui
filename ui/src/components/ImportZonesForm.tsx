@@ -53,12 +53,8 @@ function describeFailure(item: ImportZonesItem): string {
 
 export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
   const toast = useToast();
-  const { allows, allowsWholeZoneAnywhere } = useBindizrToken();
-  // Upsert and replace delete what they rewrite, so a zone takes them only
-  // from a caller holding record:delete beside record:create on it.
-  const modes = allowsWholeZoneAnywhere("record:create", "record:delete")
-    ? IMPORT_MODES
-    : IMPORT_MODES.filter((importMode) => importMode === "append");
+  const { allows, allowsWholeZone, allowsWholeZoneAnywhere } =
+    useBindizrToken();
   const [fromServer, setFromServer] = useState("");
   const [source, setSource] = useState<"list" | "catalog">("list");
   const [zoneList, setZoneList] = useState("");
@@ -68,6 +64,17 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
   const [create, setCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ImportZonesResult | null>(null);
+
+  const canImportAllZones =
+    allowsWholeZone("record:create") &&
+    (mode === "append" || allowsWholeZone("record:delete"));
+  const canReplace =
+    source === "catalog" || create
+      ? allowsWholeZone("record:create") && allowsWholeZone("record:delete")
+      : allowsWholeZoneAnywhere("record:create", "record:delete");
+  const modes = canReplace
+    ? IMPORT_MODES
+    : IMPORT_MODES.filter((importMode) => importMode === "append");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +92,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
         create,
       });
       setResult(response);
-      if (!response.dry_run && response.summary.ok > 0) {
+      if (response.zones.some((item) => item.import?.applied)) {
         onApplied();
       }
     } catch (error) {
@@ -142,11 +149,18 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
               type="radio"
               name="source"
               checked={source === "catalog"}
+              disabled={!canImportAllZones}
               onChange={() => setSource("catalog")}
             />
             <span>Catalog zone (RFC 9432)</span>
           </label>
         </div>
+        {!canImportAllZones && (
+          <p className="text-xs text-gray-500">
+            The selected mode needs whole-zone record permissions across all
+            zones to import a catalog or create missing zones.
+          </p>
+        )}
         {source === "list" ? (
           <div>
             <label
@@ -229,6 +243,7 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
             <input
               type="checkbox"
               checked={create}
+              disabled={!canImportAllZones}
               onChange={(e) => setCreate(e.target.checked)}
             />
             <span>Create zones that do not exist yet, from their SOA</span>
@@ -262,13 +277,13 @@ export default function ImportZonesForm({ onApplied }: ImportZonesFormProps) {
                     Result
                   </th>
                   <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Added
+                    {result.dry_run ? "Would add" : "Added"}
                   </th>
                   <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Updated
+                    {result.dry_run ? "Would update" : "Updated"}
                   </th>
                   <th scope="col" className={TABLE_HEADER_CLASS}>
-                    Deleted
+                    {result.dry_run ? "Would delete" : "Deleted"}
                   </th>
                   <th scope="col" className={TABLE_HEADER_CLASS}>
                     Unchanged

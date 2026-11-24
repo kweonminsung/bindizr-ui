@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,21 @@ import (
 
 const bindizrProxyPrefix = "/api/bindizr/proxy"
 
+var (
+	errBindizrURLRequired = errors.New("Bindizr URL is required")
+	errBindizrURLInvalid  = errors.New("Bindizr URL must use HTTP or HTTPS and have no credentials, query, or fragment")
+	errBindizrProxyPath   = errors.New("invalid Bindizr proxy path")
+)
+
+const bindizrRedirectMessage = "The server redirected the request. Enter the final URL instead."
+
+// stopBindizrRedirect keeps the configured bearer token on the selected upstream.
+func stopBindizrRedirect(*http.Request, []*http.Request) error {
+	return http.ErrUseLastResponse
+}
+
+var bindizrProxyClient = &http.Client{CheckRedirect: stopBindizrRedirect}
+
 type BindizrSettings struct {
 	BindizrUrl string `json:"bindizrUrl"`
 	SecretKey  string `json:"secretKey"`
@@ -21,38 +37,31 @@ type BindizrSettings struct {
 func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		bindizrUrl, err := db.GetSetting("bindizr_url")
+		connection, err := db.LoadBindizrConnection(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		secretKey, err := db.GetSetting("secret_key")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to load Bindizr settings", http.StatusInternalServerError)
 			return
 		}
 		settings := BindizrSettings{
-			BindizrUrl: bindizrUrl,
-			SecretKey:  secretKey,
+			BindizrUrl: connection.URL,
+			SecretKey:  connection.Token,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(settings)
 	case "POST":
 		var settings BindizrSettings
 		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid payload", http.StatusBadRequest)
 			return
 		}
-		if settings.BindizrUrl == "" {
-			http.Error(w, "Bindizr URL is required.", http.StatusBadRequest)
+		baseURL, err := parseBindizrURL(settings.BindizrUrl)
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := db.SetSetting("bindizr_url", settings.BindizrUrl); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if err := db.SetSetting("secret_key", settings.SecretKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		connection := db.BindizrConnection{URL: baseURL.String(), Token: settings.SecretKey}
+		if err := db.SaveBindizrConnection(r.Context(), connection); err != nil {
+			http.Error(w, "Failed to save Bindizr settings", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -64,72 +73,103 @@ func BindizrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func BindizrProxyHandler(w http.ResponseWriter, r *http.Request) {
-	bindizrUrl, err := db.GetSetting("bindizr_url")
+	connection, err := db.LoadBindizrConnection(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to load Bindizr settings", http.StatusInternalServerError)
 		return
 	}
-	if bindizrUrl == "" {
+	if connection.URL == "" {
 		http.Error(w, "Bindizr URL is not configured", http.StatusBadRequest)
 		return
 	}
 
-	targetUrl, err := buildBindizrProxyURL(bindizrUrl, r)
+	targetURL, err := buildBindizrProxyURL(connection.URL, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	req, err := http.NewRequestWithContext(r.Context(), r.Method, targetUrl, r.Body)
+	req, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
 	if err != nil {
 		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
 		return
 	}
 	copyProxyHeaders(req.Header, r.Header)
 
-	secretKey, err := db.GetSetting("secret_key")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if secretKey != "" {
-		req.Header.Set("Authorization", "Bearer "+secretKey)
+	if connection.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+connection.Token)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := bindizrProxyClient.Do(req)
 	if err != nil {
 		http.Error(w, "Failed to connect to Bindizr server", http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 && resp.StatusCode != http.StatusNotModified {
+		writeJSONError(w, bindizrRedirectMessage, http.StatusBadGateway)
+		return
+	}
+
 	copyProxyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)
 }
 
-func buildBindizrProxyURL(bindizrUrl string, r *http.Request) (string, error) {
-	baseUrl, err := url.Parse(strings.TrimRight(bindizrUrl, "/"))
-	if err != nil || baseUrl.Host == "" {
-		return "", fmt.Errorf("invalid Bindizr URL")
+// parseBindizrURL validates the configured base and keeps its escaped path prefix.
+func parseBindizrURL(rawURL string) (*url.URL, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil, errBindizrURLRequired
 	}
+	baseURL, err := url.Parse(strings.TrimRight(rawURL, "/"))
+	if err != nil || baseURL.Hostname() == "" ||
+		(baseURL.Scheme != "http" && baseURL.Scheme != "https") ||
+		baseURL.User != nil || baseURL.RawQuery != "" || baseURL.ForceQuery ||
+		strings.Contains(rawURL, "#") {
+		return nil, errBindizrURLInvalid
+	}
+	return baseURL, nil
+}
 
-	proxyPath := strings.TrimPrefix(r.URL.Path, bindizrProxyPrefix)
-	if proxyPath == "" {
-		proxyPath = "/"
+func buildBindizrProxyURL(rawBaseURL string, r *http.Request) (string, error) {
+	baseURL, err := parseBindizrURL(rawBaseURL)
+	if err != nil {
+		return "", err
 	}
-	if !strings.HasPrefix(proxyPath, "/") {
-		proxyPath = "/" + proxyPath
+	suffix := r.URL.EscapedPath()
+	for _, segment := range strings.Split(strings.TrimPrefix(bindizrProxyPrefix, "/"), "/") {
+		if !strings.HasPrefix(suffix, "/") {
+			return "", errBindizrProxyPath
+		}
+		escapedSegment, _, _ := strings.Cut(suffix[1:], "/")
+		decodedSegment, err := url.PathUnescape(escapedSegment)
+		if err != nil || decodedSegment != segment {
+			return "", errBindizrProxyPath
+		}
+		suffix = suffix[1+len(escapedSegment):]
 	}
-
-	baseUrl.Path = strings.TrimRight(baseUrl.Path, "/") + proxyPath
-	baseUrl.RawQuery = r.URL.RawQuery
-	return baseUrl.String(), nil
+	if suffix == "" {
+		suffix = "/"
+	}
+	// A slash inside a DNS label stays a single path segment.
+	escapedPath := baseURL.EscapedPath() + suffix
+	path, err := url.PathUnescape(escapedPath)
+	if err != nil {
+		return "", errBindizrProxyPath
+	}
+	baseURL.Path = path
+	baseURL.RawPath = escapedPath
+	baseURL.RawQuery = r.URL.RawQuery
+	baseURL.ForceQuery = r.URL.ForceQuery
+	return baseURL.String(), nil
 }
 
 func copyProxyHeaders(dst, src http.Header) {
 	for key, values := range src {
-		if isHopByHopHeader(key) || strings.EqualFold(key, "Authorization") {
+		if isHopByHopHeader(key) || strings.EqualFold(key, "Authorization") ||
+			strings.EqualFold(key, "Cookie") || strings.EqualFold(key, "Set-Cookie") {
 			continue
 		}
 		for _, value := range values {

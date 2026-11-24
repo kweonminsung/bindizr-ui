@@ -100,7 +100,7 @@ export interface UpdateRecordPayload {
   name?: string;
   type?: RecordType;
   value?: RecordValue;
-  /** Seconds, 0–4294967295; omitted values inherit the zone default. */
+  /** Seconds, 0–4294967295; omitted values keep the current TTL. */
   ttl?: number | null;
   priority?: number | null;
 }
@@ -203,12 +203,15 @@ export interface RecordWriteResult {
   diff: RecordDiff;
 }
 
-/** What a delete removed, or would have. Matching nothing is not an error. */
+/** A record deletion or its preview. */
 export interface DeleteRecordsResult {
+  /** Whether apply mode completed, including when it matched zero records. */
   applied: boolean;
   dry_run: boolean;
+  /** Number of records selected for removal, including in a dry run. */
   deleted: number;
   records: WrittenRecord[];
+  /** The removal preview. An applied operation returns an empty diff. */
   diff: RecordDiff;
 }
 
@@ -243,6 +246,7 @@ export interface ImportZonePayload {
   create?: boolean;
 }
 
+/** Counts of applied changes or the changes shown in a preview. */
 export interface ImportSummary {
   parsed: number;
   added: number;
@@ -449,7 +453,7 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "record:create":
     "Add records, including by import, nsupdate and ExternalDNS.",
   "record:update":
-    "Change a record in place; without record:read on it, every field must be given. Also required when nsupdate changes existing records’ TTL.",
+    "Change a record or its TTL. A rename or type change requires this action at both the original and resulting name and type. Without record:read on the record, the request must supply every field.",
   "record:delete":
     "Delete records, including by nsupdate and ExternalDNS; also required for nsupdate CNAME, DNAME, or matching WKS replacement.",
   "dnssec:read":
@@ -461,7 +465,7 @@ export const ACTION_DESCRIPTIONS: { [A in Action]: string } = {
   "access:manage":
     "Manage roles, API tokens and TSIG keys; equivalent to admin, since its holder can grant itself anything.",
   "log:read":
-    "Read the audit, access and transfer logs: who changed a token, role, grant, TSIG key, secondary or DNSSEC policy or deleted a zone, which API requests and nsupdates were answered or denied, and what each client transferred.",
+    "Read the audit, access and transfer logs, including changes to credentials, roles, grants, secondaries and zone DNSSEC settings.",
 };
 
 /** Actions on something no zone owns, so only an all-zones grant carries them. */
@@ -545,8 +549,8 @@ export const AUDIT_OPERATIONS = ["create", "update", "delete"] as const;
 
 export type AuditOperation = (typeof AUDIT_OPERATIONS)[number];
 
-/** One row of the audit log: a management change, who made it, and when.
- * A zone's own changes are its versions; only its deletion is logged. */
+/** A management change, who made it, and when. Includes zone deletion and
+ * DNSSEC settings changes. Zone data edits appear in version history. */
 export interface AuditLog {
   id: number;
   entity: AuditEntity;

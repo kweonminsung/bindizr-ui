@@ -157,7 +157,6 @@ async function apiFetch(
   });
   if (!response.ok && !passThroughStatuses.includes(response.status)) {
     const { message, code } = await parseJsonError(response, fallbackError);
-    console.error(`${fallbackError}:`, message);
     throw new ApiError(message, response.status, code);
   }
   return response;
@@ -726,7 +725,7 @@ export async function deleteRoleGrant(
   return (await response.json()).message as string;
 }
 
-/** Bumping the serial first makes secondaries transfer even when nothing changed. */
+/** Optional serial bumps can commit before the NOTIFY request completes. */
 export async function notifyZones(
   zoneName?: string | null,
   bumpSerial = false,

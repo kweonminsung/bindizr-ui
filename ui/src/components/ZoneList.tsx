@@ -466,10 +466,12 @@ export default function ZoneList({
               order={order}
               onChange={handleSortChange}
             />
-            {allows("zone:update") && <NotifyAllZones />}
-            {/* An import rewrites zones whole: an unnarrowed record:create somewhere, or zone:create. */}
-            {(allows("zone:create") ||
-              allowsWholeZoneAnywhere("record:create")) && (
+            {allows("zone:update") && (
+              <NotifyAllZones
+                onSerialBumpFinished={() => setRefreshKey((key) => key + 1)}
+              />
+            )}
+            {allowsWholeZoneAnywhere("record:create") && (
               <button
                 onClick={onImportZones}
                 className="btn-primary w-full sm:w-auto"
@@ -624,8 +626,19 @@ export default function ZoneList({
             zone={selectedZone}
             initialTab={focusTab}
             onZoneChanged={(updatedZone) => {
-              // A rename or a new serial makes the name-based sync above miss.
-              setSelectedZone(updatedZone);
+              setSelectedZone((current) =>
+                current?.id === updatedZone.id ? updatedZone : current,
+              );
+              setRefreshKey((prev) => prev + 1);
+            }}
+            onSerialChanged={(serial) => {
+              // A late response can arrive after another zone edit advances the serial.
+              setSelectedZone((current) =>
+                current?.id === selectedZone.id &&
+                current.serial === selectedZone.serial
+                  ? { ...current, serial }
+                  : current,
+              );
               setRefreshKey((prev) => prev + 1);
             }}
             onDnssecChanged={handleDnssecChanged}

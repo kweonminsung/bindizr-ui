@@ -4,9 +4,9 @@ export default function AuditLogPage() {
   return (
     <div>
       <p className="mb-4 text-sm text-gray-500">
-        Who created, changed or deleted a token, role, grant, TSIG key,
-        secondary or DNSSEC policy, or deleted a zone, and when. A zone&apos;s
-        own changes are in its versions.
+        See who changed tokens, roles, grants, TSIG keys, secondaries, DNSSEC
+        policies or a zone&apos;s DNSSEC settings, and who deleted zones. Zone
+        data edits appear in version history.
       </p>
       <AuditLogList />
     </div>

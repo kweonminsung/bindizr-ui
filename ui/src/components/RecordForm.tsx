@@ -204,6 +204,13 @@ export default function RecordForm({
             ))}
           </select>
         </div>
+        {record &&
+          (record.name !== formData.name || record.type !== formData.type) && (
+            <p className="text-xs text-gray-500 md:col-span-2">
+              Your role needs permission to update both the current and the new
+              name and type.
+            </p>
+          )}
         <div className="md:col-span-2">
           <label
             htmlFor="value"
