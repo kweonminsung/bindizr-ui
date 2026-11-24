@@ -7,8 +7,8 @@
     <a href="https://github.com/netbirdio/netbird/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/license-Apache 2.0-blue" />
     </a>
-    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.2.0-rc.1">
-        <img src="https://img.shields.io/badge/Compatible-0.2.0--rc.1-success" />
+    <a href="https://github.com/kweonminsung/bindizr/releases/tag/v0.2.0">
+        <img src="https://img.shields.io/badge/Compatible-0.2.0-success" />
     </a>
 </p>
 
@@ -108,7 +108,7 @@ Three logs, each under Logs in the sidebar. The activity log covers management o
 ## Run with Docker
 
 ```bash
-docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.2.0-rc.1
+docker run -d --name bindizr-ui -p 9000:9000 kweonminsung/bindizr-ui:0.2.0
 ```
 
 Or with Docker Compose:
@@ -119,7 +119,7 @@ docker compose up -d
 
 Then open <http://localhost:9000>.
 
-Run Bindizr separately. In the setup screen, enter its URL as reachable from the UI server, provide an API token if required, and test the connection. The token's role determines the available pages and actions; an optional UI admin account protects access to this UI instance.
+Run Bindizr 0.2.0 separately. In the setup screen, enter its URL as reachable from the UI server, provide an API token if required, and test the connection. The token's role determines the available pages and actions; an optional UI admin account protects access to this UI instance.
 
 A `v*` tag, or the Manual Release workflow, builds and pushes the amd64 and
 arm64 image; the Publish Image workflow pushes it under a tag you enter. To
@@ -132,6 +132,12 @@ push it from your own machine instead (the tag defaults to the version in
 
 These builds pass the selected image tag as `APP_VERSION` for the UI footer.
 Local frontend builds use `ui/package.json` unless `APP_VERSION` is set.
+
+### Updating Bindizr UI
+
+Pair Bindizr UI 0.2.0 with Bindizr 0.2.0. Its log pages and filters use the 0.2.0 API. See the [Bindizr release notes](https://kweonminsung.github.io/bindizr/changelog/0.2.0/) for the Bindizr clean-install steps.
+
+Keep the UI's `/app/database.db` when replacing its container to retain settings, credentials, and webhook data. Reuse the existing persistent mount or stop the old container and copy the database out before removing it. Update the UI's configured API token after creating credentials in the new Bindizr instance.
 
 ## Getting Started
 
@@ -161,7 +167,7 @@ Open <http://localhost:9000>. The Go server forwards frontend requests to Vite o
 
 ## Dependencies
 
-- [Go](https://golang.org/) v1.27.3 or higher
+- [Go](https://golang.org/) v1.27.4 or higher
 - [Sqlite3](https://sqlite.org/)
 - [Node.js](https://nodejs.org) v24 or higher
 - [React](https://reactjs.org/) v19
